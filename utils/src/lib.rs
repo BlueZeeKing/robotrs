@@ -9,101 +9,90 @@ use std::{
 use anyhow::{bail, Result};
 use bytes::Bytes;
 use reqwest::Client;
-use serde::{Deserialize, Serialize};
 use tempfile::TempDir;
 use zip::ZipArchive;
 
-const HEADERS: &[(&str, &str, &str)] = &[
-    ("hal", "hal-cpp", "hal-cpp-$VERSION-headers.zip"),
-    ("wpiutil", "wpiutil-cpp", "wpiutil-cpp-$VERSION-headers.zip"),
-    ("wpimath", "wpimath-cpp", "wpimath-cpp-$VERSION-headers.zip"),
+const HEADERS: &[(&str, &str, &str, &str)] = &[
+    ("hal", "hal-cpp", "hal-cpp-$VERSION-headers.zip", "2023.4.3"),
+    (
+        "wpiutil",
+        "wpiutil-cpp",
+        "wpiutil-cpp-$VERSION-headers.zip",
+        "2023.4.3",
+    ),
+    (
+        "wpimath",
+        "wpimath-cpp",
+        "wpimath-cpp-$VERSION-headers.zip",
+        "2023.4.3",
+    ),
 ];
 
-const LIBS: &[(&str, &str, &str, &str)] = &[
+const LIBS: &[(&str, &str, &str, &str, &str)] = &[
     (
         "ni-libraries",
         "runtime",
         "runtime-$VERSION-linuxathena.zip",
         "embcanshim",
+        "2023.3.0",
     ),
     (
         "ni-libraries",
         "runtime",
         "runtime-$VERSION-linuxathena.zip",
         "fpgalvshim",
+        "2023.3.0",
     ),
     (
         "ni-libraries",
         "chipobject",
         "chipobject-$VERSION-linuxathena.zip",
         "RoboRIO_FRC_ChipObject",
+        "2023.3.0",
     ),
     (
         "ni-libraries",
         "netcomm",
         "netcomm-$VERSION-linuxathena.zip",
         "FRC_NetworkCommunication",
+        "2023.3.0",
     ),
     (
         "ni-libraries",
         "visa",
         "visa-$VERSION-linuxathena.zip",
         "visa",
+        "2023.3.0",
     ),
     (
         "hal",
         "hal-cpp",
         "hal-cpp-$VERSION-linuxathena.zip",
         "wpiHal",
+        "2023.4.3",
     ),
     (
         "wpiutil",
         "wpiutil-cpp",
         "wpiutil-cpp-$VERSION-linuxathena.zip",
         "wpiutil",
+        "2023.4.3",
     ),
 ];
 
 static CLIENT: OnceLock<Client> = OnceLock::new();
 
-#[derive(Serialize, Deserialize, Debug)]
-struct Metadata {
-    #[serde(rename = "groupId")]
-    group_id: String,
-    #[serde(rename = "artifactId")]
-    artifact_id: String,
-    version: String,
-    versioning: Versioning,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct Versioning {
-    latest: String,
-    release: String,
-}
-
 fn get_client() -> &'static Client {
     CLIENT.get_or_init(|| Client::new())
 }
 
-async fn get_metadata(main_name: &str, secondary_name: &str) -> Result<Metadata> {
-    let response = get_client().get(format!("https://frcmaven.wpi.edu/artifactory/release/edu/wpi/first/{main_name}/{secondary_name}/maven-metadata.xml")).header(reqwest::header::ACCEPT, "text/xml").send().await?;
-
-    let data = response.bytes().await?;
-
-    let data: Metadata = serde_xml_rs::from_reader(&*data)?;
-
-    Ok(data)
-}
-
-pub async fn get_artifact_url<F: FnOnce(&str) -> String>(
+pub fn get_artifact_url(
     main_name: &str,
     secondary_name: &str,
-    artifact_name: F,
+    artifact_name: &str,
+    version: &str,
 ) -> Result<String> {
-    let metadata = get_metadata(main_name, secondary_name).await?;
-
-    Ok(format!("https://frcmaven.wpi.edu/artifactory/release/edu/wpi/first/{main_name}/{secondary_name}/{}/{}", metadata.versioning.release, artifact_name(&metadata.versioning.release)))
+    Ok(format!("https://frcmaven.wpi.edu/artifactory/release/edu/wpi/first/{main_name}/{secondary_name}/{}/{}", version, artifact_name))
 }
 
 pub async fn get_headers(temp_dir: &TempDir) -> Result<()> {
@@ -111,11 +100,13 @@ pub async fn get_headers(temp_dir: &TempDir) -> Result<()> {
 
     fs::create_dir_all(&include_dir)?;
 
-    for (main, second, artifact) in HEADERS {
-        let url = get_artifact_url(main, second, |version| {
-            artifact.replace("$VERSION", version)
-        })
-        .await?;
+    for (main, second, artifact, version) in HEADERS {
+        let url = get_artifact_url(
+            main,
+            second,
+            &artifact.replace("$VERSION", version),
+            version,
+        )?;
 
         let mut zip = get_zip(&url).await?;
 
@@ -164,11 +155,13 @@ pub async fn download_libs() -> Result<()> {
 
     fs::create_dir_all(&libs_dir)?;
 
-    for (main, second, artifact, lib) in LIBS {
-        let url = get_artifact_url(main, second, |version| {
-            artifact.replace("$VERSION", version)
-        })
-        .await?;
+    for (main, second, artifact, lib, version) in LIBS {
+        let url = get_artifact_url(
+            main,
+            second,
+            &artifact.replace("$VERSION", &version),
+            version,
+        )?;
 
         let mut zip = get_zip(&url).await?;
 
@@ -218,7 +211,7 @@ pub async fn shoutout_libs() -> Result<()> {
         out_dir.to_str().unwrap()
     );
 
-    for (_, _, _, lib) in LIBS {
+    for (_, _, _, lib, _) in LIBS {
         println!("cargo:rustc-link-lib=dylib={}", lib);
     }
 
