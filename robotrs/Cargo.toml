@@ -10,3 +10,5 @@ futures = "0.3.28"
 hal-sys = { path = "../hal-sys" }
 linkme = "0.3.15"
 thiserror = "1.0.47"
+tracing = "0.1.37"
+tracing-subscriber = "0.3.17"

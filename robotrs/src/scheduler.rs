@@ -1,0 +1,165 @@
+use std::{rc::Rc, time::Duration};
+
+use futures::{executor::LocalPool, future::RemoteHandle, task::LocalSpawnExt};
+use tracing::{debug, warn};
+
+use crate::{
+    ds,
+    robot::AsyncRobot,
+    time::{get_time, RawNotifier},
+    DsTracingWriter, PERIODIC_CHECKS,
+};
+
+use hal_sys::{
+    HAL_HasMain, HAL_Initialize, HAL_ObserveUserProgramAutonomous, HAL_ObserveUserProgramDisabled,
+    HAL_ObserveUserProgramStarting, HAL_ObserveUserProgramTeleop, HAL_ObserveUserProgramTest,
+};
+
+static PERIOD: Duration = Duration::from_millis(20);
+
+pub struct RobotScheduler<R: AsyncRobot> {
+    robot: Rc<R>,
+    last_state: ds::State,
+    rt: LocalPool,
+
+    enabled_task: Option<RemoteHandle<()>>,
+    auto_task: Option<RemoteHandle<()>>,
+    teleop_task: Option<RemoteHandle<()>>,
+}
+
+impl<R: AsyncRobot> RobotScheduler<R> {
+    pub fn new(robot: R) -> Self {
+        let scheduler = Self {
+            robot: Rc::new(robot),
+            last_state: ds::State::Disabled,
+            rt: LocalPool::new(),
+
+            enabled_task: None,
+            auto_task: None,
+            teleop_task: None,
+        };
+
+        let robot = scheduler.robot.clone();
+
+        R::create_bindings(robot, &scheduler.rt.spawner());
+
+        scheduler
+    }
+
+    fn tick(&mut self) {
+        let state = ds::State::from_control_word(&ds::get_control_word().unwrap());
+
+        match state {
+            ds::State::Auto => unsafe {
+                HAL_ObserveUserProgramAutonomous();
+            },
+            ds::State::Teleop => unsafe {
+                HAL_ObserveUserProgramTeleop();
+            },
+            ds::State::Test => unsafe {
+                HAL_ObserveUserProgramTest();
+            },
+            ds::State::Disabled => unsafe {
+                HAL_ObserveUserProgramDisabled();
+            },
+        }
+
+        if state != self.last_state {
+            match state {
+                ds::State::Auto => {
+                    self.auto_task = Some(
+                        self.rt
+                            .spawner()
+                            .spawn_local_with_handle(self.robot.clone().get_auto_future())
+                            .unwrap(),
+                    );
+
+                    debug!("Auto task started");
+
+                    self.teleop_task = None;
+                }
+                ds::State::Teleop => {
+                    self.teleop_task = Some(
+                        self.rt
+                            .spawner()
+                            .spawn_local_with_handle(self.robot.clone().get_teleop_future())
+                            .unwrap(),
+                    );
+
+                    debug!("Teleop task started");
+
+                    self.auto_task = None;
+                }
+                ds::State::Test => {
+                    self.teleop_task = None;
+                    self.auto_task = None;
+                }
+                ds::State::Disabled => {
+                    self.enabled_task = None;
+                    self.teleop_task = None;
+                    self.auto_task = None;
+                }
+            }
+
+            if matches!(self.last_state, ds::State::Disabled) {
+                self.enabled_task = Some(
+                    self.rt
+                        .spawner()
+                        .spawn_local_with_handle(self.robot.clone().get_enabled_future())
+                        .unwrap(),
+                );
+
+                debug!("Enabled task started");
+            }
+        }
+
+        self.last_state = state;
+
+        self.rt.run_until_stalled();
+
+        for check in PERIODIC_CHECKS {
+            check();
+        }
+    }
+
+    pub fn start_robot(robot: R) -> ! {
+        if unsafe { HAL_Initialize(500, 0) == 0 } {
+            panic!("Could not start hal");
+        }
+
+        if unsafe { HAL_HasMain() == 1 } {
+            // TODO: Fix this
+            panic!("A main function was given and that is probably wrong (idk)");
+        }
+
+        tracing_subscriber::fmt()
+            .with_writer(DsTracingWriter {})
+            .init();
+
+        let mut scheduler = RobotScheduler::new(robot);
+
+        let mut time = get_time().unwrap() + PERIOD;
+        let mut notifier = RawNotifier::new(time).unwrap();
+
+        unsafe { HAL_ObserveUserProgramStarting() };
+
+        debug!(
+            "Robot code started with period of {} milliseconds",
+            PERIOD.as_millis()
+        );
+
+        loop {
+            scheduler.tick();
+
+            notifier = notifier.block_until_alarm().unwrap(); // add error handling
+            time += PERIOD;
+            if time < get_time().unwrap() {
+                warn!(
+                    "Loop over run by {} milliseconds",
+                    (time - get_time().unwrap()).as_millis()
+                );
+            }
+            notifier.set_time(time).unwrap();
+        }
+    }
+}

@@ -1,8 +1,4 @@
-use std::{
-    marker::PhantomData,
-    pin::Pin,
-    task::{Poll, Waker},
-};
+use std::{marker::PhantomData, pin::Pin, task::Poll};
 
 use futures::Future;
 use hal_sys::HAL_JoystickButtons;
