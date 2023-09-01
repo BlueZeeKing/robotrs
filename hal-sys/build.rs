@@ -220,7 +220,6 @@ pub async fn shoutout_libs() -> Result<()> {
     for (_, _, _, lib, _) in LIBS {
         println!("cargo:rustc-link-lib=dylib={}", lib);
     }
-    println!("cargo:rustc-link-lib=dylib={}", "REVLibDriver");
 
     Ok(())
 }

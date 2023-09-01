@@ -1,43 +1,49 @@
-use std::{error::Error, ffi::CStr, fmt::Display};
+use thiserror::Error;
+use tracing::error;
 
-use crate::bindings::c_REVLib_ErrorFromCode;
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Error)]
 pub enum REVError {
+    #[error("General error")]
     General = 1,
+    #[error("Timed out while waiting for the CAN")]
     CANTimeout = 2,
+    #[error("Function or feature not implemented by REV")]
     NotImplemented = 3,
+    #[error("WPILib or external HAL error")]
     HAL = 4,
+    #[error("Unable to retrieve SPARK MAX firmware version. Please verify the deviceID field matches the configured CAN ID of the controller, and that the controller is connected to the CAN Bus.")]
     CantFindFirmware = 5,
+    #[error("The firmware is too old and needs to be updated. Refer to www.revrobotics.com/REVLib for details.")]
     FirmwareTooOld = 6,
+    #[error("The library version is outdated. If this is the latest release please file an issue")]
     FirmwareTooNew = 7,
+    #[error("Invalid parameter id")]
     ParamInvalidID = 8,
+    #[error("Parameter type mismatch for parameter id")]
     ParamMismatchType = 9,
+    #[error("Invalid parameter access mode parameter id")]
     ParamAccessMode = 10,
+    #[error("Received parameter invalid error parameter id")]
     ParamInvalid = 11,
+    #[error("Parameter is either not implemented or has been deprecated id ")]
     ParamNotImplementedDeprecated = 12,
+    #[error("Follower config setup check failed, check follower mode is set properly on device!")]
     FollowConfigMismatch = 13,
+    #[error("Error invalid")]
     Invalid = 14,
+    #[error("Setpoint is out of the defined range")]
     SetpointOutOfRange = 15,
+    #[error("Unknown error (this error is unknown to the revlib drivers not to the rust crate)")]
     Unknown = 16,
+    #[error("CAN Output Buffer Full. Ensure a device is attached to the CAN bus.")]
     CANDisconnected = 17,
+    #[error("A CANREVLib object with this ID was already created.")]
     DuplicateCANId = 18,
+    #[error("A CANREVLib object was given an invalid CAN ID.")]
     InvalidCANId = 19,
+    #[error("The spark max data port was already configured in a different way")]
     SparkMaxDataPortAlreadyConfiguredDifferently = 20,
-    NumCodes = 21,
 }
-
-impl Display for REVError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", unsafe {
-            CStr::from_ptr(c_REVLib_ErrorFromCode(self.clone() as u32))
-                .to_str()
-                .unwrap()
-        })
-    }
-}
-
-impl Error for REVError {}
 
 impl From<u32> for REVError {
     fn from(value: u32) -> Self {
@@ -62,8 +68,10 @@ impl From<u32> for REVError {
             18 => Self::DuplicateCANId,
             19 => Self::InvalidCANId,
             20 => Self::SparkMaxDataPortAlreadyConfiguredDifferently,
-            21 => Self::NumCodes,
-            code => panic!("Unknown rev error code {code}"),
+            code => {
+                error!("Unknown rev error code {code}, exiting");
+                panic!("Unknown rev error code {code}");
+            }
         }
     }
 }
