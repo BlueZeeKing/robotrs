@@ -239,4 +239,3 @@ async fn get_zip(url: &str) -> Result<ZipArchive<Cursor<Bytes>>> {
 
     Ok(ZipArchive::new(Cursor::new(bytes))?)
 }
-

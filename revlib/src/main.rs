@@ -1,3 +1,5 @@
+use revlib::SparkMax;
+
 fn main() {
-    println!("Hello, world!");
+    let motor = SparkMax::new(1, revlib::MotorType::Brushed);
 }
