@@ -1,4 +1,4 @@
 [workspace]
 
 resolver = "2"
-members = ["hal-sys", "utils", "robotrs"]
+members = ["hal-sys", "robotrs", "revlib", "example"]

@@ -1,7 +1,13 @@
 use std::{rc::Rc, time::Duration};
 
-use futures::{executor::LocalPool, future::RemoteHandle, task::LocalSpawnExt};
-use tracing::{debug, warn};
+use anyhow::Result;
+use futures::{
+    executor::{LocalPool, LocalSpawner},
+    future::RemoteHandle,
+    task::LocalSpawnExt,
+    Future, TryFutureExt,
+};
+use tracing::{debug, error, warn};
 
 use crate::{
     ds,
@@ -15,6 +21,23 @@ use hal_sys::{
     HAL_ObserveUserProgramStarting, HAL_ObserveUserProgramTeleop, HAL_ObserveUserProgramTest,
 };
 
+fn handle_error(location: &'static str) -> impl FnOnce(&anyhow::Error) {
+    move |err| error!("An error occured in {location}: {err}")
+}
+
+pub struct Spawner {
+    spawner: LocalSpawner,
+}
+
+impl Spawner {
+    pub fn spawn<F: Future<Output = Result<()>> + 'static>(&self, fut: F) {
+        self.spawner
+            .spawn_local_with_handle(fut.inspect_err(handle_error("bindings")))
+            .unwrap()
+            .forget();
+    }
+}
+
 static PERIOD: Duration = Duration::from_millis(20);
 
 pub struct RobotScheduler<R: AsyncRobot> {
@@ -22,9 +45,9 @@ pub struct RobotScheduler<R: AsyncRobot> {
     last_state: ds::State,
     rt: LocalPool,
 
-    enabled_task: Option<RemoteHandle<()>>,
-    auto_task: Option<RemoteHandle<()>>,
-    teleop_task: Option<RemoteHandle<()>>,
+    enabled_task: Option<RemoteHandle<Result<()>>>,
+    auto_task: Option<RemoteHandle<Result<()>>>,
+    teleop_task: Option<RemoteHandle<Result<()>>>,
 }
 
 impl<R: AsyncRobot> RobotScheduler<R> {
@@ -41,7 +64,12 @@ impl<R: AsyncRobot> RobotScheduler<R> {
 
         let robot = scheduler.robot.clone();
 
-        R::create_bindings(robot, &scheduler.rt.spawner());
+        R::create_bindings(
+            robot,
+            &Spawner {
+                spawner: scheduler.rt.spawner(),
+            },
+        );
 
         scheduler
     }
@@ -70,7 +98,12 @@ impl<R: AsyncRobot> RobotScheduler<R> {
                     self.auto_task = Some(
                         self.rt
                             .spawner()
-                            .spawn_local_with_handle(self.robot.clone().get_auto_future())
+                            .spawn_local_with_handle(
+                                self.robot
+                                    .clone()
+                                    .get_auto_future()
+                                    .inspect_err(handle_error("auto")),
+                            )
                             .unwrap(),
                     );
 
@@ -82,7 +115,12 @@ impl<R: AsyncRobot> RobotScheduler<R> {
                     self.teleop_task = Some(
                         self.rt
                             .spawner()
-                            .spawn_local_with_handle(self.robot.clone().get_teleop_future())
+                            .spawn_local_with_handle(
+                                self.robot
+                                    .clone()
+                                    .get_teleop_future()
+                                    .inspect_err(handle_error("teleop")),
+                            )
                             .unwrap(),
                     );
 
@@ -105,7 +143,12 @@ impl<R: AsyncRobot> RobotScheduler<R> {
                 self.enabled_task = Some(
                     self.rt
                         .spawner()
-                        .spawn_local_with_handle(self.robot.clone().get_enabled_future())
+                        .spawn_local_with_handle(
+                            self.robot
+                                .clone()
+                                .get_enabled_future()
+                                .inspect_err(handle_error("enabled task")),
+                        )
                         .unwrap(),
                 );
 

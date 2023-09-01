@@ -1,9 +1,12 @@
 [package]
-name = "hal-sys"
+name = "revlib"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+robotrs = { path = "../robotrs" }
 
 [build-dependencies]
 anyhow = "1.0.75"

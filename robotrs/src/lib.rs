@@ -152,3 +152,40 @@ where
         }
     }
 }
+
+pub struct Yield {
+    yielded: bool,
+}
+
+impl Default for Yield {
+    fn default() -> Self {
+        Self { yielded: false }
+    }
+}
+
+impl Future for Yield {
+    type Output = ();
+
+    fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
+        if Pin::into_inner(self).yielded {
+            Poll::Ready(())
+        } else {
+            queue_waker(cx.waker().clone());
+            Poll::Pending
+        }
+    }
+}
+
+pub trait Deadzone {
+    fn deadzone(self, value: Self) -> Self;
+}
+
+impl Deadzone for f32 {
+    fn deadzone(self, value: Self) -> Self {
+        if self.abs() < value {
+            0.0
+        } else {
+            self
+        }
+    }
+}

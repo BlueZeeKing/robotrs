@@ -34,57 +34,18 @@ const HEADERS: &[(&str, &str, &str, &str)] = &[
     ),
 ];
 
-const LIBS: &[(&str, &str, &str, &str, &str)] = &[
-    (
-        "ni-libraries",
-        "runtime",
-        "runtime-$VERSION-linuxathena.zip",
-        "embcanshim",
-        "2023.3.0",
-    ),
-    (
-        "ni-libraries",
-        "runtime",
-        "runtime-$VERSION-linuxathena.zip",
-        "fpgalvshim",
-        "2023.3.0",
-    ),
-    (
-        "ni-libraries",
-        "chipobject",
-        "chipobject-$VERSION-linuxathena.zip",
-        "RoboRIO_FRC_ChipObject",
-        "2023.3.0",
-    ),
-    (
-        "ni-libraries",
-        "netcomm",
-        "netcomm-$VERSION-linuxathena.zip",
-        "FRC_NetworkCommunication",
-        "2023.3.0",
-    ),
-    (
-        "ni-libraries",
-        "visa",
-        "visa-$VERSION-linuxathena.zip",
-        "visa",
-        "2023.3.0",
-    ),
-    (
-        "hal",
-        "hal-cpp",
-        "hal-cpp-$VERSION-linuxathena.zip",
-        "wpiHal",
-        "2023.4.3",
-    ),
-    (
-        "wpiutil",
-        "wpiutil-cpp",
-        "wpiutil-cpp-$VERSION-linuxathena.zip",
-        "wpiutil",
-        "2023.4.3",
-    ),
-];
+const REV_HEADERS: &[(&str, &str, &str)] = &[(
+    "REVLib-driver",
+    "REVLib-driver-$VERSION-headers.zip",
+    "2023.1.3",
+)];
+
+const LIBS: &[(&str, &str, &str, &str)] = &[(
+    "REVLib-driver",
+    "REVLib-driver-$VERSION-linuxathena.zip",
+    "REVLibDriver",
+    "2023.1.3",
+)];
 
 static CLIENT: OnceLock<Client> = OnceLock::new();
 
@@ -92,27 +53,42 @@ fn get_client() -> &'static Client {
     CLIENT.get_or_init(|| Client::new())
 }
 
-pub fn get_artifact_url(
+fn get_artifact_url(
     main_name: &str,
     secondary_name: &str,
     artifact_name: &str,
     version: &str,
-) -> Result<String> {
-    Ok(format!("https://frcmaven.wpi.edu/artifactory/release/edu/wpi/first/{main_name}/{secondary_name}/{}/{}", version, artifact_name))
+) -> String {
+    format!("https://frcmaven.wpi.edu/artifactory/release/edu/wpi/first/{main_name}/{secondary_name}/{}/{}", version, artifact_name)
 }
 
-pub async fn get_headers(temp_dir: &TempDir) -> Result<()> {
+fn get_rev_url(name: &str, artifact: &str, version: &str) -> String {
+    format!(
+        "https://maven.revrobotics.com/com/revrobotics/frc/{name}/{}/{}",
+        version, artifact
+    )
+}
+
+async fn get_headers(temp_dir: &TempDir) -> Result<()> {
     let include_dir = temp_dir.path().join("include");
 
     fs::create_dir_all(&include_dir)?;
 
-    for (main, second, artifact, version) in HEADERS {
-        let url = get_artifact_url(
-            main,
-            second,
-            &artifact.replace("$VERSION", version),
-            version,
-        )?;
+    for url in HEADERS
+        .iter()
+        .map(|(main, second, artifact, version)| {
+            get_artifact_url(
+                main,
+                second,
+                &artifact.replace("$VERSION", version),
+                version,
+            )
+        })
+        .chain(REV_HEADERS.iter().map(|(name, artifact, version)| {
+            get_rev_url(name, &artifact.replace("$VERSION", version), version)
+        }))
+    {
+        eprintln!("{}", url);
 
         let mut zip = get_zip(&url).await?;
 
@@ -142,7 +118,7 @@ pub async fn get_headers(temp_dir: &TempDir) -> Result<()> {
     Ok(())
 }
 
-pub async fn build() -> Result<()> {
+async fn build() -> Result<()> {
     let temp_dir = TempDir::new()?;
 
     get_headers(&temp_dir).await?;
@@ -154,20 +130,15 @@ pub async fn build() -> Result<()> {
     Ok(())
 }
 
-pub async fn download_libs() -> Result<()> {
+async fn download_libs() -> Result<()> {
     let Some(libs_dir) = env::var_os("OUT_DIR").map(|dir| PathBuf::from(dir).join("lib")) else {
         bail!("Unable to find out dir");
     };
 
     fs::create_dir_all(&libs_dir)?;
 
-    for (main, second, artifact, lib, version) in LIBS {
-        let url = get_artifact_url(
-            main,
-            second,
-            &artifact.replace("$VERSION", &version),
-            version,
-        )?;
+    for (name, artifact, lib, version) in LIBS {
+        let url = get_rev_url(name, &artifact.replace("$VERSION", &version), version);
 
         let mut zip = get_zip(&url).await?;
 
@@ -207,7 +178,7 @@ pub async fn download_libs() -> Result<()> {
     Ok(())
 }
 
-pub async fn shoutout_libs() -> Result<()> {
+async fn shoutout_libs() -> Result<()> {
     let Some(out_dir) = env::var_os("OUT_DIR").map(|dir| PathBuf::from(dir).join("lib")) else {
         bail!("Unable to find out dir");
     };
@@ -217,15 +188,14 @@ pub async fn shoutout_libs() -> Result<()> {
         out_dir.to_str().unwrap()
     );
 
-    for (_, _, _, lib, _) in LIBS {
+    for (_, _, lib, _) in LIBS {
         println!("cargo:rustc-link-lib=dylib={}", lib);
     }
-    println!("cargo:rustc-link-lib=dylib={}", "REVLibDriver");
 
     Ok(())
 }
 
-pub async fn gen_bindings(temp_dir: &TempDir) -> Result<()> {
+async fn gen_bindings(temp_dir: &TempDir) -> Result<()> {
     let include_dir = temp_dir.path().join("include");
 
     if let Ok(host) = env::var("HOST") {
@@ -238,13 +208,15 @@ pub async fn gen_bindings(temp_dir: &TempDir) -> Result<()> {
             "-std=c++20",
             &format!("--include-directory={}", include_dir.to_str().unwrap()),
         ])
-        .header(include_dir.join("hal/HAL.h").to_str().unwrap())
-        .blocklist_type("std::.*")
-        .blocklist_function("std::.*")
-        .blocklist_item("std::.*")
-        .allowlist_type("HAL.*")
-        .allowlist_function("HAL.*")
-        .allowlist_var("HAL.*")
+        .header(
+            include_dir
+                .join("rev/CANSparkMaxDriver.h")
+                .to_str()
+                .unwrap(),
+        )
+        .allowlist_type("c_(SparkMax|REVLib)_.*")
+        .allowlist_function("c_(SparkMax|REVLib)_.*")
+        .allowlist_var("c_(SparkMax|REVLib)_.*")
         .generate()?;
 
     if let Some(out_str) = env::var_os("OUT_DIR") {
@@ -267,3 +239,4 @@ async fn get_zip(url: &str) -> Result<ZipArchive<Cursor<Bytes>>> {
 
     Ok(ZipArchive::new(Cursor::new(bytes))?)
 }
+

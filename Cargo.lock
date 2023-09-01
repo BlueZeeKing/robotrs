@@ -318,6 +318,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "example"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "futures",
+ "revlib",
+ "robotrs",
+]
+
+[[package]]
 name = "fastrand"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -497,8 +507,13 @@ dependencies = [
 name = "hal-sys"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "bindgen",
+ "bytes",
+ "reqwest",
+ "tempfile",
  "tokio",
- "utils",
+ "zip",
 ]
 
 [[package]]
@@ -1059,9 +1074,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "revlib"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bindgen",
+ "bytes",
+ "reqwest",
+ "robotrs",
+ "tempfile",
+ "tokio",
+ "zip",
+]
+
+[[package]]
 name = "robotrs"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "futures",
  "hal-sys",
  "linkme",
@@ -1515,19 +1545,6 @@ dependencies = [
  "form_urlencoded",
  "idna",
  "percent-encoding",
-]
-
-[[package]]
-name = "utils"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bindgen",
- "bytes",
- "reqwest",
- "tempfile",
- "tokio",
- "zip",
 ]
 
 [[package]]
