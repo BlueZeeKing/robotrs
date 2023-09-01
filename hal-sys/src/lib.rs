@@ -1,8 +1,3 @@
-#[allow(warnings)]
-pub mod bindings { include!(concat!(env!("OUT_DIR"), "/bindings.rs")); }
+#![allow(warnings)]
 
-pub fn accel() -> f64 {
-    unsafe {
-        bindings::HAL_GetAccelerometerZ()
-    }
-}
+include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
