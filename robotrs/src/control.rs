@@ -77,7 +77,7 @@ impl<T: ControlSafe + Default> Default for ControlLock<T> {
 
 /// Similar to the wpilib MotorSafety class. The easiest way to properly implement this is to
 /// simply call the stop method of all motors and actuators used
-#[impl_for_tuples(6)]
+#[impl_for_tuples(10)]
 pub trait ControlSafe {
     /// Stop all motors and actuators. This method gets automatically called whenever a control
     /// guard goes out of scope.

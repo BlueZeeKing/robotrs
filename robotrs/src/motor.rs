@@ -14,7 +14,7 @@ pub trait MotorController: ControlSafe {
     fn set_percent(&mut self, value: f64) -> Result<(), Self::Error>;
 }
 
-#[impl_for_tuples(2, 6)]
+#[impl_for_tuples(2, 8)]
 #[tuple_types_custom_trait_bound(ControlSafe + MotorController)]
 impl MotorController for Tuple {
     type Error = anyhow::Error;
@@ -31,7 +31,7 @@ pub trait SetIdleMode: MotorController {
     fn set_idle_mode(&mut self, idle_mode: IdleMode) -> Result<(), Self::Error>;
 }
 
-#[impl_for_tuples(2, 6)]
+#[impl_for_tuples(2, 8)]
 #[tuple_types_custom_trait_bound(ControlSafe + MotorController + SetIdleMode)]
 impl SetIdleMode for Tuple {
     for_tuples!(where #(<Tuple as MotorController>::Error: std::error::Error + Send + Sync + 'static )* );
