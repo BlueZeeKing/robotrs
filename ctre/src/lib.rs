@@ -15,6 +15,7 @@ pub struct VictorSPX {
     handle: ControllerHandle,
 }
 
+#[derive(Clone, Copy)]
 pub enum VictorSPXControlMode {
     PercentOutput = 0,
     Position = 1,
@@ -26,12 +27,14 @@ pub enum VictorSPXControlMode {
     Disabled = 15,
 }
 
+#[derive(Clone, Copy)]
 pub enum DemandType {
     Neutral = 0,
     AuxPID = 1,
     ArbitraryFeedForward = 2,
 }
 
+#[derive(Clone, Copy)]
 pub enum IdleMode {
     EEPROMSetting = 0,
     Coast = 1,

@@ -8,5 +8,6 @@ edition = "2021"
 [dependencies]
 robotrs = { path = "../robotrs" }
 revlib = { path = "../revlib" }
+ctre = { path = "../ctre" }
 futures = "0.3.28"
 anyhow = "1.0.75"
