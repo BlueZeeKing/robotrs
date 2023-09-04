@@ -3,7 +3,6 @@ use ctre::VictorSPX;
 use revlib::{IdleMode, SparkMax};
 use robotrs::control::ControlSafe;
 
-// TODO: VictorSPXs
 pub struct Drivetrain {
     right_motor: SparkMax,
     left_motor: SparkMax,
