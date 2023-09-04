@@ -1,6 +1,9 @@
 use bindings::c_SparkMax_handle;
 use error::REVError;
-use robotrs::control::ControlSafe;
+use robotrs::{
+    control::ControlSafe,
+    motor::{MotorController, SetIdleMode},
+};
 
 use crate::bindings::c_SparkMax_ControlType_c_SparkMax_kDutyCycle;
 
@@ -53,7 +56,7 @@ impl SparkMax {
         }
     }
 
-    pub fn set_idle_mode(&mut self, idle_mode: IdleMode) -> Result<(), REVError> {
+    fn set_idle_mode_rev(&mut self, idle_mode: IdleMode) -> Result<(), REVError> {
         let error_code = unsafe { bindings::c_SparkMax_SetIdleMode(self.handle, idle_mode as u32) };
 
         if error_code == 0 {
@@ -71,6 +74,23 @@ impl SparkMax {
             Ok(())
         } else {
             Err(error_code.into())
+        }
+    }
+}
+
+impl MotorController for SparkMax {
+    type Error = REVError;
+
+    fn set_percent(&mut self, value: f64) -> Result<(), Self::Error> {
+        self.set(value as f32)
+    }
+}
+
+impl SetIdleMode for SparkMax {
+    fn set_idle_mode(&mut self, idle_mode: robotrs::motor::IdleMode) -> Result<(), Self::Error> {
+        match idle_mode {
+            robotrs::motor::IdleMode::Brake => self.set_idle_mode_rev(IdleMode::Brake),
+            robotrs::motor::IdleMode::Coast => self.set_idle_mode_rev(IdleMode::Coast),
         }
     }
 }

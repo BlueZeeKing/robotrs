@@ -4,6 +4,7 @@ use futures::{select, FutureExt};
 use robotrs::{
     control::{ControlLock, ControlSafe},
     hid::{axis::AxisTarget, controller::XboxController},
+    motor::IdleMode,
     robot::{AsyncRobot, Fut},
     scheduler::Spawner,
     time::Alarm,
@@ -100,17 +101,17 @@ impl AsyncRobot for Robot {
                 let released = cloned_self.controller.b().await?;
 
                 unsafe {
-                    cloned_self.drivetrain.steal(|drivetrain| {
-                        drivetrain.set_idle_mode(revlib::IdleMode::Brake).unwrap()
-                    });
+                    cloned_self
+                        .drivetrain
+                        .steal(|drivetrain| drivetrain.set_idle_mode(IdleMode::Brake).unwrap());
                 }
 
                 released.await?;
 
                 unsafe {
-                    cloned_self.drivetrain.steal(|drivetrain| {
-                        drivetrain.set_idle_mode(revlib::IdleMode::Coast).unwrap()
-                    });
+                    cloned_self
+                        .drivetrain
+                        .steal(|drivetrain| drivetrain.set_idle_mode(IdleMode::Coast).unwrap());
                 }
             }
         });

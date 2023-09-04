@@ -15,6 +15,7 @@ pub mod control;
 pub mod ds;
 pub mod error;
 pub mod hid;
+pub mod motor;
 pub mod robot;
 pub mod scheduler;
 pub mod time;

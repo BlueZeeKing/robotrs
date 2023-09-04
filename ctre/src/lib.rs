@@ -1,6 +1,9 @@
 use std::ffi::{c_void, CString};
 
-use robotrs::control::ControlSafe;
+use robotrs::{
+    control::ControlSafe,
+    motor::{MotorController, SetIdleMode},
+};
 
 #[allow(warnings)]
 mod bindings {
@@ -57,7 +60,7 @@ impl VictorSPX {
         }
     }
 
-    pub fn set_percent(&mut self, speed: f64) -> Result<(), error::Error> {
+    fn set_percent_ctre(&mut self, speed: f64) -> Result<(), error::Error> {
         self.set(speed, VictorSPXControlMode::PercentOutput)
     }
 
@@ -85,8 +88,27 @@ impl VictorSPX {
         error::to_result(error)
     }
 
-    pub fn set_idle_mode(&mut self, idle_mode: IdleMode) {
+    fn set_idle_mode_ctre(&mut self, idle_mode: IdleMode) {
         unsafe { bindings::c_MotController_SetNeutralMode(self.handle, idle_mode as i32) };
+    }
+}
+
+impl MotorController for VictorSPX {
+    type Error = error::Error;
+
+    fn set_percent(&mut self, value: f64) -> Result<(), Self::Error> {
+        self.set_percent_ctre(value)
+    }
+}
+
+impl SetIdleMode for VictorSPX {
+    fn set_idle_mode(&mut self, idle_mode: robotrs::motor::IdleMode) -> Result<(), Self::Error> {
+        match idle_mode {
+            robotrs::motor::IdleMode::Brake => self.set_idle_mode_ctre(IdleMode::Brake),
+            robotrs::motor::IdleMode::Coast => self.set_idle_mode_ctre(IdleMode::Coast),
+        }
+
+        Ok(())
     }
 }
 

@@ -1,6 +1,10 @@
 use anyhow::Result;
-use revlib::{IdleMode, SparkMax};
-use robotrs::{control::ControlSafe, time::Alarm};
+use revlib::SparkMax;
+use robotrs::{
+    control::ControlSafe,
+    motor::{IdleMode, SetIdleMode},
+    time::Alarm,
+};
 use std::time::Duration;
 
 const ARM_SPEED: f32 = 0.4;
