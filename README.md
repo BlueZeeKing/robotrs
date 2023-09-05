@@ -15,9 +15,9 @@ the downloading of these libs can be found in the `build-utils` crate and the
 ## Getting Started
 
 0. Install the compiler toolchain by running the `installRoboRioToolchain` task
-   in allwpilib and placing the generated `bin` to the path.
-   `echo 'export PATH="$HOME/.gradle/toolchains/frc/2023/roborio/bin:$PATH"' >> ~/.zshrc`
-   will add the the path automatically on Mac.
+   in allwpilib or downloading from
+   (Github)[https://github.com/wpilibsuite/opensdk/releases) and putting the
+   `bin` directory on the path. 
 1. Create a new binary Rust crate with `cargo new <NAME>`
 2. Add the following to the ./.cargo/config.toml file
 ```toml
