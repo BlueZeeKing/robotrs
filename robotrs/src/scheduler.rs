@@ -51,7 +51,7 @@ pub struct RobotScheduler<R: AsyncRobot> {
 }
 
 impl<R: AsyncRobot> RobotScheduler<R> {
-    pub fn new(robot: R) -> Self {
+    fn new(robot: R) -> Self {
         let scheduler = Self {
             robot: Rc::new(robot),
             last_state: ds::State::Disabled,
@@ -165,6 +165,8 @@ impl<R: AsyncRobot> RobotScheduler<R> {
         }
     }
 
+    /// This is the main entry function. It starts the robot and schedules all the tasks as well
+    /// as sending out the proper DS messages that are required for startup.
     pub fn start_robot(robot: R) -> ! {
         if unsafe { HAL_Initialize(500, 0) == 0 } {
             panic!("Could not start hal");

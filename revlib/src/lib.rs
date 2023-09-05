@@ -81,7 +81,7 @@ impl SparkMax {
 impl MotorController for SparkMax {
     type Error = REVError;
 
-    fn set_percent(&mut self, value: f64) -> Result<(), Self::Error> {
+    fn set_percent_raw(&mut self, value: f64) -> Result<(), Self::Error> {
         self.set(value as f32)
     }
 }

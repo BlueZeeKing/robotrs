@@ -96,7 +96,7 @@ impl VictorSPX {
 impl MotorController for VictorSPX {
     type Error = error::Error;
 
-    fn set_percent(&mut self, value: f64) -> Result<(), Self::Error> {
+    fn set_percent_raw(&mut self, value: f64) -> Result<(), Self::Error> {
         self.set_percent_ctre(value)
     }
 }
