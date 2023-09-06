@@ -1,4 +1,10 @@
+use std::io::Cursor;
+
+use bytes::Bytes;
 use thiserror::Error;
+use zip::{read::ZipFile, ZipArchive};
+
+use crate::zip::extract_libs;
 
 pub struct Artifact {
     group_id: String,
@@ -23,6 +29,18 @@ impl Artifact {
 
     pub fn get_lib_name(&self) -> Option<&str> {
         self.lib_name.as_deref()
+    }
+
+    pub fn find_lib_in_zip<'a>(
+        &self,
+        archive: &'a mut ZipArchive<Cursor<Bytes>>,
+    ) -> anyhow::Result<ZipFile<'a>> {
+        let (_, file_number) = extract_libs(archive)?
+            .into_iter()
+            .find(|(name, _)| name == self.get_lib_name().unwrap())
+            .unwrap();
+
+        Ok(archive.by_index(file_number)?)
     }
 }
 

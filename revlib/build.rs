@@ -7,7 +7,7 @@ use std::{
 use anyhow::{bail, Result};
 use build_utils::{
     artifact::{Artifact, Target},
-    zip::{extract_libs, get_zip, write_archive_to_path},
+    zip::{get_zip, write_archive_to_path},
 };
 use tempfile::TempDir;
 
@@ -105,19 +105,13 @@ async fn main() -> Result<()> {
 
     for lib in libs {
         let mut archive = get_zip(&lib.get_url()).await?;
-        let inner_libs = extract_libs(&mut archive)?;
 
-        for (name, index) in inner_libs {
-            if name == lib.get_lib_name().expect("Could not get lib name") {
-                let mut zip_file = archive.by_index(index)?;
+        let mut zip_file = lib.find_lib_in_zip(&mut archive)?;
 
-                let mut fs_file = File::create(libs_dir.join(format!("lib{name}.so")))?;
+        let mut fs_file =
+            File::create(libs_dir.join(format!("lib{}.so", lib.get_lib_name().unwrap())))?;
 
-                std::io::copy(&mut zip_file, &mut fs_file)?;
-
-                break;
-            }
-        }
+        std::io::copy(&mut zip_file, &mut fs_file)?;
 
         println!("cargo:rustc-link-lib=dylib={}", lib.get_lib_name().unwrap());
     }
