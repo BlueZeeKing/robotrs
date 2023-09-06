@@ -5,11 +5,29 @@ use std::{
 };
 
 use bytes::Bytes;
+use tokio::sync::Semaphore;
+use url::Url;
 use zip::ZipArchive;
+
+use crate::get_semaphores;
 
 use super::get_client;
 
 pub async fn get_zip(url: &str) -> anyhow::Result<ZipArchive<Cursor<Bytes>>> {
+    let url_fancy = Url::parse(url)?;
+    let url_host = url_fancy.host_str().unwrap();
+
+    let lock = get_semaphores();
+
+    let semaphore = if let Some(semaphore) = lock.get(url_host) {
+        semaphore
+    } else {
+        lock.insert(url_host.to_owned(), Semaphore::new(6));
+        lock.get(url_host).unwrap()
+    };
+
+    let permit = semaphore.acquire().await?;
+
     let bytes = get_client()
         .get(url)
         .header(reqwest::header::ACCEPT, "application/zip")
@@ -17,6 +35,8 @@ pub async fn get_zip(url: &str) -> anyhow::Result<ZipArchive<Cursor<Bytes>>> {
         .await?
         .bytes()
         .await?;
+
+    drop(permit);
 
     Ok(ZipArchive::new(Cursor::new(bytes))?)
 }
