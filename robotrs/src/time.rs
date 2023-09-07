@@ -24,6 +24,10 @@ pub fn get_time() -> Result<Duration> {
     }?))
 }
 
+pub fn delay(duration: Duration) -> Alarm {
+    Alarm::new(duration)
+}
+
 pub(crate) struct RawNotifier {
     handle: i32,
 }

@@ -1,9 +1,9 @@
-use std::{marker::PhantomData, pin::Pin, task::Poll};
+use std::{marker::PhantomData, pin::Pin, task::Poll, time::Duration};
 
-use futures::Future;
+use futures::{select, Future, FutureExt};
 use hal_sys::HAL_JoystickButtons;
 
-use crate::error::Result;
+use crate::{error::Result, time::delay};
 
 use super::{joystick::Joystick, reactor::add_button};
 
@@ -15,10 +15,13 @@ pub(super) fn get_button(buttons: &HAL_JoystickButtons, index: u32) -> Result<bo
     Ok(buttons.buttons & (1 >> index) > 0)
 }
 
-pub struct Pressed();
-pub struct Released();
+#[derive(Clone)]
+pub struct Pressed;
+#[derive(Clone)]
+pub struct Released;
 
-pub struct ButtonFuture<T> {
+#[derive(Clone)]
+pub struct ButtonFuture<T: Clone> {
     joystick_index: u32,
     button_index: u32,
     phantom: PhantomData<T>,
@@ -30,6 +33,22 @@ impl ButtonFuture<Pressed> {
             joystick_index: self.joystick_index,
             button_index: self.button_index,
             phantom: PhantomData,
+        }
+    }
+
+    pub async fn double_tap(self) -> Result<ButtonFuture<Released>> {
+        loop {
+            let release = self.clone().await?;
+            release.await?;
+
+            select! {
+                button = self.clone().fuse() => {
+                    return button;
+                }
+                alarm = delay(Duration::from_millis(500)).fuse() => {
+                    alarm?;
+                }
+            }
         }
     }
 }
@@ -44,7 +63,7 @@ impl ButtonFuture<Released> {
     }
 }
 
-impl<T> ButtonFuture<T> {
+impl<T: Clone> ButtonFuture<T> {
     pub fn new(joystick_index: u32, button_index: u32) -> Self {
         ButtonFuture {
             joystick_index,
