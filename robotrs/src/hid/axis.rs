@@ -1,12 +1,9 @@
-use std::{marker::PhantomData, pin::Pin, task::Poll, time::Duration};
+use std::{marker::PhantomData, pin::Pin, task::Poll};
 
-use futures::{select, Future, FutureExt};
+use futures::Future;
 use hal_sys::HAL_JoystickAxes;
 
-use crate::{
-    error::{Error, Result},
-    time::delay,
-};
+use crate::error::{Error, Result};
 
 use super::{joystick::Joystick, reactor::add_axis};
 
@@ -57,22 +54,6 @@ impl AxisFuture<Initial> {
             phantom: PhantomData,
         }
     }
-
-    pub async fn double_tap(self) -> Result<AxisFuture<Release>> {
-        loop {
-            let release = self.clone().await?;
-            release.await?;
-
-            select! {
-                button = self.clone().fuse() => {
-                    return button;
-                }
-                alarm = delay(Duration::from_millis(500)).fuse() => {
-                    alarm?;
-                }
-            }
-        }
-    }
 }
 
 impl AxisFuture<Release> {
@@ -106,6 +87,9 @@ impl<T> AxisFuture<T> {
         Ok((joystick, value))
     }
 }
+
+impl super::PressTrigger<AxisFuture<Release>> for AxisFuture<Initial> {}
+impl super::ReleaseTrigger for AxisFuture<Release> {}
 
 impl Future for AxisFuture<Initial> {
     type Output = Result<AxisFuture<Release>>;

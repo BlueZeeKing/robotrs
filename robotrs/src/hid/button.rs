@@ -1,9 +1,9 @@
-use std::{marker::PhantomData, pin::Pin, task::Poll, time::Duration};
+use std::{marker::PhantomData, pin::Pin, task::Poll};
 
-use futures::{select, Future, FutureExt};
+use futures::Future;
 use hal_sys::HAL_JoystickButtons;
 
-use crate::{error::Result, time::delay};
+use crate::error::Result;
 
 use super::{joystick::Joystick, reactor::add_button};
 
@@ -35,22 +35,6 @@ impl ButtonFuture<Pressed> {
             phantom: PhantomData,
         }
     }
-
-    pub async fn double_tap(self) -> Result<ButtonFuture<Released>> {
-        loop {
-            let release = self.clone().await?;
-            release.await?;
-
-            select! {
-                button = self.clone().fuse() => {
-                    return button;
-                }
-                alarm = delay(Duration::from_millis(500)).fuse() => {
-                    alarm?;
-                }
-            }
-        }
-    }
 }
 
 impl ButtonFuture<Released> {
@@ -80,6 +64,9 @@ impl<T: Clone> ButtonFuture<T> {
         Ok((joystick, value))
     }
 }
+
+impl super::PressTrigger<ButtonFuture<Released>> for ButtonFuture<Pressed> {}
+impl super::ReleaseTrigger for ButtonFuture<Released> {}
 
 impl Future for ButtonFuture<Pressed> {
     type Output = Result<ButtonFuture<Released>>;
