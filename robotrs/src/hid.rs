@@ -14,7 +14,7 @@ pub trait PressTrigger<T: ReleaseTrigger>: Future<Output = Result<T, crate::erro
 pub trait ReleaseTrigger: Future<Output = Result<(), crate::error::Error>> {}
 
 #[async_trait(?Send)]
-pub trait DoubleClick<T>: Future + Sized {
+pub trait DoubleClick<T>: Sized {
     async fn double_click_with_duration(self, duration: Duration) -> T;
 
     async fn double_click(self) -> T {
