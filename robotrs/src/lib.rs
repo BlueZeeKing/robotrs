@@ -154,6 +154,10 @@ where
     }
 }
 
+pub fn yield_now() -> Yield {
+    Yield::default()
+}
+
 pub struct Yield {
     yielded: bool,
 }
