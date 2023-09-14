@@ -13,27 +13,29 @@ use tempfile::TempDir;
 
 const MAVEN: &str = "https://frcmaven.wpi.edu/artifactory/release/";
 
+const WPI_VERSION: &str = "2023.4.3";
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let headers = vec![
         Artifact::builder()
             .group_id("edu.wpi.first.hal".to_owned())
             .artifact_id("hal-cpp".to_owned())
-            .version("2023.4.3".to_owned())
+            .version(WPI_VERSION.to_owned())
             .maven_url(MAVEN.to_owned())
             .target(Target::Headers)
             .build()?,
         Artifact::builder()
             .group_id("edu.wpi.first.wpiutil".to_owned())
             .artifact_id("wpiutil-cpp".to_owned())
-            .version("2023.4.3".to_owned())
+            .version(WPI_VERSION.to_owned())
             .maven_url(MAVEN.to_owned())
             .target(Target::Headers)
             .build()?,
         Artifact::builder()
             .group_id("edu.wpi.first.wpimath".to_owned())
             .artifact_id("wpimath-cpp".to_owned())
-            .version("2023.4.3".to_owned())
+            .version(WPI_VERSION.to_owned())
             .maven_url(MAVEN.to_owned())
             .target(Target::Headers)
             .build()?,
@@ -83,7 +85,7 @@ async fn main() -> Result<()> {
         Artifact::builder()
             .group_id("edu.wpi.first.hal".to_owned())
             .artifact_id("hal-cpp".to_owned())
-            .version("2023.4.3".to_owned())
+            .version(WPI_VERSION.to_owned())
             .maven_url(MAVEN.to_owned())
             .lib_name("wpiHal".to_owned())
             .target(Target::RoboRio)
@@ -91,7 +93,7 @@ async fn main() -> Result<()> {
         Artifact::builder()
             .group_id("edu.wpi.first.wpiutil".to_owned())
             .artifact_id("wpiutil-cpp".to_owned())
-            .version("2023.4.3".to_owned())
+            .version(WPI_VERSION.to_owned())
             .maven_url(MAVEN.to_owned())
             .lib_name("wpiutil".to_owned())
             .target(Target::RoboRio)
@@ -99,12 +101,14 @@ async fn main() -> Result<()> {
         Artifact::builder()
             .group_id("edu.wpi.first.wpimath".to_owned())
             .artifact_id("wpimath-cpp".to_owned())
-            .version("2023.4.3".to_owned())
+            .version(WPI_VERSION.to_owned())
             .maven_url(MAVEN.to_owned())
             .lib_name("wpimath".to_owned())
             .target(Target::RoboRio)
             .build()?,
     ];
+
+    env::set_var("WPI_VERSION", WPI_VERSION);
 
     let tempdir = TempDir::new()?;
     let include_path = tempdir.path().join("include");

@@ -1,4 +1,12 @@
-use std::{rc::Rc, time::Duration};
+use std::{
+    env,
+    ffi::CString,
+    fs::File,
+    io::Write,
+    ptr,
+    rc::Rc,
+    time::{Duration, Instant},
+};
 
 use anyhow::Result;
 use futures::{
@@ -165,6 +173,15 @@ impl<R: AsyncRobot> RobotScheduler<R> {
         }
     }
 
+    fn set_version() -> anyhow::Result<()> {
+        let mut version_path = File::create("/tmp/frc_versions/FRC_Lib_Version.ini")?;
+
+        version_path.write_all("Rust ".as_bytes())?;
+        version_path.write_all(env::var("WPI_VERSON")?.as_bytes())?;
+
+        Ok(())
+    }
+
     /// This is the main entry function. It starts the robot and schedules all the tasks as well
     /// as sending out the proper DS messages that are required for startup.
     pub fn start_robot(robot: R) -> ! {
@@ -180,6 +197,41 @@ impl<R: AsyncRobot> RobotScheduler<R> {
         tracing_subscriber::fmt()
             .with_writer(DsTracingWriter {})
             .init();
+
+        if let Err(err) = Self::set_version() {
+            tracing::error!("An error occured while sending the version: {}", err);
+        }
+
+        unsafe {
+            let nt_inst = nt::bindings::NT_GetDefaultInstance();
+
+            nt::bindings::NT_SubscribeMultiple(nt_inst, ptr::null(), 0, ptr::null()); // TODO: Make
+                                                                                      // sure this
+                                                                                      // is okay
+
+            nt::bindings::NT_StartServer(
+                nt_inst,
+                CString::new("/home/lvuser/networktables.json")
+                    .unwrap()
+                    .into_raw(),
+                CString::new("").unwrap().into_raw(),
+                1735,
+                5810,
+            );
+
+            let time = Instant::now();
+
+            loop {
+                let mode = nt::bindings::NT_GetNetworkMode(nt_inst);
+
+                if mode != nt::bindings::NT_NetworkMode_NT_NET_MODE_STARTING {
+                    break;
+                } else if time.elapsed() > Duration::from_secs(1) {
+                    tracing::error!("NT did not start in time");
+                    panic!("NT did not start in time");
+                }
+            }
+        }
 
         let mut scheduler = RobotScheduler::new(robot);
 

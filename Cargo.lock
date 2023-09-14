@@ -1167,6 +1167,7 @@ dependencies = [
  "hal-sys",
  "impl-trait-for-tuples",
  "linkme",
+ "nt",
  "thiserror",
  "tracing",
  "tracing-subscriber",

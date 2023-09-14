@@ -8,7 +8,7 @@ use robotrs::{
     robot::{AsyncRobot, Fut},
     scheduler::Spawner,
     time::Alarm,
-    yield_now, Deadzone, Yield,
+    yield_now, Deadzone,
 };
 use subsystems::{Arm, Drivetrain, Intake};
 
