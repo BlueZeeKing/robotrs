@@ -185,11 +185,11 @@ impl<R: AsyncRobot> RobotScheduler<R> {
     /// This is the main entry function. It starts the robot and schedules all the tasks as well
     /// as sending out the proper DS messages that are required for startup.
     pub fn start_robot(robot: R) -> ! {
-        if unsafe { HAL_Initialize(500, 0) == 0 } {
+        if unsafe { HAL_Initialize(500, 0) } == 0 {
             panic!("Could not start hal");
         }
 
-        if unsafe { HAL_HasMain() == 1 } {
+        if unsafe { HAL_HasMain() } == 1 {
             // TODO: Fix this
             panic!("A main function was given and that is probably wrong (idk)");
         }
@@ -205,9 +205,9 @@ impl<R: AsyncRobot> RobotScheduler<R> {
         unsafe {
             let nt_inst = nt::bindings::NT_GetDefaultInstance();
 
-            nt::bindings::NT_SubscribeMultiple(nt_inst, ptr::null(), 0, ptr::null()); // TODO: Make
-                                                                                      // sure this
-                                                                                      // is okay
+            // nt::bindings::NT_SubscribeMultiple(nt_inst, ptr::null(), 0, ptr::null()); // TODO: Make
+            //                                                                           // sure this
+            //                                                                           // is okay
 
             nt::bindings::NT_StartServer(
                 nt_inst,

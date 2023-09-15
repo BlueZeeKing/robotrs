@@ -46,14 +46,24 @@ async fn main() -> Result<()> {
             .build()?,
     ];
 
-    let libs = vec![Artifact::builder()
-        .group_id("edu.wpi.first.ntcore".to_owned())
-        .artifact_id("ntcore-cpp".to_owned())
-        .version("2023.4.3".to_owned())
-        .maven_url(MAVEN.to_owned())
-        .lib_name("ntcore".to_owned())
-        .target(Target::RoboRio)
-        .build()?];
+    let libs = vec![
+        Artifact::builder()
+            .group_id("edu.wpi.first.ntcore".to_owned())
+            .artifact_id("ntcore-cpp".to_owned())
+            .version("2023.4.3".to_owned())
+            .maven_url(MAVEN.to_owned())
+            .lib_name("ntcore".to_owned())
+            .target(Target::RoboRio)
+            .build()?,
+        Artifact::builder()
+            .group_id("edu.wpi.first.wpinet".to_owned())
+            .artifact_id("wpinet-cpp".to_owned())
+            .version("2023.4.3".to_owned())
+            .maven_url(MAVEN.to_owned())
+            .lib_name("wpinet".to_owned())
+            .target(Target::RoboRio)
+            .build()?,
+    ];
 
     let tempdir = TempDir::new()?;
     let include_path = tempdir.path().join("include");
