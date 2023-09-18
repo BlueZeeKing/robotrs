@@ -8,7 +8,9 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.75"
 bytes = "1.4.0"
+chashmap = "2.2.2"
 reqwest = "0.11.20"
 thiserror = "1.0.48"
 tokio = { version = "1.32.0", features = ["full"] }
+url = "2.4.1"
 zip = "0.6.6"
