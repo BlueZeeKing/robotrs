@@ -1,6 +1,16 @@
 use thiserror::Error;
 use tracing::error;
 
+#[macro_export]
+macro_rules! handle_error {
+    ($($shit:tt)+) => {{
+        match $($shit)+ {
+            0 => Ok(()),
+            val => Err(crate::error::REVError::from(val)),
+        }
+    }};
+}
+
 #[derive(Debug, Clone, Error)]
 pub enum REVError {
     #[error("General error")]
