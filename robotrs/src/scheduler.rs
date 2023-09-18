@@ -3,7 +3,6 @@ use std::{
     ffi::CString,
     fs::File,
     io::Write,
-    ptr,
     rc::Rc,
     time::{Duration, Instant},
 };
