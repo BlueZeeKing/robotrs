@@ -61,16 +61,27 @@ async fn main() -> anyhow::Result<()> {
             .build()?,
     ];
 
-    let libs = vec![Artifact::builder()
-        .group_id("com.kauailabs.navx.frc".to_owned())
-        .artifact_id("navx-frc-cpp".to_owned())
-        .version("2023.0.3".to_owned())
-        .maven_url(NAVX_MAVEN.to_owned())
-        .target(Target::RoboRio)
-        .lib_name("NavX".to_owned())
-        .build()?];
+    let libs = vec![
+        Artifact::builder()
+            .group_id("com.kauailabs.navx.frc".to_owned())
+            .artifact_id("navx-frc-cpp".to_owned())
+            .version("2023.0.3".to_owned())
+            .maven_url(NAVX_MAVEN.to_owned())
+            .target(Target::RoboRio)
+            .lib_name("NavX".to_owned())
+            .build()?,
+        Artifact::builder()
+            .group_id("edu.wpi.first.wpilibc".to_owned())
+            .artifact_id("wpilibc-cpp".to_owned())
+            .version("2023.4.3".to_owned())
+            .maven_url(WPI_MAVEN.to_owned())
+            .target(Target::RoboRio)
+            .lib_name("wpilibc".to_owned())
+            .build()?,
+    ];
 
     if let Ok(host) = env::var("HOST") {
+        // TODO: Make this not necessary
         env::set_var("TARGET", host);
     }
 
