@@ -1,0 +1,16 @@
+[package]
+name = "navx"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+hal-sys = { path = "../hal-sys" }
+
+[build-dependencies]
+anyhow = "1.0.75"
+build-utils = { path = "../build-utils" }
+tokio = { version = "1.32.0", features = ["full"] }
+bindgen = "0.68.1"
+tempfile = "3.8.0"
