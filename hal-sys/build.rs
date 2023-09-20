@@ -8,12 +8,11 @@ use anyhow::{bail, Result};
 use build_utils::{
     artifact::{Artifact, Target},
     zip::{get_zip, write_archive_to_path},
+    WPI_VERSION,
 };
 use tempfile::TempDir;
 
 const MAVEN: &str = "https://frcmaven.wpi.edu/artifactory/release/";
-
-const WPI_VERSION: &str = "2023.4.3";
 
 #[tokio::main]
 async fn main() -> Result<()> {
