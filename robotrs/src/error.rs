@@ -5,6 +5,12 @@ use hal_sys::HAL_GetErrorMessage;
 #[derive(Debug)]
 pub struct HalError(pub(crate) i32);
 
+impl HalError {
+    pub fn from_raw(raw: i32) -> Self {
+        HalError(raw)
+    }
+}
+
 impl Display for HalError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
