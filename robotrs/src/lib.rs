@@ -197,3 +197,13 @@ impl Deadzone for f32 {
         }
     }
 }
+
+pub trait FailableDefault: Sized {
+    fn failable_default() -> anyhow::Result<Self>;
+}
+
+impl<D: Default> FailableDefault for D {
+    fn failable_default() -> anyhow::Result<Self> {
+        Ok(Default::default())
+    }
+}

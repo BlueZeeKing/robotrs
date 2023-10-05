@@ -4,6 +4,7 @@ use robotrs::{
     control::ControlSafe,
     motor::{IdleMode, SetIdleMode},
     time::Alarm,
+    FailableDefault,
 };
 use std::time::Duration;
 
@@ -63,8 +64,8 @@ impl ControlSafe for Arm {
     }
 }
 
-impl Default for Arm {
-    fn default() -> Self {
-        Self::new().unwrap()
+impl FailableDefault for Arm {
+    fn failable_default() -> anyhow::Result<Self> {
+        Ok(Self::new()?)
     }
 }

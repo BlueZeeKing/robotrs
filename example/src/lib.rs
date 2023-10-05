@@ -10,7 +10,7 @@ use robotrs::{
     robot::{AsyncRobot, Fut},
     scheduler::Spawner,
     time::Alarm,
-    yield_now, Deadzone,
+    yield_now, Deadzone, FailableDefault,
 };
 use subsystems::{Arm, Drivetrain, Intake};
 
@@ -215,13 +215,13 @@ impl AsyncRobot for Robot {
     }
 }
 
-impl Robot {
-    pub fn new() -> Self {
-        Self {
-            drivetrain: Default::default(),
-            arm: Default::default(),
-            intake: Default::default(),
-            controller: XboxController::new(0).unwrap(),
-        }
+impl FailableDefault for Robot {
+    fn failable_default() -> anyhow::Result<Self> {
+        Ok(Self {
+            drivetrain: FailableDefault::failable_default()?,
+            arm: FailableDefault::failable_default()?,
+            intake: FailableDefault::failable_default()?,
+            controller: XboxController::new(0)?,
+        })
     }
 }

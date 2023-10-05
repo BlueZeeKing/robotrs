@@ -183,7 +183,7 @@ impl<R: AsyncRobot> RobotScheduler<R> {
 
     /// This is the main entry function. It starts the robot and schedules all the tasks as well
     /// as sending out the proper DS messages that are required for startup.
-    pub fn start_robot(robot: R) -> ! {
+    pub fn start_robot(robot: anyhow::Result<R>) -> ! {
         if unsafe { HAL_Initialize(500, 0) } == 0 {
             panic!("Could not start hal");
         }
@@ -232,7 +232,13 @@ impl<R: AsyncRobot> RobotScheduler<R> {
             }
         }
 
-        let mut scheduler = RobotScheduler::new(robot);
+        let mut scheduler = RobotScheduler::new(match robot {
+            Ok(robot) => robot,
+            Err(err) => {
+                error!("An error has occured constructing the robot: {}", err);
+                panic!("An error has occured constructing the robot: {}", err);
+            }
+        });
 
         let mut time = get_time().unwrap() + PERIOD;
         let mut notifier = RawNotifier::new(time).unwrap();

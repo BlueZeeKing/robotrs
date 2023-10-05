@@ -5,7 +5,7 @@ use std::{
 
 use impl_trait_for_tuples::impl_for_tuples;
 
-use crate::create_future;
+use crate::{create_future, FailableDefault};
 
 pub struct ControlLock<T: ControlSafe> {
     locked: RefCell<bool>,
@@ -69,9 +69,11 @@ impl<'a, T: ControlSafe> Drop for ControlGuard<'a, T> {
     }
 }
 
-impl<T: ControlSafe + Default> Default for ControlLock<T> {
-    fn default() -> Self {
-        Self::new(T::default())
+// FIXME: Also have a default impl somehow?
+
+impl<T: ControlSafe + FailableDefault> FailableDefault for ControlLock<T> {
+    fn failable_default() -> anyhow::Result<Self> {
+        Ok(ControlLock::new(T::failable_default()?))
     }
 }
 
