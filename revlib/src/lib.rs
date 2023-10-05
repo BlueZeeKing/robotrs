@@ -111,7 +111,7 @@ impl SparkMax {
         Ok(SparkMaxAbsoluteEncoder::new(self.handle))
     }
 
-    pub fn set_pid_input<T: FeedbackSensor>(&mut self, sensor: T) -> Result<(), REVError> {
+    pub fn set_pid_input<T: FeedbackSensor>(&mut self, sensor: &T) -> Result<(), REVError> {
         if !sensor.is_handle(self.handle) {
             return Err(REVError::General);
         }
