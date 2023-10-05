@@ -92,8 +92,8 @@ impl SparkMax {
             handle_error!(c_SparkMax_SetOutputRange(
                 self.handle,
                 0,
-                range.start(),
-                range.end()
+                *range.start(),
+                *range.end()
             ))
         }?;
 
