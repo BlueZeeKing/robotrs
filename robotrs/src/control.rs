@@ -5,7 +5,10 @@ use std::{
 
 use impl_trait_for_tuples::impl_for_tuples;
 
-use crate::{create_future, FailableDefault};
+use crate::{
+    command::{commands::noop, ext::CommandExt, ToFuture},
+    FailableDefault,
+};
 
 pub struct ControlLock<T: ControlSafe> {
     locked: RefCell<bool>,
@@ -23,7 +26,11 @@ impl<T: ControlSafe> ControlLock<T> {
     /// Return an RAII guard to the data within. Not guaranteed to be fair.
     pub async fn lock(&self) -> ControlGuard<T> {
         if *self.locked.borrow_mut() {
-            create_future(move || {}, move || !*self.locked.borrow(), move || {}).await;
+            noop()
+                .until(move || !*self.locked.borrow())
+                .into_future()
+                .await
+                .unwrap();
         }
         assert_eq!(*self.locked.borrow(), false);
 
