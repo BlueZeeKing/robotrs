@@ -13,6 +13,7 @@ use self::waker::SingleWaker;
 
 pub mod commands;
 pub mod ext;
+pub mod group;
 mod waker;
 
 pub trait Command {
@@ -165,8 +166,20 @@ pub trait Predicate {
     fn test(&mut self) -> anyhow::Result<bool>;
 }
 
+impl Predicate for bool {
+    fn test(&mut self) -> anyhow::Result<bool> {
+        Ok(*self)
+    }
+}
+
 pub trait Runnable {
     fn run(&mut self) -> anyhow::Result<()>;
+}
+
+impl Runnable for () {
+    fn run(&mut self) -> anyhow::Result<()> {
+        Ok(())
+    }
 }
 
 impl<E: IntoErr<bool>, F: FnMut() -> E> Predicate for F {

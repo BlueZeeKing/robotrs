@@ -5,41 +5,66 @@ use crate::{
     ErrorFutureWrapper,
 };
 
-use super::{Command, FutureCommand, Runnable, ToCommand};
+use super::{Command, FutureCommand, Predicate, Runnable, ToCommand};
 
-pub fn run_once<F: Runnable>(func: F) -> FuncCommand<F, F, F> {
+pub fn run_once<F: Runnable>(func: F) -> impl Command {
     FuncCommand {
-        start: Some(func),
-        execute: None,
-        end: None,
+        start: func,
+        execute: (),
+        end: (),
+        is_finished: true,
     }
 }
 
-pub fn run<F: Runnable>(func: F) -> FuncCommand<F, F, F> {
+pub fn run<F: Runnable>(func: F) -> impl Command {
     FuncCommand {
-        start: None,
-        execute: Some(func),
-        end: None,
+        start: (),
+        execute: func,
+        end: (),
+        is_finished: false,
     }
 }
 
-pub fn start_end<F1: Runnable, F2: Runnable>(start: F1, end: F2) -> FuncCommand<F1, F1, F2> {
+pub fn start_end<F1: Runnable, F2: Runnable>(start: F1, end: F2) -> impl Command {
     FuncCommand {
-        start: Some(start),
-        execute: None,
-        end: Some(end),
+        start,
+        execute: (),
+        end,
+        is_finished: false,
     }
 }
 
-pub fn run_end<F1: Runnable, F2: Runnable>(run: F1, end: F2) -> FuncCommand<F1, F1, F2> {
+pub fn run_end<F1: Runnable, F2: Runnable>(execute: F1, end: F2) -> impl Command {
     FuncCommand {
-        start: None,
-        execute: Some(run),
-        end: Some(end),
+        start: (),
+        execute,
+        end,
+        is_finished: false,
     }
 }
 
-pub fn wait(amount: Duration) -> FutureCommand<ErrorFutureWrapper<(), crate::error::Error, Alarm>> {
+pub fn create_command<Start, Execute, End, Finished>(
+    // FIXME: This is actually a massive pain in the ass
+    start: Start,
+    execute: Execute,
+    end: End,
+    is_finished: Finished,
+) -> impl Command
+where
+    Start: Runnable,
+    Execute: Runnable,
+    End: Runnable,
+    Finished: Predicate,
+{
+    FuncCommand {
+        start,
+        execute,
+        end,
+        is_finished,
+    }
+}
+
+pub fn wait(amount: Duration) -> impl Command {
     ErrorFutureWrapper(delay(amount)).to_command()
 }
 
@@ -67,48 +92,39 @@ impl Command for NoopCommand {
     }
 }
 
-pub struct FuncCommand<F1, F2, F3>
+pub struct FuncCommand<Start, Execute, End, Finished>
 where
-    F1: Runnable,
-    F2: Runnable,
-    F3: Runnable,
+    Start: Runnable,
+    Execute: Runnable,
+    End: Runnable,
+    Finished: Predicate,
 {
-    start: Option<F1>,
-    execute: Option<F2>,
-    end: Option<F3>,
+    start: Start,
+    execute: Execute,
+    end: End,
+    is_finished: Finished,
 }
 
-impl<F1, F2, F3> Command for FuncCommand<F1, F2, F3>
+impl<Start, Execute, End, Finished> Command for FuncCommand<Start, Execute, End, Finished>
 where
-    F1: Runnable,
-    F2: Runnable,
-    F3: Runnable,
+    Start: Runnable,
+    Execute: Runnable,
+    End: Runnable,
+    Finished: Predicate,
 {
     fn start(&mut self) -> anyhow::Result<()> {
-        if let Some(func) = &mut self.start {
-            func.run()
-        } else {
-            Ok(())
-        }
+        self.start.run()
     }
 
     fn execute(&mut self) -> anyhow::Result<()> {
-        if let Some(func) = &mut self.execute {
-            func.run()
-        } else {
-            Ok(())
-        }
+        self.execute.run()
     }
 
     fn end(&mut self) -> anyhow::Result<()> {
-        if let Some(func) = &mut self.end {
-            func.run()
-        } else {
-            Ok(())
-        }
+        self.end.run()
     }
 
     fn is_finished(&mut self) -> anyhow::Result<bool> {
-        Ok(false)
+        self.is_finished.test()
     }
 }
