@@ -32,7 +32,9 @@ impl SlewRateLimiter {
 
 impl Filter for SlewRateLimiter {
     fn apply_with_time(&mut self, value: f64, time: Duration) -> f64 {
-        let new_val = if self.last_val < value {
+        let new_val = if (self.last_val - value).abs() < self.limit {
+            value
+        } else if self.last_val < value {
             self.last_val + self.limit * time.as_secs_f64()
         } else {
             self.last_val - self.limit * time.as_secs_f64()
