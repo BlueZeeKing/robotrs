@@ -1,13 +1,11 @@
 use std::time::Duration;
 
-use crate::{
-    time::{delay, Alarm},
-    ErrorFutureWrapper,
-};
+use crate::{time::delay, ErrorFutureWrapper};
 
-use super::{Command, FutureCommand, Predicate, Runnable, ToCommand};
+use super::{Command, Func, ToCommand};
 
-pub fn run_once<F: Runnable>(func: F) -> impl Command {
+/// Create a command that runs once at the start
+pub fn run_once<F: Func<()>>(func: F) -> impl Command {
     FuncCommand {
         start: func,
         execute: (),
@@ -16,7 +14,8 @@ pub fn run_once<F: Runnable>(func: F) -> impl Command {
     }
 }
 
-pub fn run<F: Runnable>(func: F) -> impl Command {
+/// Run indefinitely
+pub fn run<F: Func<()>>(func: F) -> impl Command {
     FuncCommand {
         start: (),
         execute: func,
@@ -25,7 +24,9 @@ pub fn run<F: Runnable>(func: F) -> impl Command {
     }
 }
 
-pub fn start_end<F1: Runnable, F2: Runnable>(start: F1, end: F2) -> impl Command {
+/// Run somthing at the start and end. This function is very hard to use and is not recomended
+#[deprecated]
+pub fn start_end<F1: Func<()>, F2: Func<()>>(start: F1, end: F2) -> impl Command {
     FuncCommand {
         start,
         execute: (),
@@ -34,7 +35,9 @@ pub fn start_end<F1: Runnable, F2: Runnable>(start: F1, end: F2) -> impl Command
     }
 }
 
-pub fn run_end<F1: Runnable, F2: Runnable>(execute: F1, end: F2) -> impl Command {
+/// Run somthing continously and at the end. This function is very hard to use and is not recomended
+#[deprecated]
+pub fn run_end<F1: Func<()>, F2: Func<()>>(execute: F1, end: F2) -> impl Command {
     FuncCommand {
         start: (),
         execute,
@@ -43,6 +46,8 @@ pub fn run_end<F1: Runnable, F2: Runnable>(execute: F1, end: F2) -> impl Command
     }
 }
 
+/// Create a command from a set of callbacks. This function is very hard to use and is not recomended
+#[deprecated]
 pub fn create_command<Start, Execute, End, Finished>(
     // FIXME: This is actually a massive pain in the ass
     start: Start,
@@ -51,10 +56,10 @@ pub fn create_command<Start, Execute, End, Finished>(
     is_finished: Finished,
 ) -> impl Command
 where
-    Start: Runnable,
-    Execute: Runnable,
-    End: Runnable,
-    Finished: Predicate,
+    Start: Func<()>,
+    Execute: Func<()>,
+    End: Func<()>,
+    Finished: Func<bool>,
 {
     FuncCommand {
         start,
@@ -64,40 +69,27 @@ where
     }
 }
 
+/// Create a command that waits a certain amount of time
 pub fn wait(amount: Duration) -> impl Command {
     ErrorFutureWrapper(delay(amount)).to_command()
 }
 
+/// A command that does nothing and runs indefinetly
 pub fn noop() -> impl Command {
-    NoopCommand
-}
-
-pub struct NoopCommand;
-
-impl Command for NoopCommand {
-    fn start(&mut self) -> anyhow::Result<()> {
-        Ok(())
-    }
-
-    fn execute(&mut self) -> anyhow::Result<()> {
-        Ok(())
-    }
-
-    fn end(&mut self) -> anyhow::Result<()> {
-        Ok(())
-    }
-
-    fn is_finished(&mut self) -> anyhow::Result<bool> {
-        Ok(false)
+    FuncCommand {
+        start: (),
+        execute: (),
+        end: (),
+        is_finished: false,
     }
 }
 
 pub struct FuncCommand<Start, Execute, End, Finished>
 where
-    Start: Runnable,
-    Execute: Runnable,
-    End: Runnable,
-    Finished: Predicate,
+    Start: Func<()>,
+    Execute: Func<()>,
+    End: Func<()>,
+    Finished: Func<bool>,
 {
     start: Start,
     execute: Execute,
@@ -107,10 +99,10 @@ where
 
 impl<Start, Execute, End, Finished> Command for FuncCommand<Start, Execute, End, Finished>
 where
-    Start: Runnable,
-    Execute: Runnable,
-    End: Runnable,
-    Finished: Predicate,
+    Start: Func<()>,
+    Execute: Func<()>,
+    End: Func<()>,
+    Finished: Func<bool>,
 {
     fn start(&mut self) -> anyhow::Result<()> {
         self.start.run()
@@ -125,6 +117,6 @@ where
     }
 
     fn is_finished(&mut self) -> anyhow::Result<bool> {
-        self.is_finished.test()
+        self.is_finished.run()
     }
 }

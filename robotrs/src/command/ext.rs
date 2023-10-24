@@ -1,13 +1,16 @@
-use super::{Command, Predicate};
+use super::{Command, Func};
 
 pub trait CommandExt: Command + Sized {
-    fn until<F: Predicate>(self, is_finished: F) -> impl Command {
+    /// Runs a command until a predicate is true
+    fn until<F: Func<bool>>(self, is_finished: F) -> impl Command {
         UntilCommand {
             is_finished,
             command: self,
         }
     }
 
+    /// Prevents a command from being executed after it is complete.
+    /// Used internally for group commands
     fn fuse(self) -> impl Command + Fused {
         FusedCommand(self, false)
     }
@@ -15,12 +18,13 @@ pub trait CommandExt: Command + Sized {
 
 impl<C: Command> CommandExt for C {}
 
-pub struct UntilCommand<C: Command, F: Predicate> {
+/// Created through [CommandExt::until]
+pub struct UntilCommand<C: Command, F: Func<bool>> {
     is_finished: F,
     command: C,
 }
 
-impl<C: Command, F: Predicate> Command for UntilCommand<C, F> {
+impl<C: Command, F: Func<bool>> Command for UntilCommand<C, F> {
     fn start(&mut self) -> anyhow::Result<()> {
         self.command.start()
     }
@@ -34,10 +38,11 @@ impl<C: Command, F: Predicate> Command for UntilCommand<C, F> {
     }
 
     fn is_finished(&mut self) -> anyhow::Result<bool> {
-        Ok(self.command.is_finished()? || self.is_finished.test()?)
+        Ok(self.command.is_finished()? || self.is_finished.run()?)
     }
 }
 
+/// Created through [CommandExt::fuse]
 pub struct FusedCommand<C: Command>(C, bool);
 
 impl<C: Command> Command for FusedCommand<C> {

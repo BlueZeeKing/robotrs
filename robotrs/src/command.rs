@@ -16,13 +16,19 @@ pub mod ext;
 pub mod group;
 mod waker;
 
+/// A composable action
 pub trait Command {
+    /// Runs once at the beginning
     fn start(&mut self) -> anyhow::Result<()>;
+    /// Runs for every tick of the scheduler
     fn execute(&mut self) -> anyhow::Result<()>;
+    /// Runs when the command ends
     fn end(&mut self) -> anyhow::Result<()>;
+    /// Runs for every tick and returns true if the command is complete
     fn is_finished(&mut self) -> anyhow::Result<bool>;
 }
 
+/// Convert a type to a future, used for commands
 pub trait ToFuture {
     type Fut: Future;
 
@@ -41,6 +47,7 @@ impl<C: Command + Unpin> ToFuture for C {
     }
 }
 
+/// A future that runs a command
 pub struct CommandFuture<C: Command + Unpin> {
     command: C,
     started: bool,
@@ -98,6 +105,7 @@ impl<C: Command + Unpin> Drop for CommandFuture<C> {
     }
 }
 
+/// A command that runs a future
 pub struct FutureCommand<F: Future<Output = anyhow::Result<()>>> {
     future: Pin<Box<F>>,
     should_wake: Arc<SingleWaker>,
@@ -144,6 +152,8 @@ impl<F: Future<Output = anyhow::Result<()>>> Command for FutureCommand<F> {
     }
 }
 
+/// A trait to convert into a command.
+/// Used for converting futures to commands
 pub trait ToCommand {
     type Command: Command;
 
@@ -162,38 +172,31 @@ impl<F: Future<Output = anyhow::Result<()>>> ToCommand for F {
     }
 }
 
-pub trait Predicate {
-    fn test(&mut self) -> anyhow::Result<bool>;
+/// A generic function trait used as a runnable and predicate
+pub trait Func<R> {
+    fn run(&mut self) -> anyhow::Result<R>;
 }
 
-impl Predicate for bool {
-    fn test(&mut self) -> anyhow::Result<bool> {
+impl Func<bool> for bool {
+    fn run(&mut self) -> anyhow::Result<bool> {
         Ok(*self)
     }
 }
 
-pub trait Runnable {
-    fn run(&mut self) -> anyhow::Result<()>;
-}
-
-impl Runnable for () {
+impl Func<()> for () {
     fn run(&mut self) -> anyhow::Result<()> {
         Ok(())
     }
 }
 
-impl<E: IntoErr<bool>, F: FnMut() -> E> Predicate for F {
-    fn test(&mut self) -> anyhow::Result<bool> {
+impl<E: IntoErr<R>, F: FnMut() -> E, R> Func<R> for F {
+    fn run(&mut self) -> anyhow::Result<R> {
         self().into_err()
     }
 }
 
-impl<E: IntoErr<()>, F: FnMut() -> E> Runnable for F {
-    fn run(&mut self) -> anyhow::Result<()> {
-        self().into_err()
-    }
-}
-
+/// A helper trait to convert both a type and an result with that type into a result. Should not be
+/// implemented by the user
 pub trait IntoErr<V> {
     fn into_err(self) -> anyhow::Result<V>;
 }

@@ -5,6 +5,7 @@ use super::{
     Command,
 };
 
+/// A group of commands that cen be raced against each other
 pub trait RaceGroup {
     fn start_r(&mut self) -> anyhow::Result<()>;
     fn execute_r(&mut self) -> anyhow::Result<()>;
@@ -40,6 +41,7 @@ impl RaceGroup for Tuple {
     }
 }
 
+/// Wraps a [RaceGroup] and converts it into a normal [Command]
 pub struct RaceWrapper<R: RaceGroup>(R);
 
 impl<R: RaceGroup> Command for RaceWrapper<R> {
@@ -60,6 +62,7 @@ impl<R: RaceGroup> Command for RaceWrapper<R> {
     }
 }
 
+/// A group of commands that run all to completion
 pub trait ParallelGroup {
     fn start_p(&mut self) -> anyhow::Result<()>;
     fn execute_p(&mut self) -> anyhow::Result<()>;
@@ -95,6 +98,7 @@ impl ParallelGroup for Tuple {
     }
 }
 
+/// Wraps a [ParallelGroup] and makes it a [Command]
 pub struct ParallelWrapper<P: ParallelGroup>(P);
 
 impl<P: ParallelGroup> Command for ParallelWrapper<P> {
@@ -116,7 +120,9 @@ impl<P: ParallelGroup> Command for ParallelWrapper<P> {
 }
 
 pub trait GroupExt {
+    /// Execute all commands at the same time and stop when any are complete
     fn race(self) -> impl Command;
+    /// Execute all the commands at the same time and stop when all are complete
     fn parallel(self) -> impl Command;
 }
 
