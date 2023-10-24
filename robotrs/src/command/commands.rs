@@ -26,7 +26,7 @@ pub fn run<F: Func<()>>(func: F) -> impl Command {
     }
 }
 
-/// Run somthing at the start and end. This function is very hard to use and is not recomended
+/// Run somthing at the start and end.
 pub fn start_end<Start, End, State>(start: Start, end: End) -> impl Command
 where
     Start: Func<State>,
@@ -41,7 +41,7 @@ where
     }
 }
 
-/// Run somthing continously and at the end. This function is very hard to use and is not recomended
+/// Run somthing continously and at the end.
 pub fn run_end<Start, Execute, End, State>(start: Start, execute: Execute, end: End) -> impl Command
 where
     Start: Func<State>,
