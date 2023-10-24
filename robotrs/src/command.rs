@@ -195,6 +195,29 @@ impl<E: IntoErr<R>, F: FnMut() -> E, R> Func<R> for F {
     }
 }
 
+/// A generic function trait used as a runnable and predicate with state
+pub trait StateFunc<R, S> {
+    fn run(&mut self, state: &mut S) -> anyhow::Result<R>;
+}
+
+impl<S> StateFunc<bool, S> for bool {
+    fn run(&mut self, _state: &mut S) -> anyhow::Result<bool> {
+        Ok(*self)
+    }
+}
+
+impl<S> StateFunc<(), S> for () {
+    fn run(&mut self, _state: &mut S) -> anyhow::Result<()> {
+        Ok(())
+    }
+}
+
+impl<E: IntoErr<R>, F: FnMut(&mut S) -> E, R, S> StateFunc<R, S> for F {
+    fn run(&mut self, state: &mut S) -> anyhow::Result<R> {
+        self(state).into_err()
+    }
+}
+
 /// A helper trait to convert both a type and an result with that type into a result. Should not be
 /// implemented by the user
 pub trait IntoErr<V> {

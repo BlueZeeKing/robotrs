@@ -1,8 +1,10 @@
 use std::time::Duration;
 
+use anyhow::bail;
+
 use crate::{time::delay, ErrorFutureWrapper};
 
-use super::{Command, Func, ToCommand};
+use super::{Command, Func, StateFunc, ToCommand};
 
 /// Create a command that runs once at the start
 pub fn run_once<F: Func<()>>(func: F) -> impl Command {
@@ -25,47 +27,55 @@ pub fn run<F: Func<()>>(func: F) -> impl Command {
 }
 
 /// Run somthing at the start and end. This function is very hard to use and is not recomended
-#[deprecated]
-pub fn start_end<F1: Func<()>, F2: Func<()>>(start: F1, end: F2) -> impl Command {
-    FuncCommand {
+pub fn start_end<Start, End, State>(start: Start, end: End) -> impl Command
+where
+    Start: Func<State>,
+    End: StateFunc<(), State>,
+{
+    StateFuncCommand {
         start,
         execute: (),
         end,
         is_finished: false,
+        state: None,
     }
 }
 
 /// Run somthing continously and at the end. This function is very hard to use and is not recomended
-#[deprecated]
-pub fn run_end<F1: Func<()>, F2: Func<()>>(execute: F1, end: F2) -> impl Command {
-    FuncCommand {
-        start: (),
+pub fn run_end<Start, Execute, End, State>(start: Start, execute: Execute, end: End) -> impl Command
+where
+    Start: Func<State>,
+    Execute: StateFunc<(), State>,
+    End: StateFunc<(), State>,
+{
+    StateFuncCommand {
+        start,
         execute,
         end,
         is_finished: false,
+        state: None,
     }
 }
 
-/// Create a command from a set of callbacks. This function is very hard to use and is not recomended
-#[deprecated]
-pub fn create_command<Start, Execute, End, Finished>(
-    // FIXME: This is actually a massive pain in the ass
+/// Create a command from a set of callbacks with state.
+pub fn create_command<Start, Execute, End, Finished, State>(
     start: Start,
     execute: Execute,
     end: End,
     is_finished: Finished,
 ) -> impl Command
 where
-    Start: Func<()>,
-    Execute: Func<()>,
-    End: Func<()>,
-    Finished: Func<bool>,
+    Start: Func<State>,
+    Execute: StateFunc<(), State>,
+    End: StateFunc<(), State>,
+    Finished: StateFunc<bool, State>,
 {
-    FuncCommand {
+    StateFuncCommand {
         start,
         execute,
         end,
         is_finished,
+        state: None,
     }
 }
 
@@ -118,5 +128,58 @@ where
 
     fn is_finished(&mut self) -> anyhow::Result<bool> {
         self.is_finished.run()
+    }
+}
+
+struct StateFuncCommand<Start, Execute, End, Finished, State>
+where
+    Start: Func<State>,
+    Execute: StateFunc<(), State>,
+    End: StateFunc<(), State>,
+    Finished: StateFunc<bool, State>,
+{
+    start: Start,
+    execute: Execute,
+    end: End,
+    is_finished: Finished,
+    state: Option<State>,
+}
+
+impl<Start, Execute, End, Finished, State> Command
+    for StateFuncCommand<Start, Execute, End, Finished, State>
+where
+    Start: Func<State>,
+    Execute: StateFunc<(), State>,
+    End: StateFunc<(), State>,
+    Finished: StateFunc<bool, State>,
+{
+    fn start(&mut self) -> anyhow::Result<()> {
+        self.state = Some(self.start.run()?);
+
+        Ok(())
+    }
+
+    fn execute(&mut self) -> anyhow::Result<()> {
+        if let Some(state) = &mut self.state {
+            self.execute.run(state)
+        } else {
+            bail!("State not initialized yet")
+        }
+    }
+
+    fn end(&mut self) -> anyhow::Result<()> {
+        if let Some(state) = &mut self.state {
+            self.end.run(state)
+        } else {
+            bail!("State not initialized yet")
+        }
+    }
+
+    fn is_finished(&mut self) -> anyhow::Result<bool> {
+        if let Some(state) = &mut self.state {
+            self.is_finished.run(state)
+        } else {
+            bail!("State not initialized yet")
+        }
     }
 }
