@@ -20,6 +20,10 @@ impl<N: Unit, D: Unit> Unit for Rate<N, D> {
     fn new(val: f32) -> Self {
         Self(N::new(val), D::new(1.0))
     }
+
+    fn scale<R: crate::ratio::Ratio>(self, ratio: R) -> Self {
+        Self::new(self.raw() * ratio.get_ratio())
+    }
 }
 
 impl<N: Unit, D: Unit> Debug for Rate<N, D> {

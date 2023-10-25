@@ -1,5 +1,7 @@
 use std::ops::{Add, Sub};
 
+use ratio::Ratio;
+
 pub mod angle;
 pub mod length;
 pub mod rate;
@@ -45,6 +47,10 @@ macro_rules! define_unit {
                 $name(num)
             }
 
+            fn scale<R: crate::ratio::Ratio>(self, ratio: R) -> Self {
+                Self(self.0 * ratio.get_ratio())
+            }
+
             fn name() -> &'static str {
                 stringify!($name)
             }
@@ -88,6 +94,7 @@ macro_rules! define_conversion {
 pub trait Unit: Clone + Copy + Add<Self, Output = Self> + Sub<Self, Output = Self> {
     fn raw(self) -> f32;
     fn new(val: f32) -> Self;
+    fn scale<R: Ratio>(self, ratio: R) -> Self;
 
     fn name() -> &'static str;
 }
