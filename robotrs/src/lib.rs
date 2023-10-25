@@ -13,6 +13,7 @@ use hal_sys::HAL_SendConsoleLine;
 use linkme::distributed_slice;
 use pin_project::pin_project;
 use tracing_subscriber::fmt::MakeWriter;
+use units::ratio::{Fraction, Ratio};
 
 pub mod command;
 pub mod control;
@@ -119,6 +120,16 @@ impl Deadzone for f32 {
     fn deadzone(self, value: Self) -> Self {
         if self.abs() < value {
             0.0
+        } else {
+            self
+        }
+    }
+}
+
+impl Deadzone for Fraction {
+    fn deadzone(self, value: Self) -> Self {
+        if self.get_ratio().abs() < value.get_ratio() {
+            Fraction::new(0.0)
         } else {
             self
         }

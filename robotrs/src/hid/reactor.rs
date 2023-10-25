@@ -1,6 +1,7 @@
 use std::{cell::RefCell, ops::DerefMut, task::Waker};
 
 use linkme::distributed_slice;
+use units::ratio::Ratio;
 
 use super::{
     axis::{get_axis, AxisTarget},
@@ -83,7 +84,7 @@ fn poll() {
                         return false;
                     };
 
-                    let active = target.is_active(value);
+                    let active = target.is_active(value.get_ratio());
 
                     if (active && *initial) || (!active && !*initial) {
                         waker.wake_by_ref();

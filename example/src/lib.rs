@@ -13,6 +13,7 @@ use robotrs::{
     yield_now, Deadzone, FailableDefault,
 };
 use subsystems::{Arm, Drivetrain, Intake};
+use units::ratio::{Percent, Ratio};
 
 pub mod subsystems;
 
@@ -69,19 +70,19 @@ impl AsyncRobot for Robot {
         let mut drivetrain = self.drivetrain.lock().await;
 
         loop {
-            if self.controller.left_trigger().unwrap().deadzone(0.1) != 0.0
-                || self.controller.right_trigger().unwrap().deadzone(0.1) != 0.0
+            if self.controller.left_trigger().unwrap().deadzone(Percent::new(10.0).into()).get_ratio() != 0.0
+                || self.controller.right_trigger().unwrap().deadzone(Percent::new(10.0).into()).get_ratio() != 0.0
             {
                 drivetrain.arcade_drive(
                     0.0,
-                    (self.controller.left_trigger().unwrap().deadzone(0.1) * -1.0
-                        + self.controller.right_trigger().unwrap().deadzone(0.1))
+                    (self.controller.left_trigger().unwrap().deadzone(Percent::new(10.0).into()).get_ratio() * -1.0
+                        + self.controller.right_trigger().unwrap().deadzone(Percent::new(10.0).into()).get_ratio())
                         * SLOW_TURN_MODIFIER,
                 )?;
             } else {
                 drivetrain.arcade_drive(
-                    self.controller.left_y().unwrap().deadzone(0.1),
-                    self.controller.right_x().unwrap().deadzone(0.1),
+                    self.controller.left_y().unwrap().deadzone(Percent::new(10.0).into()).get_ratio(),
+                    self.controller.right_x().unwrap().deadzone(Percent::new(10.0).into()).get_ratio(),
                 )?;
             }
 

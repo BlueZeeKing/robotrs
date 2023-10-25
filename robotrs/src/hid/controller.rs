@@ -34,7 +34,7 @@ macro_rules! define_axes {
                     )
                 }
 
-                pub fn $name (&self) -> Result<f32> {
+                pub fn $name (&self) -> Result<units::ratio::Fraction> {
                     get_axis(&self.joystick.get_axes_data()?, $index)
                 }
             )+

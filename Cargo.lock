@@ -1194,6 +1194,7 @@ dependencies = [
  "thiserror",
  "tracing",
  "tracing-subscriber",
+ "units",
 ]
 
 [[package]]

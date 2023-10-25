@@ -2,17 +2,18 @@ use std::{marker::PhantomData, pin::Pin, task::Poll};
 
 use futures::Future;
 use hal_sys::HAL_JoystickAxes;
+use units::ratio::{Fraction, Ratio};
 
 use crate::error::{Error, Result};
 
 use super::{joystick::Joystick, reactor::add_axis};
 
-pub(super) fn get_axis(data: &HAL_JoystickAxes, index: u32) -> Result<f32> {
+pub(super) fn get_axis(data: &HAL_JoystickAxes, index: u32) -> Result<Fraction> {
     if index >= data.count as u32 {
         return Err(Error::AxisIndexOutOfRange(index));
     }
 
-    Ok(data.axes[index as usize])
+    Ok(Fraction::new(data.axes[index as usize]))
 }
 
 #[derive(Copy, Clone)]
@@ -82,7 +83,7 @@ impl<T> AxisFuture<T> {
 
         let value = self
             .target
-            .is_active(get_axis(&joystick.get_axes_data()?, self.axis_index)?);
+            .is_active(get_axis(&joystick.get_axes_data()?, self.axis_index)?.get_ratio());
 
         Ok((joystick, value))
     }
