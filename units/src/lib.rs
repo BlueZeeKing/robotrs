@@ -1,4 +1,4 @@
-use std::ops::{Add, Div, Mul, Sub};
+use std::ops::{Add, Sub};
 
 pub mod angle;
 pub mod length;
@@ -85,7 +85,7 @@ macro_rules! define_conversion {
     };
 }
 
-pub trait Unit: Clone + Copy + Add + Sub {
+pub trait Unit: Clone + Copy + Add<Self, Output = Self> + Sub<Self, Output = Self> {
     fn raw(self) -> f32;
     fn new(val: f32) -> Self;
 
