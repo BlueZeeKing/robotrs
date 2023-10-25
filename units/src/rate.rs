@@ -8,6 +8,12 @@ use crate::{angle::Radian, length::Meter, time::Second, Unit};
 #[derive(Clone, Copy)]
 pub struct Rate<N: Unit, D: Unit>(pub(crate) N, pub(crate) D);
 
+impl<N: Unit, D: Unit> Rate<N, D> {
+    pub const fn constant() -> &'static str {
+        "Rate"
+    }
+}
+
 impl<N: Unit, D: Unit> Unit for Rate<N, D> {
     fn raw(self) -> f32 {
         self.0.raw() / self.1.raw()
