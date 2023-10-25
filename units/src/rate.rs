@@ -9,8 +9,8 @@ use crate::{angle::Radian, length::Meter, time::Second, Unit};
 pub struct Rate<N: Unit, D: Unit>(pub(crate) N, pub(crate) D);
 
 impl<N: Unit, D: Unit> Rate<N, D> {
-    pub const fn constant() -> &'static str {
-        "Rate"
+    pub const fn constant(val: f32) -> Self {
+        Self(N::new(val), D::new(1.0))
     }
 }
 
