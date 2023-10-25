@@ -1,0 +1,69 @@
+pub mod angle;
+pub mod length;
+pub mod rate;
+pub mod ratio;
+pub mod time;
+
+#[macro_export]
+macro_rules! define_unit {
+    ($name:ident) => {
+        #[derive(Debug, Clone, Copy)]
+        pub struct $name(f32);
+
+        impl crate::Unit for $name {
+            fn raw(self) -> f32 {
+                self.0
+            }
+
+            fn new(num: f32) -> Self {
+                $name(num)
+            }
+
+            fn name() -> &'static str {
+                stringify!($name)
+            }
+        }
+
+        impl<U: crate::Unit> std::ops::Div<U> for $name {
+            type Output = crate::rate::Rate<$name, U>;
+
+            fn div(self, rhs: U) -> Self::Output {
+                crate::rate::Rate(self, rhs)
+            }
+        }
+
+        impl<R: crate::ratio::Ratio> std::ops::Mul<R> for $name {
+            type Output = $name;
+
+            fn mul(self, rhs: R) -> Self::Output {
+                crate::Unit::new(crate::Unit::raw(self) * rhs.get_ratio())
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! define_conversion {
+    ($a:ident, $b:ident, $factor:literal) => {
+        impl From<$a> for $b {
+            fn from(value: $a) -> Self {
+                Self(value.0 * $factor)
+            }
+        }
+
+        impl From<$b> for $a {
+            fn from(value: $b) -> Self {
+                Self(value.0 / $factor)
+            }
+        }
+    };
+}
+
+pub trait Unit: Clone + Copy {
+    fn raw(self) -> f32;
+    fn new(val: f32) -> Self;
+
+    fn name() -> &'static str;
+}
+
+define_unit!(Raw);

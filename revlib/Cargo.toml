@@ -9,6 +9,7 @@ edition = "2021"
 robotrs = { path = "../robotrs" }
 thiserror = "1.0.47"
 tracing = "0.1.37"
+units = { path = "../units" }
 
 [build-dependencies]
 anyhow = "1.0.75"

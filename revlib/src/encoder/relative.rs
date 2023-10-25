@@ -1,14 +1,22 @@
+use std::marker::PhantomData;
+
+use units::Unit;
+
 use crate::{bindings::*, error::REVError, handle_error, FeedbackSensor};
 
 use super::Encoder;
 
-pub struct SparkMaxRelativeEncoder {
+pub struct SparkMaxRelativeEncoder<P: Unit, V: Unit> {
     handle: c_SparkMax_handle,
+    phantom: PhantomData<(P, V)>,
 }
 
-impl SparkMaxRelativeEncoder {
+impl<P: Unit, V: Unit> SparkMaxRelativeEncoder<P, V> {
     pub(crate) fn new(handle: c_SparkMax_handle) -> Self {
-        Self { handle }
+        Self {
+            handle,
+            phantom: PhantomData,
+        }
     }
 
     pub fn set_position(&mut self, value: f32) -> Result<(), REVError> {
@@ -16,25 +24,25 @@ impl SparkMaxRelativeEncoder {
     }
 }
 
-impl Encoder for SparkMaxRelativeEncoder {
-    fn get_position(&self) -> Result<f32, REVError> {
+impl<P: Unit, V: Unit> Encoder<P, V> for SparkMaxRelativeEncoder<P, V> {
+    fn get_position(&self) -> Result<P, REVError> {
         let mut pos = 0.0;
 
         unsafe {
             handle_error!(c_SparkMax_GetEncoderPosition(self.handle, &mut pos))?;
         }
 
-        Ok(pos)
+        Ok(P::new(pos))
     }
 
-    fn get_velocity(&self) -> Result<f32, REVError> {
+    fn get_velocity(&self) -> Result<V, REVError> {
         let mut velocity = 0.0;
 
         unsafe {
             handle_error!(c_SparkMax_GetEncoderPosition(self.handle, &mut velocity))?;
         }
 
-        Ok(velocity)
+        Ok(V::new(velocity))
     }
 
     fn set_position_conversion_factor(&mut self, factor: f32) -> Result<(), REVError> {
@@ -62,7 +70,7 @@ impl Encoder for SparkMaxRelativeEncoder {
     }
 }
 
-impl FeedbackSensor for SparkMaxRelativeEncoder {
+impl<P: Unit, V: Unit> FeedbackSensor for SparkMaxRelativeEncoder<P, V> {
     fn get_id() -> u32 {
         1
     }

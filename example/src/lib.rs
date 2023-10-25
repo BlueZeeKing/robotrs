@@ -7,7 +7,7 @@ use robotrs::{
     control::{ControlLock, ControlSafe},
     hid::{axis::AxisTarget, controller::XboxController},
     motor::IdleMode,
-    robot::{AsyncRobot, Fut},
+    robot::AsyncRobot,
     scheduler::Spawner,
     time::Alarm,
     yield_now, Deadzone, FailableDefault,

@@ -366,6 +366,7 @@ dependencies = [
  "futures",
  "revlib",
  "robotrs",
+ "units",
 ]
 
 [[package]]
@@ -1174,6 +1175,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "tracing",
+ "units",
  "zip",
 ]
 
@@ -1640,6 +1642,10 @@ checksum = "5c5713f0fc4b5db668a2ac63cdb7bb4469d8c9fed047b1d0292cc7b0ce2ba921"
 dependencies = [
  "tinyvec",
 ]
+
+[[package]]
+name = "units"
+version = "0.1.0"
 
 [[package]]
 name = "url"

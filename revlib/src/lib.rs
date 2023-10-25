@@ -5,6 +5,7 @@ use robotrs::{
     motor::{MotorController, SetIdleMode},
 };
 use std::ops::RangeInclusive;
+use units::Unit;
 
 use crate::bindings::*;
 
@@ -114,7 +115,9 @@ impl SparkMax {
         Ok(())
     }
 
-    pub fn get_absolute_encoder(&mut self) -> Result<SparkMaxAbsoluteEncoder, REVError> {
+    pub fn get_absolute_encoder<P: Unit, V: Unit>(
+        &mut self,
+    ) -> Result<SparkMaxAbsoluteEncoder<P, V>, REVError> {
         unsafe {
             handle_error!(c_SparkMax_AttemptToSetDataPortConfig(
                 self.handle,
@@ -143,7 +146,9 @@ impl SparkMax {
         unsafe { handle_error!(c_SparkMax_BurnFlash(self.handle)) }
     }
 
-    pub fn get_relative_encoder(&mut self) -> Result<SparkMaxRelativeEncoder, REVError> {
+    pub fn get_relative_encoder<P: Unit, V: Unit>(
+        &mut self,
+    ) -> Result<SparkMaxRelativeEncoder<P, V>, REVError> {
         unsafe { handle_error!(c_SparkMax_SetSensorType(self.handle, 1)) }?;
 
         Ok(SparkMaxRelativeEncoder::new(self.handle))
