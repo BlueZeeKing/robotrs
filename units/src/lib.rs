@@ -14,6 +14,12 @@ macro_rules! define_unit {
         #[derive(Debug, Clone, Copy)]
         pub struct $name(f32);
 
+        impl $name {
+            pub const fn constant(val: f32) -> Self {
+                Self(val)
+            }
+        }
+
         impl std::ops::Add for $name {
             type Output = Self;
 
