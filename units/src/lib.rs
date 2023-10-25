@@ -1,3 +1,5 @@
+use std::ops::{Add, Div, Mul, Sub};
+
 pub mod angle;
 pub mod length;
 pub mod rate;
@@ -9,6 +11,30 @@ macro_rules! define_unit {
     ($name:ident) => {
         #[derive(Debug, Clone, Copy)]
         pub struct $name(f32);
+
+        impl std::ops::Add for $name {
+            type Output = Self;
+
+            fn add(self, rhs: Self) -> Self {
+                Self(self.0 + rhs.0)
+            }
+        }
+
+        impl std::ops::Sub for $name {
+            type Output = Self;
+
+            fn sub(self, rhs: Self) -> Self {
+                Self(self.0 - rhs.0)
+            }
+        }
+
+        impl std::ops::Mul for $name {
+            type Output = Self;
+
+            fn mul(self, rhs: Self) -> Self {
+                Self(self.0 * rhs.0)
+            }
+        }
 
         impl crate::Unit for $name {
             fn raw(self) -> f32 {
@@ -59,7 +85,7 @@ macro_rules! define_conversion {
     };
 }
 
-pub trait Unit: Clone + Copy {
+pub trait Unit: Clone + Copy + Add + Sub {
     fn raw(self) -> f32;
     fn new(val: f32) -> Self;
 

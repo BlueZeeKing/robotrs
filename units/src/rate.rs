@@ -1,4 +1,7 @@
-use std::{fmt::Debug, ops::Div};
+use std::{
+    fmt::Debug,
+    ops::{Add, Div, Mul, Sub},
+};
 
 use crate::{angle::Radian, length::Meter, time::Second, Unit};
 
@@ -36,6 +39,30 @@ impl<N: Unit, D: Unit, U: Unit> Div<U> for Rate<N, D> {
 
     fn div(self, rhs: U) -> Self::Output {
         Rate(self, rhs)
+    }
+}
+
+impl<N: Unit, D: Unit> Mul<D> for Rate<N, D> {
+    type Output = N;
+
+    fn mul(self, rhs: D) -> Self::Output {
+        N::new(self.raw() * rhs.raw())
+    }
+}
+
+impl<N: Unit, D: Unit> Add for Rate<N, D> {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self::new(self.raw() + rhs.raw())
+    }
+}
+
+impl<N: Unit, D: Unit> Sub for Rate<N, D> {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Self::new(self.raw() - rhs.raw())
     }
 }
 
