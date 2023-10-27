@@ -4,6 +4,7 @@ use robotrs::{
     control::ControlSafe,
     motor::{IdleMode, SetIdleMode},
     time::Alarm,
+    FailableDefault,
 };
 use std::time::Duration;
 
@@ -73,8 +74,8 @@ impl ControlSafe for Intake {
     }
 }
 
-impl Default for Intake {
-    fn default() -> Self {
-        Self::new().unwrap()
+impl FailableDefault for Intake {
+    fn failable_default() -> anyhow::Result<Self> {
+        Ok(Self::new()?)
     }
 }

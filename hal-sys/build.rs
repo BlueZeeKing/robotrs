@@ -144,10 +144,15 @@ async fn main() -> Result<()> {
     }
 
     let Some(libs_dir) = env::var_os("OUT_DIR").map(|dir| PathBuf::from(dir).join("lib")) else {
+        bail!("Unable to find libs dir");
+    };
+
+    let Ok(out_dir) = dbg!(env::var("LIBS_OUT_DIR").map(|dir| PathBuf::from(dir).join("lib"))) else {
         bail!("Unable to find out dir");
     };
 
     fs::create_dir_all(&libs_dir)?;
+    fs::create_dir_all(&out_dir)?;
 
     println!(
         "cargo:rustc-link-search=native={}",
@@ -163,6 +168,14 @@ async fn main() -> Result<()> {
             File::create(libs_dir.join(format!("lib{}.so", lib.get_lib_name().unwrap())))?;
 
         std::io::copy(&mut zip_file, &mut fs_file)?;
+
+        let mut fs_file =
+            File::open(libs_dir.join(format!("lib{}.so", lib.get_lib_name().unwrap())))?;
+
+        let mut out_file =
+            File::create(out_dir.join(format!("lib{}.so", lib.get_lib_name().unwrap())))?;
+
+        std::io::copy(&mut fs_file, &mut out_file)?;
 
         println!("cargo:rustc-link-lib=dylib={}", lib.get_lib_name().unwrap());
     }

@@ -1,3 +1,5 @@
+#![feature(async_fn_in_trait, return_position_impl_trait_in_trait)]
+
 use std::{
     cell::RefCell,
     io::Write,
@@ -9,8 +11,10 @@ use std::{
 use futures::Future;
 use hal_sys::HAL_SendConsoleLine;
 use linkme::distributed_slice;
+use pin_project::pin_project;
 use tracing_subscriber::fmt::MakeWriter;
 
+pub mod command;
 pub mod control;
 pub mod ds;
 pub mod error;
@@ -80,81 +84,6 @@ impl Write for DsTracingWriter {
     }
 }
 
-pub struct CustomFuture<StartFn, ExecuteFn, EndFn>
-where
-    StartFn: FnMut() + Unpin,
-    ExecuteFn: FnMut() -> bool + Unpin,
-    EndFn: FnMut() + Unpin,
-{
-    start: StartFn,
-    execute: ExecuteFn,
-    end: EndFn,
-    started: bool,
-}
-
-/// Creates a future from 3 callbacks. The first callback runs once at the beginning. The second
-/// callback runs every tick of the scheduler (default is every 20ms). It returns a boolean
-/// representing if the future is finished. The last callback should clean up all used resources.
-/// This returns a future that can be awaited in asynchronous tasks.
-pub fn create_future<StartFn, ExecuteFn, EndFn>(
-    start: StartFn,
-    execute: ExecuteFn,
-    end: EndFn,
-) -> impl Future
-where
-    StartFn: FnMut() + Unpin,
-    ExecuteFn: FnMut() -> bool + Unpin,
-    EndFn: FnMut() + Unpin,
-{
-    CustomFuture {
-        start,
-        execute,
-        end,
-        started: false,
-    }
-}
-
-impl<StartFn, ExecuteFn, EndFn> Future for CustomFuture<StartFn, ExecuteFn, EndFn>
-where
-    StartFn: FnMut() + Unpin,
-    ExecuteFn: FnMut() -> bool + Unpin,
-    EndFn: FnMut() + Unpin,
-{
-    type Output = ();
-
-    fn poll(
-        self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Self::Output> {
-        let values = Pin::into_inner(self);
-
-        if !values.started {
-            values.started = true;
-            (values.start)();
-        }
-
-        if (values.execute)() {
-            Poll::Ready(())
-        } else {
-            queue_waker(cx.waker().clone());
-            Poll::Pending
-        }
-    }
-}
-
-impl<StartFn, ExecuteFn, EndFn> Drop for CustomFuture<StartFn, ExecuteFn, EndFn>
-where
-    StartFn: FnMut() + Unpin,
-    ExecuteFn: FnMut() -> bool + Unpin,
-    EndFn: FnMut() + Unpin,
-{
-    fn drop(&mut self) {
-        if self.started {
-            (self.end)();
-        }
-    }
-}
-
 pub fn yield_now() -> Yield {
     Yield::default()
 }
@@ -192,6 +121,35 @@ impl Deadzone for f32 {
             0.0
         } else {
             self
+        }
+    }
+}
+
+pub trait FailableDefault: Sized {
+    fn failable_default() -> anyhow::Result<Self>;
+}
+
+impl<D: Default> FailableDefault for D {
+    fn failable_default() -> anyhow::Result<Self> {
+        Ok(Default::default())
+    }
+}
+
+#[pin_project]
+pub struct ErrorFutureWrapper<O, E: Into<anyhow::Error>, F: Future<Output = Result<O, E>>>(
+    #[pin] F,
+);
+
+impl<O, E: Into<anyhow::Error>, F: Future<Output = Result<O, E>>> Future
+    for ErrorFutureWrapper<O, E, F>
+{
+    type Output = anyhow::Result<()>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
+        match self.project().0.poll(cx) {
+            Poll::Ready(Ok(_)) => Poll::Ready(Ok(())),
+            Poll::Ready(Err(err)) => Poll::Ready(Err(err.into())),
+            Poll::Pending => Poll::Pending,
         }
     }
 }

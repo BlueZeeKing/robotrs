@@ -1,3 +1,5 @@
+use robotrs::FailableDefault;
+
 fn main() {
-    robotrs::scheduler::RobotScheduler::start_robot(example::Robot::new());
+    robotrs::scheduler::RobotScheduler::start_robot(example::Robot::failable_default());
 }

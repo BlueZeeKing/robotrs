@@ -5,7 +5,10 @@ use std::{
 
 use impl_trait_for_tuples::impl_for_tuples;
 
-use crate::create_future;
+use crate::{
+    command::{commands::noop, ext::CommandExt, ToFuture},
+    FailableDefault,
+};
 
 pub struct ControlLock<T: ControlSafe> {
     locked: RefCell<bool>,
@@ -23,7 +26,11 @@ impl<T: ControlSafe> ControlLock<T> {
     /// Return an RAII guard to the data within. Not guaranteed to be fair.
     pub async fn lock(&self) -> ControlGuard<T> {
         if *self.locked.borrow_mut() {
-            create_future(move || {}, move || !*self.locked.borrow(), move || {}).await;
+            noop()
+                .until(move || !*self.locked.borrow())
+                .into_future()
+                .await
+                .unwrap();
         }
         assert_eq!(*self.locked.borrow(), false);
 
@@ -69,9 +76,11 @@ impl<'a, T: ControlSafe> Drop for ControlGuard<'a, T> {
     }
 }
 
-impl<T: ControlSafe + Default> Default for ControlLock<T> {
-    fn default() -> Self {
-        Self::new(T::default())
+// FIXME: Also have a default impl somehow?
+
+impl<T: ControlSafe + FailableDefault> FailableDefault for ControlLock<T> {
+    fn failable_default() -> anyhow::Result<Self> {
+        Ok(ControlLock::new(T::failable_default()?))
     }
 }
 

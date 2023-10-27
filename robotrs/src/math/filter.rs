@@ -16,9 +16,25 @@ pub struct SlewRateLimiter {
     limit: f64,
 }
 
+impl SlewRateLimiter {
+    pub fn new(limit: f64) -> crate::error::Result<Self> {
+        Ok(Self {
+            last_val: 0.0,
+            last_time: get_time()?,
+            limit,
+        })
+    }
+
+    pub fn set_limit(&mut self, limit: f64) {
+        self.limit = limit
+    }
+}
+
 impl Filter for SlewRateLimiter {
     fn apply_with_time(&mut self, value: f64, time: Duration) -> f64 {
-        let new_val = if self.last_val < value {
+        let new_val = if (self.last_val - value).abs() < self.limit {
+            value
+        } else if self.last_val < value {
             self.last_val + self.limit * time.as_secs_f64()
         } else {
             self.last_val - self.limit * time.as_secs_f64()

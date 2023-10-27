@@ -4,6 +4,7 @@ use robotrs::{
     control::ControlSafe,
     motor::{MotorController, SetIdleMode},
 };
+use std::ops::RangeInclusive;
 
 use crate::bindings::*;
 
@@ -86,6 +87,19 @@ impl SparkMax {
         Ok(())
     }
 
+    pub fn set_pid_range(&mut self, range: RangeInclusive<f32>) -> Result<(), REVError> {
+        unsafe {
+            handle_error!(c_SparkMax_SetOutputRange(
+                self.handle,
+                0,
+                *range.start(),
+                *range.end()
+            ))
+        }?;
+
+        Ok(())
+    }
+
     pub fn set_wrapping(&mut self, wrapping: bool, max: f32, min: f32) -> Result<(), REVError> {
         unsafe {
             handle_error!(c_SparkMax_SetPositionPIDWrapEnable(
@@ -111,7 +125,7 @@ impl SparkMax {
         Ok(SparkMaxAbsoluteEncoder::new(self.handle))
     }
 
-    pub fn set_pid_input<T: FeedbackSensor>(&mut self, sensor: T) -> Result<(), REVError> {
+    pub fn set_pid_input<T: FeedbackSensor>(&mut self, sensor: &T) -> Result<(), REVError> {
         if !sensor.is_handle(self.handle) {
             return Err(REVError::General);
         }
