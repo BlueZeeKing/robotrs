@@ -22,7 +22,7 @@ pub struct Released;
 
 #[derive(Clone)]
 pub struct ButtonFuture<T: Clone> {
-    joystick_index: u32,
+    joystick: Joystick,
     button_index: u32,
     phantom: PhantomData<T>,
 }
@@ -30,7 +30,7 @@ pub struct ButtonFuture<T: Clone> {
 impl ButtonFuture<Pressed> {
     pub fn released(&self) -> ButtonFuture<Released> {
         ButtonFuture {
-            joystick_index: self.joystick_index,
+            joystick: self.joystick.clone(),
             button_index: self.button_index,
             phantom: PhantomData,
         }
@@ -40,7 +40,7 @@ impl ButtonFuture<Pressed> {
 impl ButtonFuture<Released> {
     pub fn pressed(&self) -> ButtonFuture<Pressed> {
         ButtonFuture {
-            joystick_index: self.joystick_index,
+            joystick: self.joystick.clone(),
             button_index: self.button_index,
             phantom: PhantomData,
         }
@@ -48,20 +48,22 @@ impl ButtonFuture<Released> {
 }
 
 impl<T: Clone> ButtonFuture<T> {
-    pub fn new(joystick_index: u32, button_index: u32) -> Self {
+    pub(super) fn new(joystick: Joystick, button_index: u32) -> Self {
         ButtonFuture {
-            joystick_index,
+            joystick,
             button_index,
             phantom: PhantomData,
         }
     }
 
-    pub fn poll(&mut self) -> Result<(Joystick, bool)> {
-        let joystick = Joystick::new(self.joystick_index)?;
+    pub fn value(&self) -> Result<bool> {
+        get_button(&self.joystick.get_button_data()?, self.button_index)
+    }
 
-        let value = get_button(&joystick.get_button_data()?, self.button_index)?;
+    fn poll(&mut self) -> Result<bool> {
+        let value = get_button(&self.joystick.get_button_data()?, self.button_index)?;
 
-        Ok((joystick, value))
+        Ok(value)
     }
 }
 
@@ -77,7 +79,7 @@ impl Future for ButtonFuture<Pressed> {
     ) -> std::task::Poll<Self::Output> {
         let data = Pin::into_inner(self);
 
-        let (joystick, button_val) = match data.poll() {
+        let button_val = match data.poll() {
             Ok(val) => val,
             Err(err) => {
                 return Poll::Ready(Err(err));
@@ -87,7 +89,7 @@ impl Future for ButtonFuture<Pressed> {
         if button_val {
             Poll::Ready(Ok(data.released()))
         } else {
-            add_button(&joystick, data.button_index, true, cx.waker().clone());
+            add_button(&data.joystick, data.button_index, true, cx.waker().clone());
             Poll::Pending
         }
     }
@@ -102,7 +104,7 @@ impl Future for ButtonFuture<Released> {
     ) -> std::task::Poll<Self::Output> {
         let data = Pin::into_inner(self);
 
-        let (joystick, button_val) = match data.poll() {
+        let button_val = match data.poll() {
             Ok(val) => val,
             Err(err) => {
                 return Poll::Ready(Err(err));
@@ -112,7 +114,7 @@ impl Future for ButtonFuture<Released> {
         if !button_val {
             Poll::Ready(Ok(()))
         } else {
-            add_button(&joystick, data.button_index, false, cx.waker().clone());
+            add_button(&data.joystick, data.button_index, false, cx.waker().clone());
             Poll::Pending
         }
     }
