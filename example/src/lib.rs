@@ -7,7 +7,7 @@ use robotrs::{
     control::{ControlLock, ControlSafe},
     hid::{axis::AxisTarget, controller::XboxController},
     motor::IdleMode,
-    robot::{AsyncRobot, Fut},
+    robot::AsyncRobot,
     scheduler::Spawner,
     time::Alarm,
     yield_now, Deadzone, FailableDefault,
@@ -69,6 +69,12 @@ impl AsyncRobot for Robot {
         let mut drivetrain = self.drivetrain.lock().await;
 
         loop {
+            if self.controller.b().value()? {
+                drivetrain.set_idle_mode(IdleMode::Brake)?;
+            } else {
+                drivetrain.set_idle_mode(IdleMode::Coast)?;
+            }
+
             if self.controller.left_trigger().unwrap().deadzone(0.1) != 0.0
                 || self.controller.right_trigger().unwrap().deadzone(0.1) != 0.0
             {
@@ -90,30 +96,6 @@ impl AsyncRobot for Robot {
     }
 
     fn create_bindings(self: std::rc::Rc<Self>, executor: &Spawner) {
-        // BRAKE
-
-        let cloned_self = self.clone();
-
-        executor.spawn(async move {
-            loop {
-                let released = cloned_self.controller.b().await?;
-
-                unsafe {
-                    cloned_self
-                        .drivetrain
-                        .steal(|drivetrain| drivetrain.set_idle_mode(IdleMode::Brake).unwrap());
-                }
-
-                released.await?;
-
-                unsafe {
-                    cloned_self
-                        .drivetrain
-                        .steal(|drivetrain| drivetrain.set_idle_mode(IdleMode::Coast).unwrap());
-                }
-            }
-        });
-
         // ARM RAISE
 
         let cloned_self = self.clone();

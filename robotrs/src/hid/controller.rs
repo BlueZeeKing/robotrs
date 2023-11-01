@@ -7,12 +7,12 @@ use crate::error::Result;
 
 #[macro_export]
 macro_rules! define_buttons {
-    ($class:ident, $($name:ident/$name_callback:ident = $index:expr),+) => {
+    ($class:ident, $($name:ident = $index:expr),+) => {
         impl $class {
             $(
                 pub fn $name (&self) -> ButtonFuture<Pressed> {
                     ButtonFuture::<Pressed>::new(
-                        self.joystick.get_num(),
+                        self.joystick.clone(),
                         $index,
                     )
                 }
@@ -56,16 +56,16 @@ impl XboxController {
 
 define_buttons!(
     XboxController,
-    a / on_a = 0,
-    b / on_b = 1,
-    x / on_x = 2,
-    y / on_y = 3,
-    back / on_back = 6,
-    start / on_start = 7,
-    left_bumper / on_left_bumper = 4,
-    right_bumper / on_right_bumper = 5,
-    left_stick / on_left_stick = 8,
-    right_stick / on_right_stick = 9
+    a = 0,
+    b = 1,
+    x = 2,
+    y = 3,
+    back = 6,
+    start = 7,
+    left_bumper = 4,
+    right_bumper = 5,
+    left_stick = 8,
+    right_stick = 9
 );
 
 define_axes!(

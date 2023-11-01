@@ -11,20 +11,35 @@ pub struct Artifact {
     artifact_id: String,
     version: String,
     maven_url: String,
-    artifact_name: String,
     lib_name: Option<String>,
+    headers: bool,
 }
 
 impl Artifact {
-    pub fn get_url(&self) -> String {
-        format!(
-            "{}{}/{}/{}/{}",
+    pub fn get_header_url(&self) -> String {
+        dbg!(format!(
+            "{}{}/{}/{}/{}-{}-{}.zip",
             self.maven_url,
             self.group_id.replace(".", "/"),
             self.artifact_id,
             self.version,
-            self.artifact_name
-        )
+            self.artifact_id,
+            self.version,
+            "headers"
+        ))
+    }
+
+    pub fn get_lib_url(&self) -> String {
+        dbg!(format!(
+            "{}{}/{}/{}/{}-{}-{}.zip",
+            self.maven_url,
+            self.group_id.replace(".", "/"),
+            self.artifact_id,
+            self.version,
+            self.artifact_id,
+            self.version,
+            "linuxathena"
+        ))
     }
 
     pub fn get_lib_name(&self) -> Option<&str> {
@@ -42,6 +57,10 @@ impl Artifact {
 
         Ok(archive.by_index(file_number)?)
     }
+
+    pub fn has_headers(&self) -> bool {
+        self.headers
+    }
 }
 
 impl Artifact {
@@ -56,8 +75,8 @@ pub struct Builder {
     version: Option<String>,
     maven_url: Option<String>,
     artifact_name: Option<String>,
-    target: Option<Target>,
     lib_name: Option<String>,
+    headers: Option<bool>,
 }
 
 #[derive(Clone, Copy)]
@@ -86,7 +105,7 @@ pub enum Error {
     #[error("Missing maven url (e.g. `https://repo.maven.apache.org/maven2/`)")]
     MissingMavenUrl,
     #[error("Missing target or artifact name (only one is needed)")]
-    MissingTargetOrArtifactName,
+    MissingArtifactName,
 }
 
 impl Builder {
@@ -97,8 +116,8 @@ impl Builder {
             version: None,
             maven_url: None,
             artifact_name: None,
-            target: None,
             lib_name: None,
+            headers: None,
         }
     }
 
@@ -111,24 +130,13 @@ impl Builder {
         let version = self.version.to_owned().ok_or(Error::MissingVersion)?;
         let maven_url = self.maven_url.to_owned().ok_or(Error::MissingMavenUrl)?;
 
-        let artifact_name = if let Some(name) = self.artifact_name.to_owned() {
-            name
-        } else {
-            format!(
-                "{artifact_id}-{version}-{}.zip",
-                self.target
-                    .ok_or(Error::MissingTargetOrArtifactName)?
-                    .to_string()
-            )
-        };
-
         Ok(Artifact {
             group_id,
             artifact_id,
             version,
             maven_url,
-            artifact_name,
             lib_name: self.lib_name.to_owned(),
+            headers: self.headers.unwrap_or(true),
         })
     }
 
@@ -168,8 +176,8 @@ impl Builder {
         self
     }
 
-    pub fn target(&mut self, target: Target) -> &mut Self {
-        self.target = Some(target);
+    pub fn no_headers(&mut self) -> &mut Self {
+        self.headers = Some(false);
 
         self
     }

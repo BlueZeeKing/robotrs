@@ -1,15 +1,10 @@
-use std::{
-    env,
-    fs::{self, File},
-    path::{Path, PathBuf},
-};
+use std::path::Path;
 
-use anyhow::{bail, Result};
+use anyhow::Result;
 use build_utils::{
-    artifact::{Artifact, Target},
-    zip::{get_zip, write_archive_to_path},
+    artifact::Artifact,
+    build,
 };
-use tempfile::TempDir;
 
 const MAVEN: &str = "https://frcmaven.wpi.edu/artifactory/release/";
 
@@ -21,39 +16,25 @@ async fn main() -> Result<()> {
             .artifact_id("hal-cpp".to_owned())
             .version(build_utils::WPI_VERSION.to_owned())
             .maven_url(MAVEN.to_owned())
-            .target(Target::Headers)
             .build()?,
         Artifact::builder()
             .group_id("edu.wpi.first.wpiutil".to_owned())
             .artifact_id("wpiutil-cpp".to_owned())
             .version(build_utils::WPI_VERSION.to_owned())
             .maven_url(MAVEN.to_owned())
-            .target(Target::Headers)
             .build()?,
         Artifact::builder()
             .group_id("edu.wpi.first.wpimath".to_owned())
             .artifact_id("wpimath-cpp".to_owned())
             .version(build_utils::WPI_VERSION.to_owned())
             .maven_url(MAVEN.to_owned())
-            .target(Target::Headers)
             .build()?,
-        Artifact::builder()
-            .group_id("edu.wpi.first.ntcore".to_owned())
-            .artifact_id("ntcore-cpp".to_owned())
-            .version(build_utils::WPI_VERSION.to_owned())
-            .maven_url(MAVEN.to_owned())
-            .target(Target::Headers)
-            .build()?,
-    ];
-
-    let libs = vec![
         Artifact::builder()
             .group_id("edu.wpi.first.ntcore".to_owned())
             .artifact_id("ntcore-cpp".to_owned())
             .version(build_utils::WPI_VERSION.to_owned())
             .maven_url(MAVEN.to_owned())
             .lib_name("ntcore".to_owned())
-            .target(Target::RoboRio)
             .build()?,
         Artifact::builder()
             .group_id("edu.wpi.first.wpinet".to_owned())
@@ -61,78 +42,8 @@ async fn main() -> Result<()> {
             .version(build_utils::WPI_VERSION.to_owned())
             .maven_url(MAVEN.to_owned())
             .lib_name("wpinet".to_owned())
-            .target(Target::RoboRio)
             .build()?,
     ];
 
-    let tempdir = TempDir::new()?;
-    let include_path = tempdir.path().join("include");
-
-    fs::create_dir_all(&include_path)?;
-
-    for header in headers {
-        write_archive_to_path(&include_path, get_zip(&header.get_url()).await?)?;
-    }
-
-    if let Ok(host) = env::var("HOST") {
-        env::set_var("TARGET", host);
-    }
-
-    let result = bindgen::Builder::default()
-        .clang_args([&format!(
-            "--include-directory={}",
-            include_path.to_str().unwrap()
-        )])
-        .header(include_path.join("ntcore.h").to_str().unwrap())
-        .allowlist_type("NT_.*")
-        .allowlist_function("NT_.*")
-        .allowlist_var("NT_.*")
-        .generate()?;
-
-    if let Some(out_str) = env::var_os("OUT_DIR") {
-        let out_dir = Path::new(&out_str);
-
-        result.write_to_file(out_dir.join("bindings.rs"))?;
-    }
-
-    let Some(libs_dir) = env::var_os("OUT_DIR").map(|dir| PathBuf::from(dir).join("lib")) else {
-        bail!("Unable to find out dir");
-    };
-
-    let Ok(out_dir) = dbg!(env::var("LIBS_OUT_DIR").map(|dir| PathBuf::from(dir).join("lib"))) else {
-        bail!("Unable to find out dir");
-    };
-
-    fs::create_dir_all(&out_dir)?;
-    fs::create_dir_all(&libs_dir)?;
-
-    println!(
-        "cargo:rustc-link-search=native={}",
-        libs_dir.to_str().unwrap()
-    );
-
-    for lib in libs {
-        let mut archive = get_zip(&lib.get_url()).await?;
-
-        let mut zip_file = lib.find_lib_in_zip(&mut archive)?;
-
-        let mut fs_file =
-            File::create(libs_dir.join(format!("lib{}.so", lib.get_lib_name().unwrap())))?;
-
-        std::io::copy(&mut zip_file, &mut fs_file)?;
-        
-        let mut fs_file =
-            File::open(libs_dir.join(format!("lib{}.so", lib.get_lib_name().unwrap())))?;
-
-        let mut out_file =
-            File::create(out_dir.join(format!("lib{}.so", lib.get_lib_name().unwrap())))?;
-
-        std::io::copy(&mut fs_file, &mut out_file)?;
-
-        println!("cargo:rustc-link-lib=dylib={}", lib.get_lib_name().unwrap());
-    }
-
-    println!("cargo:rerun-if-changed=src/lib.rs");
-
-    Ok(())
+    build(&headers, "NT_.*", &Path::new("ntcore.h")).await
 }
