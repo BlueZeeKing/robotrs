@@ -9,5 +9,5 @@ members = [
   "ctre",
   "build-utils",
   "nt",
-  "deploy",
+  "cargo-deploy",
 ]
