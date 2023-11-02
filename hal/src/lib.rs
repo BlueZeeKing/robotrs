@@ -1,2 +1,2 @@
-pub mod can;
 pub mod digital;
+pub mod spi;

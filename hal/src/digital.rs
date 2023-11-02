@@ -1,4 +1,4 @@
-use embedded_hal::digital::v2::{InputPin, OutputPin};
+use embedded_hal::digital::{Error, ErrorKind, ErrorType, InputPin, OutputPin};
 use robotrs::error::HalError;
 use std::{marker::PhantomData, ptr};
 
@@ -9,6 +9,25 @@ pub struct RioPin<T> {
 
 pub struct Input;
 pub struct Output;
+
+#[derive(Debug)]
+pub struct DigitalError(HalError);
+
+impl From<HalError> for DigitalError {
+    fn from(value: HalError) -> Self {
+        Self(value)
+    }
+}
+
+impl Error for DigitalError {
+    fn kind(&self) -> embedded_hal::digital::ErrorKind {
+        ErrorKind::Other
+    }
+}
+
+impl<T> ErrorType for RioPin<T> {
+    type Error = DigitalError;
+}
 
 impl<T> RioPin<T> {
     pub fn new_input(channel: u8) -> Result<RioPin<Input>, HalError> {
@@ -51,14 +70,12 @@ impl<T> RioPin<T> {
 }
 
 impl OutputPin for RioPin<Output> {
-    type Error = HalError;
-
     fn set_low(&mut self) -> Result<(), Self::Error> {
         let mut error = 0;
         unsafe { hal_sys::HAL_SetDIO(self.handle, 0, &mut error) };
 
         if error != 0 {
-            Err(HalError::from_raw(error))
+            Err(HalError::from_raw(error).into())
         } else {
             Ok(())
         }
@@ -69,7 +86,7 @@ impl OutputPin for RioPin<Output> {
         unsafe { hal_sys::HAL_SetDIO(self.handle, 1, &mut error) };
 
         if error != 0 {
-            Err(HalError::from_raw(error))
+            Err(HalError::from_raw(error).into())
         } else {
             Ok(())
         }
@@ -83,14 +100,12 @@ impl<T> Drop for RioPin<T> {
 }
 
 impl InputPin for RioPin<Input> {
-    type Error = HalError;
-
     fn is_high(&self) -> Result<bool, Self::Error> {
         let mut error = 0;
         let is_high = unsafe { hal_sys::HAL_GetDIO(self.handle, &mut error) };
 
         if error != 0 {
-            Err(HalError::from_raw(error))
+            Err(HalError::from_raw(error).into())
         } else {
             Ok(if is_high == 1 { true } else { false })
         }
