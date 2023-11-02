@@ -1,0 +1,9 @@
+[package]
+name = "hal"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+embedded-hal = { version = "1.0.0-rc.1" }
+hal-sys = { path = "../hal-sys" }
+robotrs = { path = "../robotrs" }
