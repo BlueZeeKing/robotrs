@@ -24,6 +24,7 @@ pub mod motor;
 pub mod robot;
 pub mod scheduler;
 pub mod time;
+pub(crate) mod waker;
 
 #[distributed_slice]
 pub static PERIODIC_CHECKS: [fn()] = [..];

@@ -2,13 +2,12 @@
 
 use std::time::Duration;
 
-use futures::{select, FutureExt};
+use futures::{join, select, FutureExt};
 use robotrs::{
     control::{ControlLock, ControlSafe},
     hid::{axis::AxisTarget, controller::XboxController},
     motor::IdleMode,
     robot::AsyncRobot,
-    scheduler::Spawner,
     time::Alarm,
     yield_now, Deadzone, FailableDefault,
 };
@@ -31,7 +30,7 @@ pub struct Robot {
 }
 
 impl AsyncRobot for Robot {
-    async fn get_auto_future(self: std::rc::Rc<Self>) -> anyhow::Result<()> {
+    async fn get_auto_future(&self) -> anyhow::Result<()> {
         let mut arm = self.arm.lock().await;
 
         arm.raise().await?;
@@ -60,11 +59,25 @@ impl AsyncRobot for Robot {
         Ok(())
     }
 
-    async fn get_enabled_future(self: std::rc::Rc<Self>) -> anyhow::Result<()> {
+    async fn get_enabled_future(&self) -> anyhow::Result<()> {
+        let vals = join!(
+            Self::raise(&self),
+            Self::lower(&self),
+            Self::cube(&self),
+            Self::cone(&self),
+            Self::release(&self)
+        );
+
+        vals.0?;
+        vals.1?;
+        vals.2?;
+        vals.3?;
+        vals.4?;
+
         Ok(())
     }
 
-    async fn get_teleop_future(self: std::rc::Rc<Self>) -> anyhow::Result<()> {
+    async fn get_teleop_future(&self) -> anyhow::Result<()> {
         // The periodic runs every 20ms because thats how fast the executor ticks
         let mut drivetrain = self.drivetrain.lock().await;
 
@@ -94,106 +107,80 @@ impl AsyncRobot for Robot {
             yield_now().await;
         }
     }
+}
 
-    fn create_bindings(self: std::rc::Rc<Self>, executor: &Spawner) {
-        // ARM RAISE
+impl Robot {
+    pub async fn raise(&self) -> anyhow::Result<()> {
+        loop {
+            let released = self.controller.y().await?;
 
-        let cloned_self = self.clone();
+            let mut arm_lock = self.arm.lock().await;
 
-        executor.spawn(async move {
-            loop {
-                let released = cloned_self.controller.y().await?;
+            arm_lock.start_raise()?;
 
-                let mut arm_lock = cloned_self.arm.lock().await;
+            released.await?;
 
-                arm_lock.start_raise()?;
+            arm_lock.stop();
+        }
+    }
 
-                released.await?;
+    pub async fn lower(&self) -> anyhow::Result<()> {
+        loop {
+            let released = self.controller.a().await?;
 
-                arm_lock.stop();
-            }
-        });
+            let mut arm_lock = self.arm.lock().await;
 
-        // ARM LOWER
+            arm_lock.start_lower()?;
 
-        let cloned_self = self.clone();
+            released.await?;
 
-        executor.spawn(async move {
-            loop {
-                let released = cloned_self.controller.a().await?;
+            arm_lock.stop();
+        }
+    }
 
-                let mut arm_lock = cloned_self.arm.lock().await;
+    pub async fn cube(&self) -> anyhow::Result<()> {
+        loop {
+            let released = self.controller.wait_right_y(AxisTarget::Up(0.65)).await?;
 
-                arm_lock.start_lower()?;
+            let mut intake_lock = self.intake.lock().await;
 
-                released.await?;
+            intake_lock.intake_cube()?;
 
-                arm_lock.stop();
-            }
-        });
+            released.await?;
 
-        // INTAKE CUBE
+            intake_lock.stop();
+        }
+    }
 
-        let cloned_self = self.clone();
+    pub async fn cone(&self) -> anyhow::Result<()> {
+        loop {
+            let released = self.controller.wait_right_y(AxisTarget::Down(0.65)).await?;
 
-        executor.spawn(async move {
-            loop {
-                let released = cloned_self
-                    .controller
-                    .wait_right_y(AxisTarget::Up(0.65))
-                    .await?;
+            let mut intake_lock = self.intake.lock().await;
 
-                let mut intake_lock = cloned_self.intake.lock().await;
+            intake_lock.intake_cone()?;
 
-                intake_lock.intake_cube()?;
+            released.await?;
 
-                released.await?;
+            intake_lock.stop();
+        }
+    }
 
-                intake_lock.stop();
-            }
-        });
+    pub async fn release(&self) -> anyhow::Result<()> {
+        loop {
+            let released = select! {
+                released = self.controller.left_bumper().fuse() => released,
+                released = self.controller.right_bumper().fuse() => released
+            }?;
 
-        // INTAKE CONE
+            let mut intake_lock = self.intake.lock().await;
 
-        let cloned_self = self.clone();
+            intake_lock.start_release()?;
 
-        executor.spawn(async move {
-            loop {
-                let released = cloned_self
-                    .controller
-                    .wait_right_y(AxisTarget::Down(0.65))
-                    .await?;
+            released.await?;
 
-                let mut intake_lock = cloned_self.intake.lock().await;
-
-                intake_lock.intake_cone()?;
-
-                released.await?;
-
-                intake_lock.stop();
-            }
-        });
-
-        // INTAKE RELEASE
-
-        let cloned_self = self.clone();
-
-        executor.spawn(async move {
-            loop {
-                let released = select! {
-                    released = cloned_self.controller.left_bumper().fuse() => released,
-                    released = cloned_self.controller.right_bumper().fuse() => released
-                }?;
-
-                let mut intake_lock = cloned_self.intake.lock().await;
-
-                intake_lock.start_release()?;
-
-                released.await?;
-
-                intake_lock.stop();
-            }
-        });
+            intake_lock.stop();
+        }
     }
 }
 

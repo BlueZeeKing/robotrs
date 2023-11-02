@@ -3,23 +3,16 @@ use std::{
     ffi::CString,
     fs::File,
     io::Write,
-    rc::Rc,
     time::{Duration, Instant},
 };
 
-use anyhow::Result;
-use futures::{
-    executor::{LocalPool, LocalSpawner},
-    future::RemoteHandle,
-    task::LocalSpawnExt,
-    Future, TryFutureExt,
-};
 use tracing::{debug, error, warn};
 
 use crate::{
     ds,
     robot::AsyncRobot,
     time::{get_time, RawNotifier},
+    waker::SimpleHandle,
     DsTracingWriter, PERIODIC_CHECKS,
 };
 
@@ -28,55 +21,27 @@ use hal_sys::{
     HAL_ObserveUserProgramStarting, HAL_ObserveUserProgramTeleop, HAL_ObserveUserProgramTest,
 };
 
-fn handle_error(location: &'static str) -> impl FnOnce(&anyhow::Error) {
-    move |err| error!("An error occured in {location}: {err}")
-}
-
-pub struct Spawner {
-    spawner: LocalSpawner,
-}
-
-impl Spawner {
-    pub fn spawn<F: Future<Output = Result<()>> + 'static>(&self, fut: F) {
-        self.spawner
-            .spawn_local_with_handle(fut.inspect_err(handle_error("bindings")))
-            .unwrap()
-            .forget();
-    }
-}
-
 static PERIOD: Duration = Duration::from_millis(20);
 
-pub struct RobotScheduler<R: AsyncRobot> {
-    robot: Rc<R>,
+pub struct RobotScheduler<'a, R: AsyncRobot> {
+    robot: &'a R,
     last_state: ds::State,
-    rt: LocalPool,
 
-    enabled_task: Option<RemoteHandle<Result<()>>>,
-    auto_task: Option<RemoteHandle<Result<()>>>,
-    teleop_task: Option<RemoteHandle<Result<()>>>,
+    enabled_task: Option<SimpleHandle<'a, anyhow::Result<()>>>,
+    auto_task: Option<SimpleHandle<'a, anyhow::Result<()>>>,
+    teleop_task: Option<SimpleHandle<'a, anyhow::Result<()>>>,
 }
 
-impl<R: AsyncRobot> RobotScheduler<R> {
-    fn new(robot: R) -> Self {
+impl<'a, R: AsyncRobot> RobotScheduler<'a, R> {
+    fn new(robot: &'a R) -> Self {
         let scheduler = Self {
-            robot: Rc::new(robot),
+            robot,
             last_state: ds::State::Disabled,
-            rt: LocalPool::new(),
 
             enabled_task: None,
             auto_task: None,
             teleop_task: None,
         };
-
-        let robot = scheduler.robot.clone();
-
-        R::create_bindings(
-            robot,
-            &Spawner {
-                spawner: scheduler.rt.spawner(),
-            },
-        );
 
         scheduler
     }
@@ -102,34 +67,14 @@ impl<R: AsyncRobot> RobotScheduler<R> {
         if state != self.last_state {
             match state {
                 ds::State::Auto => {
-                    self.auto_task = Some(
-                        self.rt
-                            .spawner()
-                            .spawn_local_with_handle(
-                                self.robot
-                                    .clone()
-                                    .get_auto_future()
-                                    .inspect_err(handle_error("auto")),
-                            )
-                            .unwrap(),
-                    );
+                    self.auto_task = Some(SimpleHandle::spawn(self.robot.get_auto_future()));
 
                     debug!("Auto task started");
 
                     self.teleop_task = None;
                 }
                 ds::State::Teleop => {
-                    self.teleop_task = Some(
-                        self.rt
-                            .spawner()
-                            .spawn_local_with_handle(
-                                self.robot
-                                    .clone()
-                                    .get_teleop_future()
-                                    .inspect_err(handle_error("teleop")),
-                            )
-                            .unwrap(),
-                    );
+                    self.teleop_task = Some(SimpleHandle::spawn(self.robot.get_teleop_future()));
 
                     debug!("Teleop task started");
 
@@ -147,17 +92,7 @@ impl<R: AsyncRobot> RobotScheduler<R> {
             }
 
             if matches!(self.last_state, ds::State::Disabled) {
-                self.enabled_task = Some(
-                    self.rt
-                        .spawner()
-                        .spawn_local_with_handle(
-                            self.robot
-                                .clone()
-                                .get_enabled_future()
-                                .inspect_err(handle_error("enabled task")),
-                        )
-                        .unwrap(),
-                );
+                self.enabled_task = Some(SimpleHandle::spawn(self.robot.get_enabled_future()));
 
                 debug!("Enabled task started");
             }
@@ -165,20 +100,33 @@ impl<R: AsyncRobot> RobotScheduler<R> {
 
         self.last_state = state;
 
-        self.rt.run_until_stalled();
+        if let Some(task) = &mut self.enabled_task {
+            let err = task.poll();
+
+            if let Some(Err(err)) = err {
+                error!("An error occured in the enabled task: {}", err);
+            }
+        }
+
+        if let Some(task) = &mut self.auto_task {
+            let err = task.poll();
+
+            if let Some(Err(err)) = err {
+                error!("An error occured in the auto task: {}", err);
+            }
+        }
+
+        if let Some(task) = &mut self.teleop_task {
+            let err = task.poll();
+
+            if let Some(Err(err)) = err {
+                error!("An error occured in the teleop task: {}", err);
+            }
+        }
 
         for check in PERIODIC_CHECKS {
             check();
         }
-    }
-
-    fn set_version() -> anyhow::Result<()> {
-        let mut version_path = File::create("/tmp/frc_versions/FRC_Lib_Version.ini")?;
-
-        version_path.write_all("Rust ".as_bytes())?;
-        version_path.write_all(env::var("WPI_VERSON")?.as_bytes())?;
-
-        Ok(())
     }
 
     /// This is the main entry function. It starts the robot and schedules all the tasks as well
@@ -197,7 +145,7 @@ impl<R: AsyncRobot> RobotScheduler<R> {
             .with_writer(DsTracingWriter {})
             .init();
 
-        if let Err(err) = Self::set_version() {
+        if let Err(err) = set_version() {
             tracing::error!("An error occured while sending the version: {}", err);
         }
 
@@ -232,13 +180,15 @@ impl<R: AsyncRobot> RobotScheduler<R> {
             }
         }
 
-        let mut scheduler = RobotScheduler::new(match robot {
+        let robot = match robot {
             Ok(robot) => robot,
             Err(err) => {
                 error!("An error has occured constructing the robot: {}", err);
                 panic!("An error has occured constructing the robot: {}", err);
             }
-        });
+        };
+
+        let mut scheduler = RobotScheduler::new(&robot);
 
         let mut time = get_time().unwrap() + PERIOD;
         let mut notifier = RawNotifier::new(time).unwrap();
@@ -264,4 +214,13 @@ impl<R: AsyncRobot> RobotScheduler<R> {
             notifier.set_time(time).unwrap();
         }
     }
+}
+
+fn set_version() -> anyhow::Result<()> {
+    let mut version_path = File::create("/tmp/frc_versions/FRC_Lib_Version.ini")?;
+
+    version_path.write_all("Rust ".as_bytes())?;
+    version_path.write_all(env::var("WPI_VERSON")?.as_bytes())?;
+
+    Ok(())
 }

@@ -1,19 +1,13 @@
-use std::{pin::Pin, rc::Rc};
+use std::pin::Pin;
 
 use futures::Future;
 
-use crate::scheduler::Spawner;
-
 pub type Fut = Pin<Box<dyn Future<Output = anyhow::Result<()>> + 'static>>;
 
-// possibly use a custom runtime and non static futures to avoid possible consfusion with rcs
-// TODO: Use async in trait when added
 pub trait AsyncRobot {
-    fn get_auto_future(self: Rc<Self>) -> impl Future<Output = anyhow::Result<()>> + 'static;
+    async fn get_auto_future(&self) -> anyhow::Result<()>;
 
-    fn get_enabled_future(self: Rc<Self>) -> impl Future<Output = anyhow::Result<()>> + 'static;
+    async fn get_enabled_future(&self) -> anyhow::Result<()>;
 
-    fn get_teleop_future(self: Rc<Self>) -> impl Future<Output = anyhow::Result<()>> + 'static;
-
-    fn create_bindings(self: Rc<Self>, executor: &Spawner);
+    async fn get_teleop_future(&self) -> anyhow::Result<()>;
 }

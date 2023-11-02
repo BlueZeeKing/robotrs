@@ -7,14 +7,11 @@ use std::{
 use anyhow::bail;
 use futures::{task::waker_ref, Future};
 
-use crate::queue_waker;
-
-use self::waker::SingleWaker;
+use crate::{queue_waker, waker::SingleWaker};
 
 pub mod commands;
 pub mod ext;
 pub mod group;
-mod waker;
 
 /// A composable action
 pub trait Command {
