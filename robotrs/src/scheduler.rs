@@ -34,16 +34,14 @@ pub struct RobotScheduler<'a, R: AsyncRobot> {
 
 impl<'a, R: AsyncRobot> RobotScheduler<'a, R> {
     fn new(robot: &'a R) -> Self {
-        let scheduler = Self {
+        Self {
             robot,
             last_state: ds::State::Disabled,
 
             enabled_task: None,
             auto_task: None,
             teleop_task: None,
-        };
-
-        scheduler
+        }
     }
 
     fn tick(&mut self) {

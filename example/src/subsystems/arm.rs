@@ -65,7 +65,7 @@ impl ControlSafe for Arm {
 }
 
 impl FailableDefault for Arm {
-    fn failable_default() -> anyhow::Result<Self> {
-        Ok(Self::new()?)
+    fn failable_default() -> Result<Self> {
+        Self::new()
     }
 }

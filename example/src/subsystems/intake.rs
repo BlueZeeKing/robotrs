@@ -75,7 +75,7 @@ impl ControlSafe for Intake {
 }
 
 impl FailableDefault for Intake {
-    fn failable_default() -> anyhow::Result<Self> {
-        Ok(Self::new()?)
+    fn failable_default() -> Result<Self> {
+        Self::new()
     }
 }

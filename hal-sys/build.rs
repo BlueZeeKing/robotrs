@@ -79,5 +79,5 @@ async fn main() -> Result<()> {
 
     env::set_var("WPI_VERSION", WPI_VERSION);
 
-    build(&libs, "HAL_.*", &Path::new("hal/HAL.h")).await
+    build(&libs, "HAL_.*", Path::new("hal/HAL.h")).await
 }

@@ -46,5 +46,5 @@ async fn main() -> Result<()> {
             .build()?,
     ];
 
-    build(&headers, "c_MotController_.*", &Path::new("ctre/phoenix/cci/MotController_CCI.h")).await
+    build(&headers, "c_MotController_.*", Path::new("ctre/phoenix/cci/MotController_CCI.h")).await
 }

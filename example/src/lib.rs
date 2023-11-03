@@ -59,11 +59,11 @@ impl AsyncRobot for Robot {
 
     async fn get_enabled_future(&self) -> anyhow::Result<()> {
         let vals = join!(
-            Self::raise(&self),
-            Self::lower(&self),
-            Self::cube(&self),
-            Self::cone(&self),
-            Self::release(&self)
+            Self::raise(self),
+            Self::lower(self),
+            Self::cube(self),
+            Self::cone(self),
+            Self::release(self)
         );
 
         vals.0?;

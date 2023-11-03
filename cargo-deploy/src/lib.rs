@@ -1,4 +1,4 @@
-#![feature(async_fn_in_trait)]
+#![allow(async_fn_in_trait)]
 
 use std::{
     net::{IpAddr, Ipv4Addr},

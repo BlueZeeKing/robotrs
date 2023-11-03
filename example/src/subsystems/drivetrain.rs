@@ -60,7 +60,7 @@ impl ControlSafe for Drivetrain {
 }
 
 impl FailableDefault for Drivetrain {
-    fn failable_default() -> anyhow::Result<Self> {
-        Ok(Self::new()?)
+    fn failable_default() -> Result<Self> {
+        Self::new()
     }
 }

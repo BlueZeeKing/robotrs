@@ -54,7 +54,7 @@ macro_rules! status_to_result {
             if status == 0 {
                 Ok(res)
             } else {
-                Err(crate::error::HalError(status))
+                Err($crate::error::HalError(status))
             }
         }
     };
@@ -66,7 +66,7 @@ macro_rules! status_to_result {
             if status == 0 {
                 Ok(res)
             } else {
-                Err(crate::error::HalError(status))
+                Err($crate::error::HalError(status))
             }
         }
     };

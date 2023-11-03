@@ -39,5 +39,5 @@ async fn main() -> Result<()> {
             .build()?,
     ];
 
-    build(&headers, "c_(SparkMax|REVLib)_.*", &Path::new("rev/CANSparkMaxDriver.h")).await
+    build(&headers, "c_(SparkMax|REVLib)_.*", Path::new("rev/CANSparkMaxDriver.h")).await
 }

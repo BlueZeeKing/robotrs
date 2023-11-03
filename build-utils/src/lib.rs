@@ -19,7 +19,7 @@ static CLIENT: OnceLock<Client> = OnceLock::new();
 pub const WPI_VERSION: &str = "2023.4.3";
 
 pub fn get_client() -> &'static Client {
-    CLIENT.get_or_init(|| Client::new())
+    CLIENT.get_or_init(Client::new)
 }
 
 pub async fn build<'a>(

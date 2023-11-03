@@ -81,6 +81,6 @@ impl<C: Command> Command for FusedCommand<C> {
     }
 }
 
-pub(super) unsafe trait Fused {}
+pub(super) trait Fused {}
 
-unsafe impl<C: Command> Fused for FusedCommand<C> {}
+impl<C: Command> Fused for FusedCommand<C> {}

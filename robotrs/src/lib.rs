@@ -93,6 +93,7 @@ pub struct Yield {
     yielded: bool,
 }
 
+#[allow(clippy::derivable_impls)]
 impl Default for Yield {
     fn default() -> Self {
         Self { yielded: false }

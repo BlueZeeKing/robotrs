@@ -6,7 +6,7 @@ macro_rules! handle_error {
     ($($shit:tt)+) => {{
         match $($shit)+ {
             0 => Ok(()),
-            val => Err(crate::error::REVError::from(val)),
+            val => Err($crate::error::REVError::from(val)),
         }
     }};
 }

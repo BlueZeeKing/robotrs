@@ -45,5 +45,5 @@ async fn main() -> Result<()> {
             .build()?,
     ];
 
-    build(&headers, "NT_.*", &Path::new("ntcore.h")).await
+    build(&headers, "NT_.*", Path::new("ntcore.h")).await
 }

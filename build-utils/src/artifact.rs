@@ -22,7 +22,7 @@ impl Artifact {
         format!(
             "{}{}/{}/{}/{}-{}-{}.zip",
             self.maven_url,
-            self.group_id.replace(".", "/"),
+            self.group_id.replace('.', "/"),
             self.artifact_id,
             self.version,
             self.artifact_id,
@@ -35,7 +35,7 @@ impl Artifact {
         format!(
             "{}{}/{}/{}/{}-{}-{}.zip",
             self.maven_url,
-            self.group_id.replace(".", "/"),
+            self.group_id.replace('.', "/"),
             self.artifact_id,
             self.version,
             self.artifact_id,
