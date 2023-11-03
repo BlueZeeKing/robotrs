@@ -6,6 +6,7 @@ use zip::{read::ZipFile, ZipArchive};
 
 use crate::zip::extract_libs;
 
+#[derive(Debug)]
 pub struct Artifact {
     group_id: String,
     artifact_id: String,
@@ -13,11 +14,12 @@ pub struct Artifact {
     maven_url: String,
     lib_name: Option<String>,
     headers: bool,
+    should_deploy: bool,
 }
 
 impl Artifact {
     pub fn get_header_url(&self) -> String {
-        dbg!(format!(
+        format!(
             "{}{}/{}/{}/{}-{}-{}.zip",
             self.maven_url,
             self.group_id.replace(".", "/"),
@@ -26,11 +28,11 @@ impl Artifact {
             self.artifact_id,
             self.version,
             "headers"
-        ))
+        )
     }
 
     pub fn get_lib_url(&self) -> String {
-        dbg!(format!(
+        format!(
             "{}{}/{}/{}/{}-{}-{}.zip",
             self.maven_url,
             self.group_id.replace(".", "/"),
@@ -39,7 +41,7 @@ impl Artifact {
             self.artifact_id,
             self.version,
             "linuxathena"
-        ))
+        )
     }
 
     pub fn get_lib_name(&self) -> Option<&str> {
@@ -61,6 +63,10 @@ impl Artifact {
     pub fn has_headers(&self) -> bool {
         self.headers
     }
+
+    pub fn should_deploy(&self) -> bool {
+        self.should_deploy
+    }
 }
 
 impl Artifact {
@@ -76,7 +82,8 @@ pub struct Builder {
     maven_url: Option<String>,
     artifact_name: Option<String>,
     lib_name: Option<String>,
-    headers: Option<bool>,
+    headers: bool,
+    should_deploy: bool,
 }
 
 #[derive(Clone, Copy)]
@@ -117,7 +124,8 @@ impl Builder {
             maven_url: None,
             artifact_name: None,
             lib_name: None,
-            headers: None,
+            headers: true,
+            should_deploy: true,
         }
     }
 
@@ -136,7 +144,8 @@ impl Builder {
             version,
             maven_url,
             lib_name: self.lib_name.to_owned(),
-            headers: self.headers.unwrap_or(true),
+            headers: self.headers,
+            should_deploy: self.should_deploy,
         })
     }
 
@@ -177,7 +186,13 @@ impl Builder {
     }
 
     pub fn no_headers(&mut self) -> &mut Self {
-        self.headers = Some(false);
+        self.headers = false;
+
+        self
+    }
+
+    pub fn no_deploy(&mut self) -> &mut Self {
+        self.should_deploy = false;
 
         self
     }

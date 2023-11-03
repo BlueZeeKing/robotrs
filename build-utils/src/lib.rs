@@ -1,4 +1,9 @@
-use std::{sync::OnceLock, fs::{self, File}, env, path::{PathBuf, Path}};
+use std::{
+    env,
+    fs::{self, File},
+    path::{Path, PathBuf},
+    sync::OnceLock,
+};
 
 use anyhow::bail;
 use artifact::Artifact;
@@ -17,8 +22,11 @@ pub fn get_client() -> &'static Client {
     CLIENT.get_or_init(|| Client::new())
 }
 
-pub async fn build<'a>(artifacts: &[Artifact], allow: &'static str, path: &'a Path) -> anyhow::Result<()>
-{
+pub async fn build<'a>(
+    artifacts: &[Artifact],
+    allow: &'static str,
+    path: &'a Path,
+) -> anyhow::Result<()> {
     let tempdir = TempDir::new()?;
     let include_path = tempdir.path().join("include");
 
@@ -54,7 +62,9 @@ pub async fn build<'a>(artifacts: &[Artifact], allow: &'static str, path: &'a Pa
         bail!("Unable to find libs dir");
     };
 
-    let out_dir = env::var("LIBS_OUT_DIR").map(|dir| PathBuf::from(dir).join("lib")).ok();
+    let out_dir = env::var("LIBS_OUT_DIR")
+        .map(|dir| PathBuf::from(dir).join("lib"))
+        .ok();
 
     fs::create_dir_all(&libs_dir)?;
     if let Some(out_dir) = &out_dir {
@@ -66,7 +76,10 @@ pub async fn build<'a>(artifacts: &[Artifact], allow: &'static str, path: &'a Pa
         libs_dir.to_str().unwrap()
     );
 
-    for lib in artifacts.iter().filter(|artifact| artifact.get_lib_name().is_some()) {
+    for lib in artifacts
+        .iter()
+        .filter(|artifact| artifact.get_lib_name().is_some())
+    {
         let mut archive = get_zip(&lib.get_lib_url()).await?;
 
         let mut zip_file = lib.find_lib_in_zip(&mut archive)?;
@@ -77,13 +90,15 @@ pub async fn build<'a>(artifacts: &[Artifact], allow: &'static str, path: &'a Pa
         std::io::copy(&mut zip_file, &mut fs_file)?;
 
         if let Some(out_dir) = &out_dir {
-            let mut fs_file =
-                File::open(libs_dir.join(format!("lib{}.so", lib.get_lib_name().unwrap())))?;
+            if lib.should_deploy() {
+                let mut fs_file =
+                    File::open(libs_dir.join(format!("lib{}.so", lib.get_lib_name().unwrap())))?;
 
-            let mut out_file =
-                File::create(out_dir.join(format!("lib{}.so", lib.get_lib_name().unwrap())))?;
+                let mut out_file =
+                    File::create(out_dir.join(format!("lib{}.so", lib.get_lib_name().unwrap())))?;
 
-            std::io::copy(&mut fs_file, &mut out_file)?;
+                std::io::copy(&mut fs_file, &mut out_file)?;
+            }
         }
 
         println!("cargo:rustc-link-lib=dylib={}", lib.get_lib_name().unwrap());

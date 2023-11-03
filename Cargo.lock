@@ -1055,6 +1055,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "navx"
+version = "0.1.0"
+dependencies = [
+ "embedded-hal",
+ "hal",
+]
+
+[[package]]
 name = "no-std-net"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
