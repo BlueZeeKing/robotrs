@@ -46,7 +46,7 @@ impl SpiBus for RioSPI {
     fn read(&mut self, words: &mut [u8]) -> Result<(), Self::Error> {
         let count = unsafe { HAL_ReadSPI(self.port, words.as_mut_ptr(), words.len() as i32) };
 
-        if count == -1 {
+        if count == -1 || count != words.len() as i32 {
             Err(SPIError)
         } else {
             Ok(())
@@ -56,7 +56,7 @@ impl SpiBus for RioSPI {
     fn write(&mut self, words: &[u8]) -> Result<(), Self::Error> {
         let count = unsafe { HAL_WriteSPI(self.port, words.as_ptr(), words.len() as i32) };
 
-        if count == -1 {
+        if count == -1 || count != words.len() as i32 {
             Err(SPIError)
         } else {
             Ok(())
@@ -77,7 +77,7 @@ impl SpiBus for RioSPI {
             )
         };
 
-        if count == -1 {
+        if count == -1 || count != read.len() as i32 {
             Err(SPIError)
         } else {
             Ok(())
@@ -96,7 +96,7 @@ impl SpiBus for RioSPI {
             )
         };
 
-        if count == -1 {
+        if count == -1 || count != words.len() as i32 {
             Err(SPIError)
         } else {
             Ok(())
