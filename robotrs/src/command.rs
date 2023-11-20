@@ -29,13 +29,13 @@ pub trait Command {
 pub trait ToFuture {
     type Fut: Future;
 
-    fn into_future(self) -> Self::Fut;
+    fn to_future(self) -> Self::Fut;
 }
 
 impl<C: Command + Unpin> ToFuture for C {
     type Fut = CommandFuture<C>;
 
-    fn into_future(self) -> CommandFuture<C> {
+    fn to_future(self) -> CommandFuture<C> {
         CommandFuture {
             command: self,
             started: false,
