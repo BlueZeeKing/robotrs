@@ -1,7 +1,7 @@
 use impl_trait_for_tuples::impl_for_tuples;
 
 use super::{
-    ext::{CommandExt, Fused},
+    ext::{CommandExt, FusedCommand},
     Command,
 };
 
@@ -69,6 +69,10 @@ pub trait ParallelGroup {
     fn end_p(&mut self) -> anyhow::Result<()>;
     fn is_finished_p(&mut self) -> anyhow::Result<bool>;
 }
+
+trait Fused {}
+
+impl<C: Command> Fused for FusedCommand<C> {}
 
 #[impl_for_tuples(1, 8)]
 #[tuple_types_custom_trait_bound(Fused + Command)]

@@ -11,7 +11,7 @@ pub trait CommandExt: Command + Sized {
 
     /// Prevents a command from being executed after it is complete.
     /// Used internally for group commands
-    fn fuse(self) -> impl Command + Fused {
+    fn fuse(self) -> FusedCommand<Self> {
         FusedCommand(self, false)
     }
 }
@@ -80,7 +80,3 @@ impl<C: Command> Command for FusedCommand<C> {
         }
     }
 }
-
-pub(super) trait Fused {}
-
-impl<C: Command> Fused for FusedCommand<C> {}
