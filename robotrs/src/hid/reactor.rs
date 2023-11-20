@@ -16,29 +16,30 @@ struct JoystickQueueItem {
     pub axis: Vec<(u32, bool, AxisTarget, Waker)>,
 }
 
-static QUEUE: Mutex<Vec<JoystickQueueItem>> = Mutex::new(Vec::new());
+static QUEUE: Mutex<[Option<JoystickQueueItem>; 6]> =
+    Mutex::new([None, None, None, None, None, None]);
 
 pub fn add_button(joystick: &Joystick, index: u32, pressed: bool, waker: Waker) {
     let mut queue = QUEUE.lock();
 
-    if let Some(item) = queue.iter_mut().find(|val| &val.joystick == joystick) {
+    if let Some(item) = &mut queue[joystick.get_num() as usize] {
         item.buttons.push((index, pressed, waker));
     } else {
-        queue.push(JoystickQueueItem {
+        queue[joystick.get_num() as usize] = Some(JoystickQueueItem {
             joystick: joystick.clone(),
             buttons: vec![(index, pressed, waker)],
             axis: vec![],
-        })
+        });
     }
 }
 
 pub fn add_axis(joystick: &Joystick, index: u32, initial: bool, target: AxisTarget, waker: Waker) {
     let mut queue = QUEUE.lock();
 
-    if let Some(item) = queue.iter_mut().find(|val| &val.joystick == joystick) {
+    if let Some(item) = &mut queue[joystick.get_num() as usize] {
         item.axis.push((index, initial, target, waker));
     } else {
-        queue.push(JoystickQueueItem {
+        queue[joystick.get_num() as usize] = Some(JoystickQueueItem {
             joystick: joystick.clone(),
             buttons: vec![],
             axis: vec![(index, initial, target, waker)],
@@ -50,7 +51,7 @@ pub fn add_axis(joystick: &Joystick, index: u32, initial: bool, target: AxisTarg
 fn poll() {
     let mut queue = QUEUE.lock();
 
-    for item in queue.deref_mut() {
+    for item in queue.deref_mut().iter_mut().find_map(|val| val.as_ref()) {
         if let Ok(data) = item.joystick.get_button_data() {
             item.buttons.retain(|(index, pressed, waker)| {
                 let Ok(button_val) = get_button(&data, *index) else {
