@@ -51,7 +51,7 @@ pub fn add_axis(joystick: &Joystick, index: u32, initial: bool, target: AxisTarg
 fn poll() {
     let mut queue = QUEUE.lock();
 
-    for item in queue.deref_mut().iter_mut().find_map(|val| val.as_ref()) {
+    for item in queue.deref_mut().iter_mut().filter_map(|val| val.as_mut()) {
         if let Ok(data) = item.joystick.get_button_data() {
             item.buttons.retain(|(index, pressed, waker)| {
                 let Ok(button_val) = get_button(&data, *index) else {
