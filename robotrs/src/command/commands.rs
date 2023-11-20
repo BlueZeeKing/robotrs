@@ -2,9 +2,13 @@ use std::time::Duration;
 
 use anyhow::bail;
 
-use crate::{time::delay, ErrorFutureWrapper};
+use crate::{
+    control::{ControlGuard, ControlLock, ControlSafe},
+    time::delay,
+    ErrorFutureWrapper,
+};
 
-use super::{Command, Func, StateFunc, ToCommand};
+use super::{Command, Func, StateFunc, ToCommand, ToFuture};
 
 /// Create a command that runs once at the start
 pub fn run_once<F: Func<()>>(func: F) -> impl Command {
@@ -92,6 +96,18 @@ pub fn noop() -> impl Command {
         end: (),
         is_finished: false,
     }
+}
+
+pub fn control_lock_command<
+    'a,
+    C: Command + Unpin + 'a,
+    F: 'a + Fn(ControlGuard<'a, T>) -> C,
+    T: ControlSafe,
+>(
+    func: F,
+    lock: &'a ControlLock<T>,
+) -> impl Command + 'a {
+    async move { func(lock.lock().await).to_future().await }.to_command()
 }
 
 pub struct FuncCommand<Start, Execute, End, Finished>
