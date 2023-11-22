@@ -13,13 +13,13 @@ pub struct SingleWaker(AtomicBool);
 
 impl ArcWake for SingleWaker {
     fn wake_by_ref(arc_self: &std::sync::Arc<Self>) {
-        arc_self.0.store(true, std::sync::atomic::Ordering::Relaxed);
+        arc_self.0.store(true, std::sync::atomic::Ordering::Release);
     }
 }
 
 impl SingleWaker {
     pub fn is_woken(&self) -> bool {
-        self.0.load(std::sync::atomic::Ordering::Relaxed)
+        self.0.load(std::sync::atomic::Ordering::Acquire)
     }
 }
 
