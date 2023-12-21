@@ -100,7 +100,7 @@ impl<T> Drop for RioPin<T> {
 }
 
 impl InputPin for RioPin<Input> {
-    fn is_high(&self) -> Result<bool, Self::Error> {
+    fn is_high(&mut self) -> Result<bool, Self::Error> {
         let mut error = 0;
         let is_high = unsafe { hal_sys::HAL_GetDIO(self.handle, &mut error) };
 
@@ -111,7 +111,7 @@ impl InputPin for RioPin<Input> {
         }
     }
 
-    fn is_low(&self) -> Result<bool, Self::Error> {
+    fn is_low(&mut self) -> Result<bool, Self::Error> {
         Ok(!self.is_high()?)
     }
 }
