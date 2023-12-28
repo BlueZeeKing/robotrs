@@ -1,14 +1,34 @@
+use std::marker::PhantomData;
+
+use uom::si::{Dimension, Units};
+
 use crate::{bindings::*, error::REVError, handle_error, FeedbackSensor};
 
 use super::Encoder;
 
-pub struct SparkMaxRelativeEncoder {
+pub struct SparkMaxRelativeEncoder<VelD, VelU, PosD, PosU>
+where
+    VelD: Dimension,
+    VelU: Units<f32>,
+    PosD: Dimension,
+    PosU: Units<f32>,
+{
     handle: c_SparkMax_handle,
+    phantom: PhantomData<(VelD, VelU, PosD, PosU)>,
 }
 
-impl SparkMaxRelativeEncoder {
+impl<VelD, VelU, PosD, PosU> SparkMaxRelativeEncoder<VelD, VelU, PosD, PosU>
+where
+    VelD: Dimension,
+    VelU: Units<f32>,
+    PosD: Dimension,
+    PosU: Units<f32>,
+{
     pub(crate) fn new(handle: c_SparkMax_handle) -> Self {
-        Self { handle }
+        Self {
+            handle,
+            phantom: PhantomData,
+        }
     }
 
     pub fn set_position(&mut self, value: f32) -> Result<(), REVError> {
@@ -16,7 +36,14 @@ impl SparkMaxRelativeEncoder {
     }
 }
 
-impl Encoder for SparkMaxRelativeEncoder {
+impl<VelD, VelU, PosD, PosU> Encoder<VelD, VelU, PosD, PosU>
+    for SparkMaxRelativeEncoder<VelD, VelU, PosD, PosU>
+where
+    VelD: Dimension,
+    VelU: Units<f32>,
+    PosD: Dimension,
+    PosU: Units<f32>,
+{
     fn get_position(&self) -> Result<f32, REVError> {
         let mut pos = 0.0;
 
@@ -62,7 +89,13 @@ impl Encoder for SparkMaxRelativeEncoder {
     }
 }
 
-impl FeedbackSensor for SparkMaxRelativeEncoder {
+impl<VelD, VelU, PosD, PosU> FeedbackSensor for SparkMaxRelativeEncoder<VelD, VelU, PosD, PosU>
+where
+    VelD: Dimension,
+    VelU: Units<f32>,
+    PosD: Dimension,
+    PosU: Units<f32>,
+{
     fn get_id() -> u32 {
         1
     }

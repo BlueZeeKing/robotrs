@@ -5,6 +5,7 @@ use robotrs::{
     motor::{MotorController, SetIdleMode},
 };
 use std::ops::RangeInclusive;
+use uom::si::{Dimension, Quantity, Units};
 
 use crate::bindings::*;
 
@@ -114,7 +115,15 @@ impl SparkMax {
         Ok(())
     }
 
-    pub fn get_absolute_encoder(&mut self) -> Result<SparkMaxAbsoluteEncoder, REVError> {
+    pub fn get_absolute_encoder<VelD, VelU, PosD, PosU>(
+        &mut self,
+    ) -> Result<SparkMaxAbsoluteEncoder<VelD, VelU, PosD, PosU>, REVError>
+    where
+        VelD: Dimension,
+        VelU: Units<f32>,
+        PosD: Dimension,
+        PosU: Units<f32>,
+    {
         unsafe {
             handle_error!(c_SparkMax_AttemptToSetDataPortConfig(
                 self.handle,
@@ -143,17 +152,29 @@ impl SparkMax {
         unsafe { handle_error!(c_SparkMax_BurnFlash(self.handle)) }
     }
 
-    pub fn get_relative_encoder(&mut self) -> Result<SparkMaxRelativeEncoder, REVError> {
+    pub fn get_relative_encoder<VelD, VelU, PosD, PosU>(
+        &mut self,
+    ) -> Result<SparkMaxRelativeEncoder<VelD, VelU, PosD, PosU>, REVError>
+    where
+        VelD: Dimension,
+        VelU: Units<f32>,
+        PosD: Dimension,
+        PosU: Units<f32>,
+    {
         unsafe { handle_error!(c_SparkMax_SetSensorType(self.handle, 1)) }?;
 
         Ok(SparkMaxRelativeEncoder::new(self.handle))
     }
 
-    pub fn set_refrence(&mut self, value: f32, control_type: ControlType) -> Result<(), REVError> {
+    pub fn set_refrence<D: Dimension, U: Units<f32>>(
+        &mut self,
+        value: Quantity<D, U, f32>,
+        control_type: ControlType,
+    ) -> Result<(), REVError> {
         unsafe {
             handle_error!(c_SparkMax_SetpointCommand(
                 self.handle,
-                value,
+                value.value,
                 control_type as u32,
                 0,
                 0.0,

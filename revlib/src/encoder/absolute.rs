@@ -1,21 +1,46 @@
+use std::marker::PhantomData;
+
+use uom::si::{Dimension, Quantity, Units};
+
 use crate::{bindings::*, error::REVError, handle_error, FeedbackSensor};
 
 use super::Encoder;
 
-pub struct SparkMaxAbsoluteEncoder {
+pub struct SparkMaxAbsoluteEncoder<VelD, VelU, PosD, PosU>
+where
+    VelD: Dimension,
+    VelU: Units<f32>,
+    PosD: Dimension,
+    PosU: Units<f32>,
+{
     spark_max_handle: c_SparkMax_handle,
+    phantom: PhantomData<(VelD, VelU, PosD, PosU)>,
 }
 
-impl SparkMaxAbsoluteEncoder {
+impl<VelD, VelU, PosD, PosU> SparkMaxAbsoluteEncoder<VelD, VelU, PosD, PosU>
+where
+    VelD: Dimension,
+    VelU: Units<f32>,
+    PosD: Dimension,
+    PosU: Units<f32>,
+{
     pub(crate) fn new(handle: c_SparkMax_handle) -> Self {
         Self {
             spark_max_handle: handle,
+            phantom: PhantomData,
         }
     }
 }
 
-impl Encoder for SparkMaxAbsoluteEncoder {
-    fn get_position(&self) -> Result<f32, REVError> {
+impl<VelD, VelU, PosD, PosU> Encoder<VelD, VelU, PosD, PosU>
+    for SparkMaxAbsoluteEncoder<VelD, VelU, PosD, PosU>
+where
+    VelD: Dimension,
+    VelU: Units<f32>,
+    PosD: Dimension,
+    PosU: Units<f32>,
+{
+    fn get_position(&self) -> Result<Quantity<PosD, PosU, f32>, REVError> {
         let mut pos = 0.0;
 
         unsafe {
@@ -25,10 +50,10 @@ impl Encoder for SparkMaxAbsoluteEncoder {
             ))
         }?;
 
-        Ok(pos)
+        Ok(Quantity::new(pos))
     }
 
-    fn get_velocity(&self) -> Result<f32, REVError> {
+    fn get_velocity(&self) -> Result<Quantity<VelD, VelU, f32>, REVError> {
         let mut velocity = 0.0;
 
         unsafe {
@@ -38,7 +63,7 @@ impl Encoder for SparkMaxAbsoluteEncoder {
             ))
         }?;
 
-        Ok(velocity)
+        Ok(Quantity::new(velocity))
     }
 
     fn set_position_conversion_factor(&mut self, factor: f32) -> Result<(), REVError> {
@@ -69,7 +94,13 @@ impl Encoder for SparkMaxAbsoluteEncoder {
     }
 }
 
-impl FeedbackSensor for SparkMaxAbsoluteEncoder {
+impl<VelD, VelU, PosD, PosU> FeedbackSensor for SparkMaxAbsoluteEncoder<VelD, VelU, PosD, PosU>
+where
+    VelD: Dimension,
+    VelU: Units<f32>,
+    PosD: Dimension,
+    PosU: Units<f32>,
+{
     fn get_id() -> u32 {
         6
     }
