@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use uom::si::{Dimension, Units};
+use uom::si::{Dimension, Quantity, Units};
 
 use crate::{bindings::*, error::REVError, handle_error, FeedbackSensor};
 
@@ -44,24 +44,32 @@ where
     PosD: Dimension,
     PosU: Units<f32>,
 {
-    fn get_position(&self) -> Result<f32, REVError> {
+    fn get_position(&self) -> Result<Quantity<PosD, PosU, f32>, REVError> {
         let mut pos = 0.0;
 
         unsafe {
             handle_error!(c_SparkMax_GetEncoderPosition(self.handle, &mut pos))?;
         }
 
-        Ok(pos)
+        Ok(Quantity {
+            value: pos,
+            dimension: PhantomData,
+            units: PhantomData,
+        })
     }
 
-    fn get_velocity(&self) -> Result<f32, REVError> {
+    fn get_velocity(&self) -> Result<Quantity<VelD, VelU, f32>, REVError> {
         let mut velocity = 0.0;
 
         unsafe {
             handle_error!(c_SparkMax_GetEncoderPosition(self.handle, &mut velocity))?;
         }
 
-        Ok(velocity)
+        Ok(Quantity {
+            value: velocity,
+            dimension: PhantomData,
+            units: PhantomData,
+        })
     }
 
     fn set_position_conversion_factor(&mut self, factor: f32) -> Result<(), REVError> {

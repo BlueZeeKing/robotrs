@@ -50,7 +50,11 @@ where
             ))
         }?;
 
-        Ok(Quantity::new(pos))
+        Ok(Quantity {
+            value: pos,
+            dimension: PhantomData,
+            units: PhantomData,
+        })
     }
 
     fn get_velocity(&self) -> Result<Quantity<VelD, VelU, f32>, REVError> {
@@ -63,7 +67,11 @@ where
             ))
         }?;
 
-        Ok(Quantity::new(velocity))
+        Ok(Quantity {
+            value: velocity,
+            dimension: PhantomData,
+            units: PhantomData,
+        })
     }
 
     fn set_position_conversion_factor(&mut self, factor: f32) -> Result<(), REVError> {

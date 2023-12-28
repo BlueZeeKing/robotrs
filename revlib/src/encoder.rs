@@ -8,7 +8,7 @@ pub mod relative;
 pub trait Encoder<VelD: Dimension, VelU: Units<f32>, PosD: Dimension, PosU: Units<f32>>:
     FeedbackSensor
 {
-    fn get_position(&self) -> Result<Quantity<PosU, PosU, f32>, REVError>;
+    fn get_position(&self) -> Result<Quantity<PosD, PosU, f32>, REVError>;
     fn get_velocity(&self) -> Result<Quantity<VelD, VelU, f32>, REVError>;
 
     fn set_position_conversion_factor(&mut self, factor: f32) -> Result<(), REVError>;
