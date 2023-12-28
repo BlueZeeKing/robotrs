@@ -1,6 +1,9 @@
 use std::u32;
 
-use embedded_hal::spi::{Error, ErrorKind, ErrorType, SpiDevice, MODE_0, MODE_1, MODE_2, MODE_3};
+use embedded_hal::{
+    delay::DelayNs,
+    spi::{Error, ErrorKind, ErrorType, SpiDevice, MODE_0, MODE_1, MODE_2, MODE_3},
+};
 use hal_sys::{
     HAL_CloseSPI, HAL_InitializeSPI, HAL_ReadSPI, HAL_SPIPort, HAL_SetSPIChipSelectActiveHigh,
     HAL_SetSPIChipSelectActiveLow, HAL_SetSPIMode, HAL_SetSPISpeed, HAL_TransactionSPI,
