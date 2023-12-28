@@ -11,5 +11,4 @@ members = [
   "nt",
   "cargo-deploy",
   "hal",
-  "navx",
 ]
