@@ -1,32 +1,50 @@
-use std::{ffi::CString, thread, time::Duration};
+use std::str::FromStr;
+
+use http::Uri;
+use nt::types::TextMessage;
+use tungstenite::{
+    client::connect,
+    handshake::client::{generate_key, Request},
+};
 
 fn main() {
-    unsafe {
-        let inst = nt::bindings::NT_GetDefaultInstance();
+    let uri = Uri::from_str("ws://localhost:5810/nt/rust").unwrap();
+    let req = Request::builder()
+        .method("GET")
+        .header("Host", uri.host().unwrap())
+        .header("Connection", "Upgrade")
+        .header("Upgrade", "websocket")
+        .header("Sec-WebSocket-Version", "13")
+        .header("Sec-WebSocket-Key", generate_key())
+        .header("Sec-WebSocket-Protocol", "networktables.first.wpi.edu")
+        .uri(uri)
+        .body(())
+        .unwrap();
 
-        let address = CString::new("/home/lvuser/networktables.json").unwrap();
-        let local_path = CString::new("").unwrap();
+    let (mut connection, res) = connect(req).unwrap();
 
-        let address_ptr = address.as_ptr();
-        let local_path_ptr = local_path.as_ptr();
+    dbg!(res);
 
-        std::mem::forget(address);
-        std::mem::forget(local_path);
+    let messages = vec![TextMessage::Subscribe {
+        topics: vec!["".to_string()],
+        subuid: 0,
+        options: nt::types::SubscriptionOptions {
+            periodic: None,
+            all: None,
+            topicsonly: None,
+            prefix: Some(true),
+        },
+    }];
 
-        nt::bindings::NT_StartServer(inst, local_path_ptr, address_ptr, 1735, 5810);
+    println!("{}", serde_json::to_string_pretty(&messages).unwrap());
 
-        let mut amount_skipped: u8 = 0;
+    connection
+        .send(tungstenite::Message::Text(
+            serde_json::to_string(&messages).unwrap(),
+        ))
+        .unwrap();
 
-        while nt::bindings::NT_GetNetworkMode(inst)
-            == nt::bindings::NT_NetworkMode_NT_NET_MODE_STARTING
-        {
-            thread::sleep(Duration::from_millis(10));
-
-            amount_skipped += 1;
-
-            if amount_skipped > 100 {
-                panic!("Time out");
-            }
-        }
+    loop {
+        dbg!(connection.read().unwrap());
     }
 }

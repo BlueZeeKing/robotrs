@@ -1,4 +1,2 @@
-#[allow(warnings)]
-pub mod bindings {
-    include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
-}
+pub(crate) mod time;
+pub mod types;
