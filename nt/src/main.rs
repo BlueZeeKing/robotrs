@@ -1,7 +1,8 @@
-use std::str::FromStr;
+use core::panic;
+use std::{io::Cursor, str::FromStr, usize};
 
 use http::Uri;
-use nt::types::TextMessage;
+use nt::types::{BinaryMessage, TextMessage};
 use tungstenite::{
     client::connect,
     handshake::client::{generate_key, Request},
@@ -21,9 +22,7 @@ fn main() {
         .body(())
         .unwrap();
 
-    let (mut connection, res) = connect(req).unwrap();
-
-    dbg!(res);
+    let (mut connection, _res) = connect(req).unwrap();
 
     let messages = vec![TextMessage::Subscribe {
         topics: vec!["".to_string()],
@@ -36,8 +35,6 @@ fn main() {
         },
     }];
 
-    println!("{}", serde_json::to_string_pretty(&messages).unwrap());
-
     connection
         .send(tungstenite::Message::Text(
             serde_json::to_string(&messages).unwrap(),
@@ -45,6 +42,23 @@ fn main() {
         .unwrap();
 
     loop {
-        dbg!(connection.read().unwrap());
+        let next_message = connection.read().unwrap();
+
+        match next_message {
+            tungstenite::Message::Text(text) => {
+                let messages: Vec<TextMessage> = serde_json::from_str(&text).unwrap();
+
+                dbg!(messages);
+            }
+            tungstenite::Message::Binary(buf) => {
+                let mut buf = Cursor::new(&buf);
+
+                while (buf.position() as usize) < buf.get_ref().len() {
+                    let message = BinaryMessage::from_reader(&mut buf).unwrap();
+                    dbg!(message);
+                }
+            }
+            _ => panic!("Unsupported frame"),
+        }
     }
 }

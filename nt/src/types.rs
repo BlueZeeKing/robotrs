@@ -1,4 +1,11 @@
+use std::string::FromUtf8Error;
+
+use rmp::{
+    decode::{self, NumValueReadError, ValueReadError},
+    encode::{self, ValueWriteError},
+};
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 fn should_skip(val: &MissingOrNull<bool>) -> bool {
     *val == MissingOrNull::Missing
@@ -14,7 +21,7 @@ fn skip_none<T>(val: &Option<T>) -> bool {
 /// arbitrary properties being set outside of this set. Clients shall ignore properties they do not
 /// recognize. Properties are initially set on publish and may be changed (by any client) using
 /// [TextMessage::SetProperties]
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Properties {
     /// If true, the last set value will be periodically saved to persistent storage on the server
     /// and be restored during server startup. Topics with this property set to true will not be
@@ -66,7 +73,7 @@ mod missing_or_null_impls {
 /// spec. Servers shall preserve arbitrary options, as servers and clients may support arbitrary
 /// options outside of this set. Options are set using Subscribe Message ([TextMessage::Subscribe])
 /// and cannot be changed.
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SubscriptionOptions {
     /// How frequently the server should send changes. The server may send more frequently than
     /// this (e.g. use a combined minimum period for all values) or apply a restricted range to
@@ -91,7 +98,7 @@ pub struct SubscriptionOptions {
     pub prefix: Option<bool>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "method", content = "params")]
 pub enum TextMessage {
     /// Sent from a client to the server to indicate the client wants to start publishing values at
@@ -197,6 +204,7 @@ pub enum TextMessage {
         id: i32,
 
         /// The data type for the topic (as a string)
+        #[serde(rename = "type")]
         data_type: String,
 
         /// If this message was sent in response to a [TextMessage::Publish] message, the Publisher UID provided
@@ -235,7 +243,7 @@ pub enum TextMessage {
     },
 }
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 pub enum MissingOrNull<T> {
     Missing,
     Null,
@@ -265,5 +273,216 @@ impl<T> From<MissingOrNull<T>> for Option<T> {
 impl<T> Default for MissingOrNull<T> {
     fn default() -> Self {
         Self::Missing
+    }
+}
+
+#[derive(Debug)]
+pub struct BinaryMessage {
+    pub id: i64,
+    pub timestamp: u32,
+    pub data: BinaryData,
+}
+
+impl BinaryMessage {
+    pub fn from_reader<R: std::io::Read>(reader: &mut R) -> Result<Self, BinaryMessageError> {
+        let len = decode::read_array_len(reader)?;
+
+        if len != 4 {
+            Err(BinaryMessageError::MessageLen(len))
+        } else {
+            Ok(Self {
+                id: decode::read_int(reader)?,
+                timestamp: decode::read_u32(reader)?,
+                data: BinaryData::from_reader(reader)?,
+            })
+        }
+    }
+
+    pub fn to_writer<W: std::io::Write>(self, writer: &mut W) -> Result<(), BinaryMessageError> {
+        encode::write_array_len(writer, 4)?;
+        encode::write_sint(writer, self.id)?;
+        encode::write_u32(writer, self.timestamp)?;
+        self.data.to_writer(writer)?;
+        Ok(())
+    }
+}
+
+#[derive(Debug)]
+pub enum BinaryData {
+    Boolean(bool),
+    Double(f64),
+    Int(i64),
+    Float(f32),
+    Str(String),
+    Bin(Vec<u8>),
+    BoolArray(Vec<bool>),
+    DoubleArray(Vec<f64>),
+    IntArray(Vec<i64>),
+    FloatArray(Vec<f32>),
+    StringArray(Vec<String>),
+}
+
+#[derive(Debug, Error)]
+pub enum BinaryMessageError {
+    #[error("Could not parse number: {0}")]
+    IntError(#[from] NumValueReadError<std::io::Error>),
+    #[error("Could not read value: {0}")]
+    ValueReadError(#[from] ValueReadError<std::io::Error>),
+    #[error("Could not write value: {0}")]
+    ValueWriteError(#[from] ValueWriteError<std::io::Error>),
+    #[error("Unknown data type: {0}")]
+    UnknownDataType(u8),
+    #[error("Could not parse utf8 while parsing a string: {0}")]
+    InvalidUTF8(#[from] FromUtf8Error),
+    #[error("Encountered an error when reading more data: {0}")]
+    IoError(#[from] std::io::Error),
+    #[error("Incorrect binary message length, expected 4, found {0}")]
+    MessageLen(u32),
+}
+
+impl BinaryData {
+    pub fn from_reader<R: std::io::Read>(reader: &mut R) -> Result<Self, BinaryMessageError> {
+        let data_type: u8 = decode::read_int(reader)?;
+
+        let data = match data_type {
+            0 => BinaryData::Boolean(decode::read_bool(reader)?),
+            1 => BinaryData::Double(decode::read_f64(reader)?),
+            2 => BinaryData::Int(decode::read_int(reader)?),
+            3 => BinaryData::Float(decode::read_f32(reader)?),
+            4 => {
+                let len = decode::read_str_len(reader)?;
+                let mut data = vec![0; len as usize];
+                reader.read_exact(&mut data)?;
+
+                BinaryData::Str(String::from_utf8(data)?)
+            }
+            5 => {
+                let len = decode::read_bin_len(reader)?;
+                let mut data = vec![0; len as usize];
+                reader.read_exact(&mut data)?;
+
+                BinaryData::Bin(data)
+            }
+            16 => {
+                let len = decode::read_array_len(reader)?;
+
+                BinaryData::BoolArray(
+                    (0..len)
+                        .map(|_| decode::read_bool(reader))
+                        .collect::<Result<_, _>>()?,
+                )
+            }
+            17 => {
+                let len = decode::read_array_len(reader)?;
+
+                BinaryData::DoubleArray(
+                    (0..len)
+                        .map(|_| decode::read_f64(reader))
+                        .collect::<Result<_, _>>()?,
+                )
+            }
+            18 => {
+                let len = decode::read_array_len(reader)?;
+
+                BinaryData::IntArray(
+                    (0..len)
+                        .map(|_| decode::read_int(reader))
+                        .collect::<Result<_, _>>()?,
+                )
+            }
+            19 => {
+                let len = decode::read_array_len(reader)?;
+
+                BinaryData::FloatArray(
+                    (0..len)
+                        .map(|_| decode::read_f32(reader))
+                        .collect::<Result<_, _>>()?,
+                )
+            }
+            20 => {
+                let len = decode::read_array_len(reader)?;
+
+                BinaryData::StringArray(
+                    (0..len)
+                        .map(|_| -> Result<String, BinaryMessageError> {
+                            let len = decode::read_str_len(reader)?;
+                            let mut data = vec![0; len as usize];
+                            reader.read_exact(&mut data)?;
+
+                            Ok(String::from_utf8(data)?)
+                        })
+                        .collect::<Result<_, _>>()?,
+                )
+            }
+            n => return Err(BinaryMessageError::UnknownDataType(n)),
+        };
+
+        Ok(data)
+    }
+
+    pub fn to_writer<W: std::io::Write>(self, writer: &mut W) -> Result<(), BinaryMessageError> {
+        match self {
+            BinaryData::Boolean(val) => {
+                encode::write_uint(writer, 0)?;
+                encode::write_bool(writer, val)?;
+            }
+            BinaryData::Double(val) => {
+                encode::write_uint(writer, 1)?;
+                encode::write_f64(writer, val)?;
+            }
+            BinaryData::Int(val) => {
+                encode::write_uint(writer, 2)?;
+                encode::write_sint(writer, val)?;
+            }
+            BinaryData::Float(val) => {
+                encode::write_uint(writer, 3)?;
+                encode::write_f32(writer, val)?;
+            }
+            BinaryData::Str(val) => {
+                encode::write_uint(writer, 4)?;
+                encode::write_str(writer, &val)?;
+            }
+            BinaryData::Bin(val) => {
+                encode::write_uint(writer, 5)?;
+                encode::write_bin(writer, &val)?;
+            }
+            BinaryData::BoolArray(val) => {
+                encode::write_uint(writer, 16)?;
+                encode::write_array_len(writer, val.len() as u32)?;
+                for val in val {
+                    encode::write_bool(writer, val)?;
+                }
+            }
+            BinaryData::DoubleArray(val) => {
+                encode::write_uint(writer, 17)?;
+                encode::write_array_len(writer, val.len() as u32)?;
+                for val in val {
+                    encode::write_f64(writer, val)?;
+                }
+            }
+            BinaryData::IntArray(val) => {
+                encode::write_uint(writer, 18)?;
+                encode::write_array_len(writer, val.len() as u32)?;
+                for val in val {
+                    encode::write_sint(writer, val)?;
+                }
+            }
+            BinaryData::FloatArray(val) => {
+                encode::write_uint(writer, 19)?;
+                encode::write_array_len(writer, val.len() as u32)?;
+                for val in val {
+                    encode::write_f32(writer, val)?;
+                }
+            }
+            BinaryData::StringArray(val) => {
+                encode::write_uint(writer, 20)?;
+                encode::write_array_len(writer, val.len() as u32)?;
+                for val in val {
+                    encode::write_str(writer, &val)?;
+                }
+            }
+        };
+
+        Ok(())
     }
 }
