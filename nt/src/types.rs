@@ -32,6 +32,7 @@ pub struct Properties {
         skip_serializing_if = "should_skip"
     )]
     pub persistent: MissingOrNull<bool>,
+
     /// Topics with this property set to true will not be deleted by the server when the last
     /// publisher stops publishing.
     #[serde(
@@ -40,6 +41,7 @@ pub struct Properties {
         skip_serializing_if = "should_skip"
     )]
     pub retained: MissingOrNull<bool>,
+
     /// If false, the server and clients will not store the value of the topic. This means that
     /// only value updates will be available for the topic.
     #[serde(
@@ -279,7 +281,7 @@ impl<T> Default for MissingOrNull<T> {
 #[derive(Debug)]
 pub struct BinaryMessage {
     pub id: i64,
-    pub timestamp: u32,
+    pub timestamp: u64,
     pub data: BinaryData,
 }
 
@@ -292,16 +294,16 @@ impl BinaryMessage {
         } else {
             Ok(Self {
                 id: decode::read_int(reader)?,
-                timestamp: decode::read_u32(reader)?,
+                timestamp: decode::read_int(reader)?,
                 data: BinaryData::from_reader(reader)?,
             })
         }
     }
 
-    pub fn to_writer<W: std::io::Write>(self, writer: &mut W) -> Result<(), BinaryMessageError> {
+    pub fn to_writer<W: std::io::Write>(&self, writer: &mut W) -> Result<(), BinaryMessageError> {
         encode::write_array_len(writer, 4)?;
         encode::write_sint(writer, self.id)?;
-        encode::write_u32(writer, self.timestamp)?;
+        encode::write_uint(writer, self.timestamp)?;
         self.data.to_writer(writer)?;
         Ok(())
     }
@@ -420,23 +422,23 @@ impl BinaryData {
         Ok(data)
     }
 
-    pub fn to_writer<W: std::io::Write>(self, writer: &mut W) -> Result<(), BinaryMessageError> {
+    pub fn to_writer<W: std::io::Write>(&self, writer: &mut W) -> Result<(), BinaryMessageError> {
         match self {
             BinaryData::Boolean(val) => {
                 encode::write_uint(writer, 0)?;
-                encode::write_bool(writer, val)?;
+                encode::write_bool(writer, *val)?;
             }
             BinaryData::Double(val) => {
                 encode::write_uint(writer, 1)?;
-                encode::write_f64(writer, val)?;
+                encode::write_f64(writer, *val)?;
             }
             BinaryData::Int(val) => {
                 encode::write_uint(writer, 2)?;
-                encode::write_sint(writer, val)?;
+                encode::write_sint(writer, *val)?;
             }
             BinaryData::Float(val) => {
                 encode::write_uint(writer, 3)?;
-                encode::write_f32(writer, val)?;
+                encode::write_f32(writer, *val)?;
             }
             BinaryData::Str(val) => {
                 encode::write_uint(writer, 4)?;
@@ -450,28 +452,28 @@ impl BinaryData {
                 encode::write_uint(writer, 16)?;
                 encode::write_array_len(writer, val.len() as u32)?;
                 for val in val {
-                    encode::write_bool(writer, val)?;
+                    encode::write_bool(writer, *val)?;
                 }
             }
             BinaryData::DoubleArray(val) => {
                 encode::write_uint(writer, 17)?;
                 encode::write_array_len(writer, val.len() as u32)?;
                 for val in val {
-                    encode::write_f64(writer, val)?;
+                    encode::write_f64(writer, *val)?;
                 }
             }
             BinaryData::IntArray(val) => {
                 encode::write_uint(writer, 18)?;
                 encode::write_array_len(writer, val.len() as u32)?;
                 for val in val {
-                    encode::write_sint(writer, val)?;
+                    encode::write_sint(writer, *val)?;
                 }
             }
             BinaryData::FloatArray(val) => {
                 encode::write_uint(writer, 19)?;
                 encode::write_array_len(writer, val.len() as u32)?;
                 for val in val {
-                    encode::write_f32(writer, val)?;
+                    encode::write_f32(writer, *val)?;
                 }
             }
             BinaryData::StringArray(val) => {
