@@ -17,10 +17,10 @@ async fn main() {
             .publish("/FMSInfo/GameSpecificMessage".to_owned())
             .unwrap();
 
-        publisher.set("Hello, World?".to_owned()).unwrap();
+        publisher.set("Hello, World!".to_owned()).unwrap();
 
-        main.abort();
+        main.abort(); // End the main recieve loop
     }
 
-    task.await.unwrap();
+    task.await.unwrap(); // Wait for the backend to stop
 }
