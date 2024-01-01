@@ -317,6 +317,7 @@ impl<T> MissingOrNull<T> {
     }
 }
 
+/// A single binary message that could be sent in a binary websocket frame
 #[derive(Debug)]
 pub struct BinaryMessage {
     pub id: i64,
@@ -325,6 +326,7 @@ pub struct BinaryMessage {
 }
 
 impl BinaryMessage {
+    /// Decode one entire message
     pub fn from_reader<R: std::io::Read>(reader: &mut R) -> Result<Self, BinaryMessageError> {
         let len = decode::read_array_len(reader)?;
 
@@ -339,6 +341,7 @@ impl BinaryMessage {
         }
     }
 
+    /// Enocde this message onto a writer
     pub fn to_writer<W: std::io::Write>(&self, writer: &mut W) -> Result<(), BinaryMessageError> {
         encode::write_array_len(writer, 4)?;
         encode::write_sint(writer, self.id)?;
@@ -348,6 +351,7 @@ impl BinaryMessage {
     }
 }
 
+/// All defined types that could be sent in binary frames
 #[derive(Debug, Clone)]
 pub enum BinaryData {
     Boolean(bool),
@@ -382,6 +386,7 @@ pub enum BinaryMessageError {
 }
 
 impl BinaryData {
+    /// Decode a single chunk of binary data from a reader
     pub fn from_reader<R: std::io::Read>(reader: &mut R) -> Result<Self, BinaryMessageError> {
         let data_type: u8 = decode::read_int(reader)?;
 
@@ -461,6 +466,7 @@ impl BinaryData {
         Ok(data)
     }
 
+    /// Encode this binary payload to the wire
     pub fn to_writer<W: std::io::Write>(&self, writer: &mut W) -> Result<(), BinaryMessageError> {
         match self {
             BinaryData::Boolean(val) => {

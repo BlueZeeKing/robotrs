@@ -2,6 +2,7 @@ use serde::{de::DeserializeOwned, Serialize};
 
 use crate::types::BinaryData;
 
+/// Any type that can be sent directly over network tables
 pub trait Payload: Sized {
     fn name() -> &'static str;
     fn parse(data: BinaryData) -> Result<Self, ()>;

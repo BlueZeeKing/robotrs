@@ -24,6 +24,7 @@ pub mod payload;
 pub mod time;
 pub mod types;
 
+/// Any type of message that could be sent or recieved from a websocket
 #[derive(Debug)]
 pub enum NtMessage {
     Text(TextMessage),
@@ -88,14 +89,20 @@ pub enum Error {
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
+/// A generic timer driver
 pub trait Timer {
+    /// Delay for the specified duration
     fn time(duration: Duration) -> impl std::future::Future<Output = ()> + Send;
 }
 
+/// A generic backend that a client can use. [backend::TokioBackend] is a good example.
 pub trait Backend {
+    /// A type like a join handle that whatever is using the client might need
     type Output;
     type Error: std::error::Error + 'static + Send;
 
+    /// Using the hostname and client name create a backend that sends [NtMessage] or [Error] to
+    /// the client and passes on [NtMessage] to the server
     fn create(
         host: &str,
         name: &str,
@@ -105,7 +112,7 @@ pub trait Backend {
 }
 
 impl InnerNetworkTableClient {
-    pub async fn new<B: Backend>(host: &str, name: &str) -> Result<(Self, B::Output)> {
+    async fn new<B: Backend>(host: &str, name: &str) -> Result<(Self, B::Output)> {
         let (send_out, receive_out) = unbounded();
         let (send_in, receive_in) = unbounded();
 
@@ -151,12 +158,12 @@ impl InnerNetworkTableClient {
         ))
     }
 
-    pub fn get_server_time(&self) -> u64 {
+    fn get_server_time(&self) -> u64 {
         let offset = self.time_offset.load(std::sync::atomic::Ordering::Relaxed);
         (get_time() as i64 + offset) as u64
     }
 
-    pub async fn main_loop<T: Timer>(&self) -> Result<()> {
+    async fn main_loop<T: Timer>(&self) -> Result<()> {
         select! {
             res = self.time_loop::<T>().fuse() => {
                 return res;
@@ -330,11 +337,14 @@ impl InnerNetworkTableClient {
     }
 }
 
+// An instance of a network table client. Based on an [Arc] internally, so cheap to copy
+#[derive(Clone)]
 pub struct NetworkTableClient {
     inner: Arc<InnerNetworkTableClient>,
 }
 
 impl NetworkTableClient {
+    /// Create a new client using the hostname, client name, and a backend type
     pub async fn new<B: Backend>(host: &str, name: &str) -> Result<(Self, B::Output)> {
         let (inner, out) = InnerNetworkTableClient::new::<B>(host, name).await?;
 
@@ -346,12 +356,15 @@ impl NetworkTableClient {
         ))
     }
 
+    /// This returns a future that should be run on the side, usually, in an async task. This
+    /// future must remain alive for as long as subscriber and time updates are required
     pub fn main_task<T: Timer>(&self) -> impl Future<Output = Result<()>> + 'static {
         let inner = self.inner.clone();
 
         async move { inner.main_loop::<T>().await }
     }
 
+    /// Create a subscriber for a topic with a certain payload type
     pub fn subscribe<P: Payload>(&self, name: String) -> Result<Subscriber<P>> {
         let (sender, receiver) = unbounded();
 
@@ -376,6 +389,7 @@ impl NetworkTableClient {
         })
     }
 
+    /// Create a publisher for a topic with a certain payload type
     pub fn publish<P: Payload>(&self, name: String) -> Result<Publisher<P>> {
         let id = self
             .inner
@@ -425,6 +439,7 @@ impl<P: Payload> Subscriber<P> {
         Ok(data)
     }
 
+    /// Wait for a new payload value to become avaliable
     pub async fn get(&mut self) -> Result<P> {
         if !self.input.is_empty() {
             if let Some(val) = self.consume_updates()? {
