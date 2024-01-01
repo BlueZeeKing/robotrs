@@ -1,10 +1,11 @@
-use serde::de::DeserializeOwned;
+use serde::{de::DeserializeOwned, Serialize};
 
 use crate::types::BinaryData;
 
 pub trait Payload: Sized {
     fn name() -> &'static str;
     fn parse(data: BinaryData) -> Result<Self, ()>;
+    fn to_val(self) -> BinaryData;
 }
 
 impl Payload for bool {
@@ -17,6 +18,10 @@ impl Payload for bool {
             BinaryData::Boolean(val) => Ok(val),
             _ => Err(()),
         }
+    }
+
+    fn to_val(self) -> BinaryData {
+        BinaryData::Boolean(self)
     }
 }
 
@@ -31,6 +36,10 @@ impl Payload for f64 {
             _ => Err(()),
         }
     }
+
+    fn to_val(self) -> BinaryData {
+        BinaryData::Double(self)
+    }
 }
 
 impl Payload for f32 {
@@ -43,6 +52,10 @@ impl Payload for f32 {
             BinaryData::Float(val) => Ok(val),
             _ => Err(()),
         }
+    }
+
+    fn to_val(self) -> BinaryData {
+        BinaryData::Float(self)
     }
 }
 
@@ -58,6 +71,10 @@ macro_rules! payload_num {
                     BinaryData::Int(val) => Ok(val as $value),
                     _ => Err(()),
                 }
+            }
+
+            fn to_val(self) -> BinaryData {
+                BinaryData::Int(self as i64)
             }
         }
     };
@@ -85,11 +102,15 @@ impl Payload for String {
             _ => Err(()),
         }
     }
+
+    fn to_val(self) -> BinaryData {
+        BinaryData::Str(self)
+    }
 }
 
-pub struct Json<D: DeserializeOwned>(D);
+pub struct Json<D: DeserializeOwned + Serialize>(D);
 
-impl<D: DeserializeOwned> Payload for Json<D> {
+impl<D: DeserializeOwned + Serialize> Payload for Json<D> {
     fn name() -> &'static str {
         "string"
     }
@@ -99,6 +120,10 @@ impl<D: DeserializeOwned> Payload for Json<D> {
             BinaryData::Str(val) => Ok(Json(serde_json::from_str(&val).map_err(|_| ())?)),
             _ => Err(()),
         }
+    }
+
+    fn to_val(self) -> BinaryData {
+        BinaryData::Str(serde_json::to_string(&self.0).unwrap())
     }
 }
 
@@ -112,6 +137,10 @@ impl Payload for Vec<u8> {
             BinaryData::Bin(val) => Ok(val),
             _ => Err(()),
         }
+    }
+
+    fn to_val(self) -> BinaryData {
+        BinaryData::Bin(self)
     }
 }
 
@@ -128,6 +157,10 @@ impl Payload for MsgPack {
             _ => Err(()),
         }
     }
+
+    fn to_val(self) -> BinaryData {
+        BinaryData::Bin(self.0)
+    }
 }
 
 pub struct Rpc(Vec<u8>);
@@ -142,6 +175,10 @@ impl Payload for Rpc {
             BinaryData::Bin(val) => Ok(Rpc(val)),
             _ => Err(()),
         }
+    }
+
+    fn to_val(self) -> BinaryData {
+        BinaryData::Bin(self.0)
     }
 }
 
@@ -158,6 +195,10 @@ impl Payload for ProtoBuf {
             _ => Err(()),
         }
     }
+
+    fn to_val(self) -> BinaryData {
+        BinaryData::Bin(self.0)
+    }
 }
 
 impl Payload for Vec<bool> {
@@ -170,6 +211,10 @@ impl Payload for Vec<bool> {
             BinaryData::BoolArray(val) => Ok(val),
             _ => Err(()),
         }
+    }
+
+    fn to_val(self) -> BinaryData {
+        BinaryData::BoolArray(self)
     }
 }
 
@@ -184,6 +229,10 @@ impl Payload for Vec<f64> {
             _ => Err(()),
         }
     }
+
+    fn to_val(self) -> BinaryData {
+        BinaryData::DoubleArray(self)
+    }
 }
 
 impl Payload for Vec<f32> {
@@ -196,6 +245,10 @@ impl Payload for Vec<f32> {
             BinaryData::FloatArray(val) => Ok(val),
             _ => Err(()),
         }
+    }
+
+    fn to_val(self) -> BinaryData {
+        BinaryData::FloatArray(self)
     }
 }
 
@@ -210,6 +263,10 @@ impl Payload for Vec<i64> {
             _ => Err(()),
         }
     }
+
+    fn to_val(self) -> BinaryData {
+        BinaryData::IntArray(self)
+    }
 }
 
 impl Payload for Vec<String> {
@@ -222,5 +279,9 @@ impl Payload for Vec<String> {
             BinaryData::StringArray(val) => Ok(val),
             _ => Err(()),
         }
+    }
+
+    fn to_val(self) -> BinaryData {
+        BinaryData::StringArray(self)
     }
 }

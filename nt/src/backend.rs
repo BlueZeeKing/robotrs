@@ -2,18 +2,21 @@ use core::panic;
 use futures::{sink::SinkExt, stream::StreamExt, FutureExt};
 use http::{header::SEC_WEBSOCKET_PROTOCOL, Request};
 use std::{io::Cursor, str::FromStr};
-use tokio::select;
+use tokio::{select, task::JoinHandle};
 use tokio_tungstenite::connect_async;
 use tungstenite::{handshake::client::generate_key, Message};
 
 use http::Uri;
 
-use crate::{types::BinaryMessage, Backend, Error, Result, Timer};
+use crate::{
+    types::{BinaryMessage, TextMessage},
+    Backend, Error, Result, Timer,
+};
 
 pub struct TokioBackend {}
 
 impl Backend for TokioBackend {
-    type Output = ();
+    type Output = JoinHandle<()>;
     type Error = crate::Error;
 
     fn create(
@@ -26,7 +29,7 @@ impl Backend for TokioBackend {
 
         let send2 = send.clone();
 
-        tokio::spawn(async move {
+        Ok(tokio::spawn(async move {
             let req = Request::builder()
                 .method("GET")
                 .header("Host", uri.host().unwrap())
@@ -55,7 +58,7 @@ impl Backend for TokioBackend {
                         let message = message?;
 
                         match message {
-                            crate::NtMessage::Text(msg) => connection.send(Message::Text(serde_json::to_string(&msg)?)).await?,
+                            crate::NtMessage::Text(msg) => connection.send(Message::Text(serde_json::to_string(&[msg])?)).await?,
                             crate::NtMessage::Binary(msg) => {
                                 let mut buf = Vec::new();
                                 msg.to_writer(&mut buf)?;
@@ -70,16 +73,29 @@ impl Backend for TokioBackend {
                         let message = message.unwrap()?;
 
                         match message {
-                            Message::Text(msg) => send.send(Ok(crate::NtMessage::Text(serde_json::from_str(&msg)?))).map_err(|_| Error::Send)?,
-                            Message::Binary(msg) => send.send(Ok(crate::NtMessage::Binary(BinaryMessage::from_reader(&mut Cursor::new(msg))?))).map_err(|_| Error::Send)?,
+                            Message::Text(msg) => {
+                                let msgs = serde_json::from_str::<Vec<TextMessage>>(&msg)?;
+                                for msg in msgs {
+                                    send.send(Ok(crate::NtMessage::Text(msg))).map_err(|_| Error::Send)?;
+                                }
+                            }
+                            Message::Binary(msg) => {
+                                let mut cursor = Cursor::new(msg);
+
+                                while (cursor.position() as usize) < cursor.get_ref().len() {
+                                    send.send(Ok(crate::NtMessage::Binary(BinaryMessage::from_reader(&mut cursor)?))).map_err(|_| Error::Send)?;
+                                }
+                            }
                             _ => return <Result<()>>::Err(Error::UnknownFrame),
                         }
                     }
                 }
             }
-        }.map(move |out| if let Err(err) = out { send2.send(Err(err)).unwrap() }));
-
-        Ok(())
+        }.map(move |out| {
+            if let Err(err) = out {
+                let _res = send2.send(Err(err));
+            }
+        })))
     }
 }
 

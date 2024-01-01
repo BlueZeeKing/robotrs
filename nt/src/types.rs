@@ -21,7 +21,7 @@ fn skip_none<T>(val: &Option<T>) -> bool {
 /// arbitrary properties being set outside of this set. Clients shall ignore properties they do not
 /// recognize. Properties are initially set on publish and may be changed (by any client) using
 /// [TextMessage::SetProperties]
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct Properties {
     /// If true, the last set value will be periodically saved to persistent storage on the server
     /// and be restored during server startup. Topics with this property set to true will not be
@@ -50,6 +50,24 @@ pub struct Properties {
         skip_serializing_if = "should_skip"
     )]
     pub cached: MissingOrNull<bool>,
+}
+
+impl Default for Properties {
+    fn default() -> Self {
+        Self {
+            persistent: Default::default(),
+            retained: Default::default(),
+            cached: Default::default(),
+        }
+    }
+}
+
+impl Properties {
+    pub fn update(&mut self, other: Properties) {
+        self.persistent.update(other.persistent);
+        self.retained.update(other.retained);
+        self.cached.update(other.cached);
+    }
 }
 
 mod missing_or_null_impls {
@@ -100,6 +118,17 @@ pub struct SubscriptionOptions {
     pub prefix: Option<bool>,
 }
 
+impl Default for SubscriptionOptions {
+    fn default() -> Self {
+        Self {
+            periodic: None,
+            all: None,
+            topicsonly: None,
+            prefix: None,
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "method", content = "params")]
 pub enum TextMessage {
@@ -117,7 +146,7 @@ pub enum TextMessage {
         /// A client-generated unique identifier for this publisher. Use the same UID later to
         /// unpublish. This is also the identifier that the client will use in MessagePack messages
         /// for this topic.
-        pubuid: i32,
+        pubuid: u32,
 
         /// The requested data type (as a string).
         ///
@@ -151,7 +180,7 @@ pub enum TextMessage {
     #[serde(rename = "unpublish")]
     Unpublish {
         /// The same unique identifier passed to the [TextMessage::Publish] message
-        pubuid: i32,
+        pubuid: u32,
     },
 
     /// Sent from a client to the server to change properties (see [Properties]) for a given topic.
@@ -181,7 +210,7 @@ pub enum TextMessage {
 
         /// A client-generated unique identifier for this subscription. Use the same UID later to
         /// unsubscribe.
-        subuid: i32,
+        subuid: u32,
 
         /// [SubscriptionOptions]
         options: SubscriptionOptions,
@@ -192,7 +221,7 @@ pub enum TextMessage {
     #[serde(rename = "unsubscribe")]
     Unsubscribe {
         /// The same unique identifier passed to the [TextMessage::Subscribe] message
-        subuid: i32,
+        subuid: u32,
     },
 
     /// The server shall send this message for each of the following conditions:
@@ -203,7 +232,7 @@ pub enum TextMessage {
         name: String,
 
         /// The identifier that the server will use in MessagePack messages for this topic
-        id: i32,
+        id: u32,
 
         /// The data type for the topic (as a string)
         #[serde(rename = "type")]
@@ -211,7 +240,7 @@ pub enum TextMessage {
 
         /// If this message was sent in response to a [TextMessage::Publish] message, the Publisher UID provided
         /// in that message. Otherwise absent.
-        pubuid: Option<i32>,
+        pubuid: Option<u32>,
 
         /// Topic [Properties]
         properties: Properties,
@@ -224,7 +253,7 @@ pub enum TextMessage {
         name: String,
 
         /// The identifier that the server was using for value updates
-        id: i32,
+        id: u32,
     },
 
     /// The server shall send this message when a previously announced (via a Topic Announcement
@@ -278,6 +307,16 @@ impl<T> Default for MissingOrNull<T> {
     }
 }
 
+impl<T> MissingOrNull<T> {
+    pub fn update(&mut self, other: Self) {
+        if matches!(other, MissingOrNull::Missing) {
+            return;
+        }
+
+        *self = other;
+    }
+}
+
 #[derive(Debug)]
 pub struct BinaryMessage {
     pub id: i64,
@@ -309,7 +348,7 @@ impl BinaryMessage {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum BinaryData {
     Boolean(bool),
     Double(f64),
