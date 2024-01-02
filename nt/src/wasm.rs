@@ -6,7 +6,7 @@ use wasm_bindgen_futures::{
     spawn_local,
     wasm_bindgen::{closure::Closure, JsCast},
 };
-use web_sys::{wasm_bindgen::JsValue, MessageEvent, WebSocket};
+use web_sys::{console, wasm_bindgen::JsValue, MessageEvent, WebSocket};
 
 use crate::{
     types::{BinaryMessage, TextMessage},
@@ -46,6 +46,7 @@ impl Backend for WasmBackend {
 
         let callback = Closure::<dyn FnMut(_)>::new(move |e: MessageEvent| {
             if let Ok(buf) = e.data().dyn_into::<ArrayBuffer>() {
+                console::log_1(&JsValue::from_str("bin"));
                 let array = Uint8Array::new(&buf);
                 let mut buf = Vec::with_capacity(array.length() as usize);
                 array.copy_to(&mut buf);
@@ -58,6 +59,7 @@ impl Backend for WasmBackend {
                     )));
                 }
             } else if let Ok(text) = e.data().dyn_into::<JsString>() {
+                console::log_1(&JsValue::from_str("text"));
                 let text: String = text.into();
                 let msgs = serde_json::from_str::<Vec<TextMessage>>(&text).unwrap();
                 for msg in msgs {
