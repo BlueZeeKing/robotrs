@@ -16,7 +16,7 @@ use crate::{
 pub struct WasmBackend {}
 
 #[derive(Debug, Error)]
-enum Error {
+pub enum Error {
     #[error("Encountered a JS error")]
     Js,
 }
