@@ -11,18 +11,18 @@ use std::{
 
 use flume::{unbounded, Receiver, RecvError, Sender};
 use futures::{select, Future, FutureExt};
-use http::uri::InvalidUri;
 use payload::Payload;
 use thiserror::Error;
 use time::get_time;
-use types::{
-    BinaryData, BinaryMessage, BinaryMessageError, Properties, SubscriptionOptions, TextMessage,
-};
+use types::{BinaryData, BinaryMessage, Properties, SubscriptionOptions, TextMessage};
 
-pub mod backend;
 pub mod payload;
 pub mod time;
+#[cfg(feature = "tokio")]
+pub mod tokio;
 pub mod types;
+#[cfg(feature = "wasm")]
+pub mod wasm;
 
 /// Any type of message that could be sent or recieved from a websocket
 #[derive(Debug)]
@@ -63,18 +63,6 @@ enum SubscriberUpdate {
 
 #[derive(Debug, Error)]
 pub enum Error {
-    #[error("Encountered an http error: {0}")]
-    Http(#[from] http::Error),
-    #[error("Encountered a websocket error: {0}")]
-    Websocket(#[from] tungstenite::Error),
-    #[error("Invalid uri error: {0}")]
-    Uri(#[from] InvalidUri),
-    #[error("Server does not support the nt v4.0 protocol")]
-    UnsupportedServer,
-    #[error("Error while encoding or decoding a binary message: {0}")]
-    BinaryMessage(#[from] BinaryMessageError),
-    #[error("Error while encoding or decoding a text message: {0}")]
-    TextMessage(#[from] serde_json::Error),
     #[error("Error while sending a message")]
     Send,
     #[error("Error while receiving a message: {0}")]

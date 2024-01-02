@@ -1,4 +1,4 @@
-use nt_rs::{backend::TokioBackend, time::init_time, NetworkTableClient, Publisher};
+use nt_rs::{time::init_time, tokio::TokioBackend, NetworkTableClient, Publisher};
 
 #[tokio::main]
 async fn main() {
