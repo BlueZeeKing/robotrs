@@ -1,7 +1,13 @@
 [package]
-name = "nt"
-version = "0.1.0"
+name = "nt-rs"
+version = "0.0.1"
 edition = "2021"
+
+license = "MIT"
+description = "An NT 4.0 (and parially 4.1) client"
+homepage = "https://github.com/BlueZeeKing/robotrs"
+repository = "https://github.com/BlueZeeKing/robotrs"
+readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
