@@ -13,7 +13,7 @@ use crate::{
     Backend, Timer,
 };
 
-struct WasmBackend {}
+pub struct WasmBackend {}
 
 #[derive(Debug, Error)]
 enum Error {
