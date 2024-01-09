@@ -1,4 +1,9 @@
-use nt_rs::{backends::tokio::TokioBackend, time::init_time, NetworkTableClient, Subscriber};
+use std::time::Duration;
+
+use nt_rs::{
+    backends::tokio::TokioBackend, publish::Publisher, time::init_time, NetworkTableClient,
+};
+use tokio::time::sleep;
 
 #[tokio::main]
 async fn main() {
@@ -13,17 +18,21 @@ async fn main() {
 
         let main = tokio::spawn(client.main_task::<TokioBackend>());
 
-        let mut subscriber: Subscriber<String> = client
-            .subscribe("/FMSInfo/GameSpecificMessage".to_owned())
-            .unwrap();
+        let publisher: Publisher<i32> = client.publish("val".to_owned()).unwrap();
 
-        loop {
-            if let Ok(val) = subscriber.get().await {
-                dbg!(val);
-            } else {
-                break;
-            }
-        }
+        publisher.set(1).unwrap();
+
+        dbg!("First");
+
+        sleep(Duration::from_secs(10)).await;
+
+        dbg!("Second");
+
+        publisher.set(2).unwrap();
+
+        sleep(Duration::from_secs(10)).await;
+
+        dbg!("Third");
 
         main.abort(); // End the main recieve loop
     }

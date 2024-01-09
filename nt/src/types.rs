@@ -7,6 +7,8 @@ use rmp::{
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+pub mod payload;
+
 fn should_skip(val: &MissingOrNull<bool>) -> bool {
     *val == MissingOrNull::Missing
 }

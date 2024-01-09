@@ -5,7 +5,7 @@ use http::{header::SEC_WEBSOCKET_PROTOCOL, uri::InvalidUri, Request};
 use std::{io::Cursor, str::FromStr, time::Duration};
 use tokio::{select, task::JoinHandle};
 use tokio_tungstenite::connect_async;
-use tungstenite::{connect, handshake::client::generate_key, Message};
+use tungstenite::{handshake::client::generate_key, Message};
 
 use http::Uri;
 
@@ -92,14 +92,12 @@ impl Backend for TokioBackend {
                                 msg.to_writer(&mut buf)?;
                                 connection.send(Message::Binary(buf)).await?
                             }
-                            crate::NtMessage::Reconnect => {
+                            crate::NtMessage::Reconnect(_) => {
                                 loop {
                                     if let Ok((mut new_con, _)) = connect_async(req.clone()).await {
                                         std::mem::swap(&mut new_con, &mut connection);
 
-                                        send.send(Ok(crate::NtMessage::Reconnect)).map_err(|_| TokioError::Send)?;
-
-                                        receive.drain().for_each(|_| {});
+                                        send.send(Ok(crate::NtMessage::Reconnect(Some(receive.drain().collect::<Vec<_>>())))).map_err(|_| TokioError::Send)?;
 
                                         break;
                                     } else {
@@ -115,7 +113,7 @@ impl Backend for TokioBackend {
                                 if let Ok((mut new_con, _)) = connect_async(req.clone()).await {
                                     std::mem::swap(&mut new_con, &mut connection);
 
-                                    send.send(Ok(crate::NtMessage::Reconnect)).map_err(|_| TokioError::Send)?;
+                                    send.send(Ok(crate::NtMessage::Reconnect(Some(receive.drain().collect::<Vec<_>>())))).map_err(|_| TokioError::Send)?;
 
                                     receive.drain().for_each(|_| {});
 
