@@ -3,7 +3,7 @@ use std::{
     collections::HashMap,
     marker::PhantomData,
     sync::{
-        atomic::{AtomicI64, AtomicU32},
+        atomic::{AtomicI64, AtomicU32, AtomicU64},
         Arc, Mutex,
     },
     time::Duration,
@@ -16,24 +16,24 @@ use thiserror::Error;
 use time::get_time;
 use types::{BinaryData, BinaryMessage, Properties, SubscriptionOptions, TextMessage};
 
+pub mod backends;
 pub mod payload;
 pub mod time;
-#[cfg(feature = "tokio")]
-pub mod tokio;
 pub mod types;
-#[cfg(feature = "wasm")]
-pub mod wasm;
 
 /// Any type of message that could be sent or recieved from a websocket
 #[derive(Debug)]
 pub enum NtMessage {
     Text(TextMessage),
     Binary(BinaryMessage),
+    Reconnect,
 }
 
 struct Topics {
     topics: HashMap<String, Sender<SubscriberUpdate>>,
     topic_ids: HashMap<u32, String>,
+
+    publishers: Vec<(String, u32, String)>,
 }
 
 impl Default for Topics {
@@ -41,6 +41,8 @@ impl Default for Topics {
         Self {
             topics: Default::default(),
             topic_ids: Default::default(),
+
+            publishers: Default::default(),
         }
     }
 }
@@ -53,12 +55,15 @@ struct InnerNetworkTableClient {
 
     subuid: AtomicU32,
     pubuid: AtomicU32,
+
+    last_time_update: AtomicU64,
 }
 
 enum SubscriberUpdate {
     Properties(Properties),
     Data(BinaryData),
     Type(String),
+    Id(u32),
 }
 
 #[derive(Debug, Error)]
@@ -141,6 +146,8 @@ impl InnerNetworkTableClient {
 
                 subuid: AtomicU32::new(u32::MIN),
                 pubuid: AtomicU32::new(u32::MIN),
+
+                last_time_update: AtomicU64::new(get_time()),
             },
             out,
         ))
@@ -164,6 +171,17 @@ impl InnerNetworkTableClient {
 
     async fn time_loop<T: Timer>(&self) -> Result<()> {
         loop {
+            if get_time()
+                - self
+                    .last_time_update
+                    .load(std::sync::atomic::Ordering::Relaxed)
+                > Duration::from_secs(3).as_micros() as u64
+            {
+                self.send
+                    .send(NtMessage::Reconnect)
+                    .map_err(|_| Error::Send)?;
+            }
+
             T::time(Duration::from_secs(2)).await;
 
             self.start_sync_time()?;
@@ -233,6 +251,8 @@ impl InnerNetworkTableClient {
 
                         self.time_offset
                             .fetch_min(offset, std::sync::atomic::Ordering::Relaxed);
+                        self.last_time_update
+                            .store(get_time(), std::sync::atomic::Ordering::Relaxed);
                     } else {
                         let mut topics = self.topics.lock().unwrap();
 
@@ -252,6 +272,70 @@ impl InnerNetworkTableClient {
                             topics.topics.remove(&name);
                             topics.topic_ids.remove(&(msg.id as u32));
                         }
+                    }
+                }
+                NtMessage::Reconnect => {
+                    self.last_time_update
+                        .store(get_time(), std::sync::atomic::Ordering::Relaxed);
+
+                    self.send
+                        .send(NtMessage::Binary(BinaryMessage {
+                            id: -1,
+                            timestamp: 0,
+                            data: BinaryData::Int(get_time() as i64),
+                        }))
+                        .map_err(|_| Error::Send)?;
+
+                    let mut msg = self.receive.recv_async().await??;
+
+                    while !matches!(&msg, NtMessage::Binary(msg) if msg.id == -1) {
+                        msg = self.receive.recv_async().await??;
+                    }
+
+                    let NtMessage::Binary(msg) = msg else {
+                        unreachable!();
+                    };
+
+                    let BinaryData::Int(time) = msg.data else {
+                        return Err(Error::Type);
+                    };
+
+                    let server_time = (get_time() as i64 - time) / 2 + msg.timestamp as i64;
+                    let offset = server_time - get_time() as i64;
+
+                    self.time_offset
+                        .store(offset, std::sync::atomic::Ordering::Relaxed);
+
+                    let mut topics = self.topics.lock().unwrap();
+
+                    let topic_ids = std::mem::take(&mut topics.topic_ids);
+
+                    for (_key, value) in topic_ids {
+                        let id = self.new_subuid();
+                        self.send
+                            .send(NtMessage::Text(TextMessage::Subscribe {
+                                topics: vec![value.clone()],
+                                subuid: id,
+                                options: Default::default(),
+                            }))
+                            .map_err(|_| Error::Send)?;
+
+                        if let Some(sender) = topics.topics.get(&value) {
+                            sender
+                                .send(SubscriberUpdate::Id(id))
+                                .map_err(|_| Error::Send)?;
+                        }
+                    }
+
+                    for (topic, pubuid, data_type) in &topics.publishers {
+                        self.send
+                            .send(NtMessage::Text(TextMessage::Publish {
+                                name: topic.to_owned(),
+                                pubuid: *pubuid,
+                                data_type: data_type.to_owned(),
+                                properties: Default::default(),
+                            }))
+                            .map_err(|_| Error::Send)?;
                     }
                 }
             }
@@ -383,6 +467,13 @@ impl NetworkTableClient {
             .inner
             .publish(name.clone(), P::name().to_owned(), Default::default())?;
 
+        self.inner
+            .topics
+            .lock()
+            .unwrap()
+            .publishers
+            .push((name.clone(), id, P::name().to_owned()));
+
         Ok(Publisher {
             name,
             id,
@@ -421,6 +512,7 @@ impl<P: Payload> Subscriber<P> {
                         return Err(Error::Type);
                     }
                 }
+                SubscriberUpdate::Id(id) => self.id = id,
             }
         }
 
@@ -454,6 +546,7 @@ impl<P: Payload> Subscriber<P> {
                         return Err(Error::Type);
                     }
                 }
+                SubscriberUpdate::Id(id) => self.id = id,
             }
         }
     }
@@ -510,5 +603,12 @@ impl<P: Payload> Publisher<P> {
 impl<P: Payload> Drop for Publisher<P> {
     fn drop(&mut self) {
         let _ = self.client.unpublish(self.id);
+
+        self.client
+            .topics
+            .lock()
+            .unwrap()
+            .publishers
+            .retain(|(_, pubuid, _)| *pubuid != self.id);
     }
 }

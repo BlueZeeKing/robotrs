@@ -2,10 +2,10 @@ use core::panic;
 use flume::RecvError;
 use futures::{sink::SinkExt, stream::StreamExt, FutureExt};
 use http::{header::SEC_WEBSOCKET_PROTOCOL, uri::InvalidUri, Request};
-use std::{io::Cursor, str::FromStr};
+use std::{io::Cursor, str::FromStr, time::Duration};
 use tokio::{select, task::JoinHandle};
 use tokio_tungstenite::connect_async;
-use tungstenite::{handshake::client::generate_key, Message};
+use tungstenite::{connect, handshake::client::generate_key, Message};
 
 use http::Uri;
 
@@ -68,7 +68,7 @@ impl Backend for TokioBackend {
                 .uri(uri)
                 .body(())?;
 
-            let (mut connection, res) = connect_async(req).await?;
+            let (mut connection, res) = connect_async(req.clone()).await?;
 
             if res
                 .headers()
@@ -78,6 +78,7 @@ impl Backend for TokioBackend {
             {
                 return Err(TokioError::UnsupportedServer);
             }
+
 
             loop {
                 select! {
@@ -90,13 +91,43 @@ impl Backend for TokioBackend {
                                 let mut buf = Vec::new();
                                 msg.to_writer(&mut buf)?;
                                 connection.send(Message::Binary(buf)).await?
+                            }
+                            crate::NtMessage::Reconnect => {
+                                loop {
+                                    if let Ok((mut new_con, _)) = connect_async(req.clone()).await {
+                                        std::mem::swap(&mut new_con, &mut connection);
+
+                                        send.send(Ok(crate::NtMessage::Reconnect)).map_err(|_| TokioError::Send)?;
+
+                                        receive.drain().for_each(|_| {});
+
+                                        break;
+                                    } else {
+                                        tokio::time::sleep(Duration::from_secs(1)).await;
+                                    }
+                                }
                             },
                         }
                     }
                     message = connection.next() => {
-                        if message.is_none() {
-                            return Ok(());
+                        if matches!(message, Some(Err(_))) || message.is_none() {
+                            loop {
+                                if let Ok((mut new_con, _)) = connect_async(req.clone()).await {
+                                    std::mem::swap(&mut new_con, &mut connection);
+
+                                    send.send(Ok(crate::NtMessage::Reconnect)).map_err(|_| TokioError::Send)?;
+
+                                    receive.drain().for_each(|_| {});
+
+                                    break;
+                                } else {
+                                    tokio::time::sleep(Duration::from_secs(1)).await;
+                                }
+                            }
+
+                            continue;
                         }
+
                         let message = message.unwrap()?;
 
                         match message {
