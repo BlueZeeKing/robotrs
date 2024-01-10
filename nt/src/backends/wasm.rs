@@ -6,7 +6,7 @@ use wasm_bindgen_futures::{
     spawn_local,
     wasm_bindgen::{closure::Closure, JsCast},
 };
-use web_sys::{console, wasm_bindgen::JsValue, MessageEvent, WebSocket};
+use web_sys::{wasm_bindgen::JsValue, MessageEvent, WebSocket};
 
 use crate::{
     types::{BinaryMessage, TextMessage},
@@ -46,9 +46,8 @@ impl Backend for WasmBackend {
 
         let callback = Closure::<dyn FnMut(_)>::new(move |e: MessageEvent| {
             if let Ok(buf) = e.data().dyn_into::<ArrayBuffer>() {
-                console::log_1(&JsValue::from_str("bin"));
                 let array = Uint8Array::new(&buf);
-                let mut buf = Vec::with_capacity(array.length() as usize);
+                let mut buf = vec![0; array.length() as usize];
                 array.copy_to(&mut buf);
 
                 let mut reader = Cursor::new(buf);
@@ -59,7 +58,6 @@ impl Backend for WasmBackend {
                     )));
                 }
             } else if let Ok(text) = e.data().dyn_into::<JsString>() {
-                console::log_1(&JsValue::from_str("text"));
                 let text: String = text.into();
                 let msgs = serde_json::from_str::<Vec<TextMessage>>(&text).unwrap();
                 for msg in msgs {
@@ -72,20 +70,32 @@ impl Backend for WasmBackend {
 
         callback.forget();
 
-        spawn_local(async move {
-            loop {
-                match receive.recv_async().await.unwrap() {
-                    crate::NtMessage::Text(msg) => ws
-                        .send_with_str(&serde_json::to_string(&[msg]).unwrap())
-                        .unwrap(),
-                    crate::NtMessage::Binary(msg) => {
-                        let mut buf = Vec::new();
-                        msg.to_writer(&mut buf).unwrap();
-                        ws.send_with_u8_array(&buf).unwrap();
+        let ws2 = ws.clone();
+
+        let callback = Closure::<dyn FnMut(_)>::new(move |_e: MessageEvent| {
+            let receive = (&receive).clone();
+            let ws = (&ws2).clone();
+            spawn_local(async move {
+                loop {
+                    let recv = receive.recv_async().await.unwrap();
+                    match recv {
+                        crate::NtMessage::Text(msg) => ws
+                            .send_with_str(&serde_json::to_string(&[msg]).unwrap())
+                            .unwrap(),
+                        crate::NtMessage::Binary(msg) => {
+                            let mut buf = Vec::new();
+                            msg.to_writer(&mut buf).unwrap();
+                            ws.send_with_u8_array(&buf).unwrap();
+                        }
+                        crate::NtMessage::Reconnect(_) => todo!(),
                     }
                 }
-            }
+            });
         });
+
+        ws.set_onopen(Some(callback.as_ref().unchecked_ref()));
+
+        callback.forget();
 
         Ok(())
     }
@@ -93,6 +103,6 @@ impl Backend for WasmBackend {
 
 impl Timer for WasmBackend {
     async fn time(duration: std::time::Duration) {
-        wasm_timer::Delay::new(duration).await;
+        let _ = fluvio_wasm_timer::Delay::new(duration).await;
     }
 }
