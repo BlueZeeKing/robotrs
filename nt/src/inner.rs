@@ -20,7 +20,20 @@ pub struct Topics {
     pub topics: HashMap<String, Sender<SubscriberUpdate>>,
     pub topic_ids: HashMap<u32, String>,
 
-    pub publishers: Vec<(String, u32, String)>,
+    pub prefix_channels: HashMap<String, Sender<(String, Receiver<SubscriberUpdate>)>>,
+
+    pub publishers: HashMap<u32, PublisherData>,
+    pub subscribers: HashMap<u32, SubscriberData>,
+}
+
+pub struct PublisherData {
+    pub name: String,
+    pub data_type: String,
+}
+
+pub struct SubscriberData {
+    pub name: String,
+    pub options: SubscriptionOptions,
 }
 
 impl Default for Topics {
@@ -29,7 +42,10 @@ impl Default for Topics {
             topics: Default::default(),
             topic_ids: Default::default(),
 
+            prefix_channels: Default::default(),
+
             publishers: Default::default(),
+            subscribers: Default::default(),
         }
     }
 }
@@ -145,18 +161,34 @@ impl InnerNetworkTableClient {
                     } => {
                         let mut topics = self.topics.lock().unwrap();
 
-                        let Some(sender) = topics.topics.get(&name) else {
-                            continue;
-                        };
-
-                        if sender.send(SubscriberUpdate::Type(data_type)).is_err()
-                            || sender
-                                .send(SubscriberUpdate::Properties(properties))
-                                .is_err()
-                        {
-                            topics.topics.remove(&name);
+                        if let Some(sender) = topics.topics.get(&name) {
+                            if sender.send(SubscriberUpdate::Type(data_type)).is_err()
+                                || sender
+                                    .send(SubscriberUpdate::Properties(properties))
+                                    .is_err()
+                            {
+                                topics.topics.remove(&name);
+                            } else {
+                                topics.topic_ids.insert(id, name);
+                            }
                         } else {
-                            topics.topic_ids.insert(id, name);
+                            let (send, receive) = unbounded();
+
+                            topics.topics.insert(name.clone(), send.clone());
+                            topics.topic_ids.insert(id, name.clone());
+
+                            let Some((_, sender)) = topics
+                                .prefix_channels
+                                .iter()
+                                .find(|(prefix, _)| name.starts_with(prefix.as_str()))
+                            else {
+                                continue;
+                            };
+
+                            send.send(SubscriberUpdate::Type(data_type)).unwrap();
+                            send.send(SubscriberUpdate::Properties(properties)).unwrap();
+
+                            sender.send((name, receive)).map_err(|_| Error::Send)?;
                         }
                     }
                     TextMessage::Unannounce { name, id } => {
@@ -252,31 +284,24 @@ impl InnerNetworkTableClient {
 
                     let mut topics = self.topics.lock().unwrap();
 
-                    let topic_ids = std::mem::take(&mut topics.topic_ids);
+                    topics.topic_ids.clear();
 
-                    for (_key, value) in topic_ids {
-                        let id = self.new_subuid();
+                    for (subuid, data) in topics.subscribers.iter() {
                         self.send
                             .send(NtMessage::Text(TextMessage::Subscribe {
-                                topics: vec![value.clone()],
-                                subuid: id,
-                                options: Default::default(),
+                                topics: vec![data.name.clone()],
+                                subuid: *subuid,
+                                options: data.options.clone(),
                             }))
                             .map_err(|_| Error::Send)?;
-
-                        if let Some(sender) = topics.topics.get(&value) {
-                            sender
-                                .send(SubscriberUpdate::Id(id))
-                                .map_err(|_| Error::Send)?;
-                        }
                     }
 
-                    for (topic, pubuid, data_type) in &topics.publishers {
+                    for (pubuid, data) in topics.publishers.iter() {
                         self.send
                             .send(NtMessage::Text(TextMessage::Publish {
-                                name: topic.to_owned(),
+                                name: data.name.to_owned(),
                                 pubuid: *pubuid,
-                                data_type: data_type.to_owned(),
+                                data_type: data.data_type.to_owned(),
                                 properties: Default::default(),
                             }))
                             .map_err(|_| Error::Send)?;

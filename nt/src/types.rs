@@ -95,7 +95,7 @@ mod missing_or_null_impls {
 /// spec. Servers shall preserve arbitrary options, as servers and clients may support arbitrary
 /// options outside of this set. Options are set using Subscribe Message ([TextMessage::Subscribe])
 /// and cannot be changed.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SubscriptionOptions {
     /// How frequently the server should send changes. The server may send more frequently than
     /// this (e.g. use a combined minimum period for all values) or apply a restricted range to
@@ -118,6 +118,28 @@ pub struct SubscriptionOptions {
     /// not just exact matches. If not specified, defaults to false.
     #[serde(skip_serializing_if = "skip_none", default)]
     pub prefix: Option<bool>,
+}
+
+impl SubscriptionOptions {
+    pub fn periodic(mut self, value: u32) -> Self {
+        self.periodic = Some(value);
+        self
+    }
+
+    pub fn all(mut self, value: bool) -> Self {
+        self.all = Some(value);
+        self
+    }
+
+    pub fn topicsonly(mut self, value: bool) -> Self {
+        self.topicsonly = Some(value);
+        self
+    }
+
+    pub fn prefix(mut self, value: bool) -> Self {
+        self.prefix = Some(value);
+        self
+    }
 }
 
 impl Default for SubscriptionOptions {

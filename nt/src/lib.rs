@@ -2,11 +2,13 @@ use std::{marker::PhantomData, sync::Arc, time::Duration};
 
 use flume::{unbounded, Receiver, RecvError, Sender};
 use futures::Future;
-use inner::InnerNetworkTableClient;
+use inner::{InnerNetworkTableClient, PublisherData, SubscriberData};
 use publish::Publisher;
 use subscribe::Subscriber;
 use thiserror::Error;
-use types::{payload::Payload, BinaryData, BinaryMessage, Properties, TextMessage};
+use types::{
+    payload::Payload, BinaryData, BinaryMessage, Properties, SubscriptionOptions, TextMessage,
+};
 
 pub mod backends;
 pub(crate) mod inner;
@@ -27,7 +29,6 @@ pub(crate) enum SubscriberUpdate {
     Properties(Properties),
     Data(BinaryData),
     Type(String),
-    Id(u32),
 }
 
 #[derive(Debug, Error)]
@@ -96,19 +97,34 @@ impl NetworkTableClient {
     }
 
     /// Create a subscriber for a topic with a certain payload type
-    pub fn subscribe<P: Payload>(&self, name: String) -> Result<Subscriber<P>> {
+    pub fn subscribe<P: Payload>(
+        &self,
+        name: String,
+        options: SubscriptionOptions,
+    ) -> Result<Subscriber<P>> {
         let (sender, receiver) = unbounded();
 
-        self.inner
-            .topics
-            .lock()
-            .unwrap()
-            .topics
-            .insert(name.clone(), sender);
+        let mut topics = self.inner.topics.lock().unwrap();
 
-        let id = self
-            .inner
-            .subscribe(vec![name.clone()], Default::default())?;
+        topics.topics.insert(name.clone(), sender);
+
+        let prefix_children = if options.prefix.unwrap_or(false) {
+            let (prefix_sender, prefix_reveiver) = unbounded();
+            topics.prefix_channels.insert(name.clone(), prefix_sender);
+            Some(prefix_reveiver)
+        } else {
+            None
+        };
+
+        let id = self.inner.subscribe(vec![name.clone()], options.clone())?;
+
+        topics.subscribers.insert(
+            id,
+            SubscriberData {
+                name: name.clone(),
+                options,
+            },
+        );
 
         Ok(Subscriber {
             name,
@@ -117,21 +133,25 @@ impl NetworkTableClient {
             id,
             client: self.inner.clone(),
             phantom: PhantomData,
+            prefix_children,
         })
     }
 
     /// Create a publisher for a topic with a certain payload type
     pub fn publish<P: Payload>(&self, name: String) -> Result<Publisher<P>> {
-        let id = self
-            .inner
-            .publish(name.clone(), P::name().to_owned(), Default::default())?;
+        let id = self.inner.publish(
+            name.clone(),
+            P::name().unwrap().to_owned(),
+            Default::default(),
+        )?;
 
-        self.inner
-            .topics
-            .lock()
-            .unwrap()
-            .publishers
-            .push((name.clone(), id, P::name().to_owned()));
+        self.inner.topics.lock().unwrap().publishers.insert(
+            id,
+            PublisherData {
+                name: name.clone(),
+                data_type: P::name().unwrap().to_owned(),
+            },
+        );
 
         Ok(Publisher {
             name,

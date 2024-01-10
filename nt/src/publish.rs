@@ -49,6 +49,6 @@ impl<P: Payload> Drop for Publisher<P> {
             .lock()
             .unwrap()
             .publishers
-            .retain(|(_, pubuid, _)| *pubuid != self.id);
+            .remove(&self.id);
     }
 }

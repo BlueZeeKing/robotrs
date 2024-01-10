@@ -1,17 +1,19 @@
+use core::panic;
+
 use serde::{de::DeserializeOwned, Serialize};
 
 use crate::types::BinaryData;
 
 /// Any type that can be sent directly over network tables
 pub trait Payload: Sized {
-    fn name() -> &'static str;
+    fn name() -> Option<&'static str>;
     fn parse(data: BinaryData) -> Result<Self, ()>;
     fn to_val(self) -> BinaryData;
 }
 
 impl Payload for bool {
-    fn name() -> &'static str {
-        "boolean"
+    fn name() -> Option<&'static str> {
+        Some("boolean")
     }
 
     fn parse(data: BinaryData) -> Result<Self, ()> {
@@ -27,8 +29,8 @@ impl Payload for bool {
 }
 
 impl Payload for f64 {
-    fn name() -> &'static str {
-        "double"
+    fn name() -> Option<&'static str> {
+        Some("double")
     }
 
     fn parse(data: BinaryData) -> Result<Self, ()> {
@@ -44,8 +46,8 @@ impl Payload for f64 {
 }
 
 impl Payload for f32 {
-    fn name() -> &'static str {
-        "float"
+    fn name() -> Option<&'static str> {
+        Some("float")
     }
 
     fn parse(data: BinaryData) -> Result<Self, ()> {
@@ -63,8 +65,8 @@ impl Payload for f32 {
 macro_rules! payload_num {
     ($value:ident) => {
         impl Payload for $value {
-            fn name() -> &'static str {
-                "int"
+            fn name() -> Option<&'static str> {
+                Some("int")
             }
 
             fn parse(data: BinaryData) -> Result<Self, ()> {
@@ -93,8 +95,8 @@ payload_num!(u16);
 payload_num!(u8);
 
 impl Payload for String {
-    fn name() -> &'static str {
-        "string"
+    fn name() -> Option<&'static str> {
+        Some("string")
     }
 
     fn parse(data: BinaryData) -> Result<Self, ()> {
@@ -112,8 +114,8 @@ impl Payload for String {
 pub struct Json<D: DeserializeOwned + Serialize>(D);
 
 impl<D: DeserializeOwned + Serialize> Payload for Json<D> {
-    fn name() -> &'static str {
-        "string"
+    fn name() -> Option<&'static str> {
+        Some("string")
     }
 
     fn parse(data: BinaryData) -> Result<Self, ()> {
@@ -129,8 +131,8 @@ impl<D: DeserializeOwned + Serialize> Payload for Json<D> {
 }
 
 impl Payload for Vec<u8> {
-    fn name() -> &'static str {
-        "raw"
+    fn name() -> Option<&'static str> {
+        Some("raw")
     }
 
     fn parse(data: BinaryData) -> Result<Self, ()> {
@@ -148,8 +150,8 @@ impl Payload for Vec<u8> {
 pub struct MsgPack(Vec<u8>);
 
 impl Payload for MsgPack {
-    fn name() -> &'static str {
-        "msgpack"
+    fn name() -> Option<&'static str> {
+        Some("msgpack")
     }
 
     fn parse(data: BinaryData) -> Result<Self, ()> {
@@ -167,8 +169,8 @@ impl Payload for MsgPack {
 pub struct Rpc(Vec<u8>);
 
 impl Payload for Rpc {
-    fn name() -> &'static str {
-        "rpc"
+    fn name() -> Option<&'static str> {
+        Some("rpc")
     }
 
     fn parse(data: BinaryData) -> Result<Self, ()> {
@@ -186,8 +188,8 @@ impl Payload for Rpc {
 pub struct ProtoBuf(Vec<u8>);
 
 impl Payload for ProtoBuf {
-    fn name() -> &'static str {
-        "protobuf"
+    fn name() -> Option<&'static str> {
+        Some("protobuf")
     }
 
     fn parse(data: BinaryData) -> Result<Self, ()> {
@@ -203,8 +205,8 @@ impl Payload for ProtoBuf {
 }
 
 impl Payload for Vec<bool> {
-    fn name() -> &'static str {
-        "boolean[]"
+    fn name() -> Option<&'static str> {
+        Some("boolean[]")
     }
 
     fn parse(data: BinaryData) -> Result<Self, ()> {
@@ -220,8 +222,8 @@ impl Payload for Vec<bool> {
 }
 
 impl Payload for Vec<f64> {
-    fn name() -> &'static str {
-        "double[]"
+    fn name() -> Option<&'static str> {
+        Some("double[]")
     }
 
     fn parse(data: BinaryData) -> Result<Self, ()> {
@@ -237,8 +239,8 @@ impl Payload for Vec<f64> {
 }
 
 impl Payload for Vec<f32> {
-    fn name() -> &'static str {
-        "float[]"
+    fn name() -> Option<&'static str> {
+        Some("float[]")
     }
 
     fn parse(data: BinaryData) -> Result<Self, ()> {
@@ -254,8 +256,8 @@ impl Payload for Vec<f32> {
 }
 
 impl Payload for Vec<i64> {
-    fn name() -> &'static str {
-        "int[]"
+    fn name() -> Option<&'static str> {
+        Some("int[]")
     }
 
     fn parse(data: BinaryData) -> Result<Self, ()> {
@@ -271,8 +273,8 @@ impl Payload for Vec<i64> {
 }
 
 impl Payload for Vec<String> {
-    fn name() -> &'static str {
-        "string[]"
+    fn name() -> Option<&'static str> {
+        Some("string[]")
     }
 
     fn parse(data: BinaryData) -> Result<Self, ()> {
@@ -284,5 +286,33 @@ impl Payload for Vec<String> {
 
     fn to_val(self) -> BinaryData {
         BinaryData::StringArray(self)
+    }
+}
+
+impl Payload for BinaryData {
+    fn name() -> Option<&'static str> {
+        None
+    }
+
+    fn parse(data: BinaryData) -> Result<Self, ()> {
+        Ok(data)
+    }
+
+    fn to_val(self) -> BinaryData {
+        self
+    }
+}
+
+impl Payload for () {
+    fn name() -> Option<&'static str> {
+        None
+    }
+
+    fn parse(_data: BinaryData) -> Result<Self, ()> {
+        Ok(())
+    }
+
+    fn to_val(self) -> BinaryData {
+        panic!("Unit tuple can only be used for subscribers");
     }
 }

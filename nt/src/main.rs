@@ -1,7 +1,11 @@
 use std::time::Duration;
 
 use nt_rs::{
-    backends::tokio::TokioBackend, publish::Publisher, time::init_time, NetworkTableClient,
+    backends::tokio::TokioBackend,
+    subscribe::Subscriber,
+    time::init_time,
+    types::{BinaryData, Properties, SubscriptionOptions},
+    NetworkTableClient,
 };
 use tokio::time::sleep;
 
@@ -18,21 +22,21 @@ async fn main() {
 
         let main = tokio::spawn(client.main_task::<TokioBackend>());
 
-        let publisher: Publisher<i32> = client.publish("val".to_owned()).unwrap();
+        let mut subscriber: Subscriber<BinaryData> = client
+            .subscribe(
+                "/SmartDashboard".to_owned(),
+                SubscriptionOptions::default().prefix(true),
+            )
+            .unwrap();
 
-        publisher.set(1).unwrap();
-
-        dbg!("First");
-
-        sleep(Duration::from_secs(10)).await;
-
-        dbg!("Second");
-
-        publisher.set(2).unwrap();
-
-        sleep(Duration::from_secs(10)).await;
-
-        dbg!("Third");
+        loop {
+            if let Ok(mut child) = subscriber.get_child::<BinaryData>().await {
+                dbg!(child.name());
+                dbg!(child.get().await.unwrap());
+            } else {
+                break;
+            }
+        }
 
         main.abort(); // End the main recieve loop
     }
