@@ -185,4 +185,13 @@ impl<'a, P: Payload> PrefixSubscriber<'a, P> {
     pub fn name(&self) -> &str {
         &self.name
     }
+
+    pub fn to_static(self) -> PrefixSubscriber<'static, P> {
+        PrefixSubscriber {
+            name: self.name,
+            input: self.input,
+            properties: self.properties,
+            phantom: PhantomData,
+        }
+    }
 }
