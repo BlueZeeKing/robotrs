@@ -1,11 +1,14 @@
 #[cfg(not(feature = "wasm"))]
-static START_TIME: std::sync::OnceLock<Instant> = std::sync::OnceLock::new();
+static START_TIME: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
 
 pub fn get_time() -> u64 {
     // TODO: Use FPGA when on robot
     #[cfg(not(feature = "wasm"))]
     {
-        START_TIME.get_or_init(Instant::now).elapsed().as_micros() as u64
+        START_TIME
+            .get_or_init(std::time::Instant::now)
+            .elapsed()
+            .as_micros() as u64
     }
     #[cfg(feature = "wasm")]
     {
