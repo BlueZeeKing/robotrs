@@ -43,15 +43,14 @@ pub struct Properties {
         skip_serializing_if = "should_skip"
     )]
     pub retained: MissingOrNull<bool>,
-
-    /// If false, the server and clients will not store the value of the topic. This means that
-    /// only value updates will be available for the topic.
-    #[serde(
-        with = "missing_or_null_impls",
-        default,
-        skip_serializing_if = "should_skip"
-    )]
-    pub cached: MissingOrNull<bool>,
+    // /// If false, the server and clients will not store the value of the topic. This means that
+    // /// only value updates will be available for the topic.
+    // #[serde(
+    //     with = "missing_or_null_impls",
+    //     default,
+    //     skip_serializing_if = "should_skip"
+    // )]
+    // pub cached: MissingOrNull<bool>,
 }
 
 impl Default for Properties {
@@ -59,7 +58,7 @@ impl Default for Properties {
         Self {
             persistent: Default::default(),
             retained: Default::default(),
-            cached: Default::default(),
+            // cached: Default::default(),
         }
     }
 }
@@ -68,7 +67,7 @@ impl Properties {
     pub fn update(&mut self, other: Properties) {
         self.persistent.update(other.persistent);
         self.retained.update(other.retained);
-        self.cached.update(other.cached);
+        // self.cached.update(other.cached);
     }
 }
 
