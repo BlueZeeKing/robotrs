@@ -1,32 +1,45 @@
-use std::{ffi::CString, thread, time::Duration};
+use std::time::Duration;
 
-fn main() {
-    unsafe {
-        let inst = nt::bindings::NT_GetDefaultInstance();
+use nt_rs::{
+    backends::tokio::TokioBackend,
+    subscribe::Subscriber,
+    time::init_time,
+    types::{BinaryData, Properties, SubscriptionOptions},
+    NetworkTableClient,
+};
+use tokio::time::sleep;
 
-        let address = CString::new("/home/lvuser/networktables.json").unwrap();
-        let local_path = CString::new("").unwrap();
+#[tokio::main]
+async fn main() {
+    init_time();
 
-        let address_ptr = address.as_ptr();
-        let local_path_ptr = local_path.as_ptr();
+    let (client, task) = NetworkTableClient::new::<TokioBackend>("localhost", "rust")
+        .await
+        .unwrap();
 
-        std::mem::forget(address);
-        std::mem::forget(local_path);
+    {
+        let client = client;
 
-        nt::bindings::NT_StartServer(inst, local_path_ptr, address_ptr, 1735, 5810);
+        let main = tokio::spawn(client.main_task::<TokioBackend>());
 
-        let mut amount_skipped: u8 = 0;
+        let mut subscriber: Subscriber<BinaryData> = client
+            .subscribe(
+                "/SmartDashboard".to_owned(),
+                SubscriptionOptions::default().prefix(true),
+            )
+            .unwrap();
 
-        while nt::bindings::NT_GetNetworkMode(inst)
-            == nt::bindings::NT_NetworkMode_NT_NET_MODE_STARTING
-        {
-            thread::sleep(Duration::from_millis(10));
-
-            amount_skipped += 1;
-
-            if amount_skipped > 100 {
-                panic!("Time out");
+        loop {
+            if let Ok(mut child) = subscriber.get_child::<BinaryData>().await {
+                dbg!(child.name());
+                dbg!(child.get().await.unwrap());
+            } else {
+                break;
             }
         }
+
+        main.abort(); // End the main recieve loop
     }
+
+    task.await.unwrap(); // Wait for the backend to stop
 }

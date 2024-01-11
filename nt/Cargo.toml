@@ -1,16 +1,32 @@
 [package]
-name = "nt"
-version = "0.1.0"
+name = "nt-rs"
+version = "0.0.1"
 edition = "2021"
+
+license = "MIT"
+description = "An NT 4.0 (and parially 4.1) client"
+homepage = "https://github.com/BlueZeeKing/robotrs"
+repository = "https://github.com/BlueZeeKing/robotrs"
+readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[build-dependencies]
-anyhow = "1.0.75"
-bindgen = "0.66.1"
-bytes = "1.4.0"
-reqwest = "0.11.20"
-tempfile = "3.8.0"
-tokio = { version = "1.32.0", features = ["full"] }
-zip = "0.6.6"
-build-utils = { path = "../build-utils" }
+[features]
+default = ["tokio"]
+tokio = ["dep:tokio", "dep:http", "dep:tokio-tungstenite", "dep:tungstenite"]
+wasm = ["dep:web-sys", "dep:wasm-bindgen-futures", "dep:fluvio-wasm-timer"]
+
+[dependencies]
+flume = "0.11.0"
+futures = "0.3.30"
+rmp = "0.8.12"
+serde = { version = "1.0.193", features = ["derive"] }
+serde_json = "1.0.108"
+thiserror = "1.0.53"
+http = { version = "1.0.0", optional = true } 
+tokio = { version = "1.35.1", features = ["full"], optional = true }
+tokio-tungstenite = { version = "0.21.0", optional = true }
+tungstenite = { version = "0.21.0", optional = true }
+web-sys = { version = "0.3.66", features = ["WebSocket", "BinaryType", "Blob", "MessageEvent", "Window", "Performance", "console"], optional = true }
+wasm-bindgen-futures = { version = "0.4.39", optional = true }
+fluvio-wasm-timer = { version = "0.2.5", optional = true }
