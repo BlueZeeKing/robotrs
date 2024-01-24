@@ -6,6 +6,9 @@ use std::{
     time::{Duration, Instant},
 };
 
+use async_task::{Runnable, Task};
+use flume::{Receiver, Sender};
+use futures::{Future, TryFutureExt};
 use tracing::{debug, error, warn};
 
 use crate::{
@@ -27,21 +30,47 @@ pub struct RobotScheduler<'a, R: AsyncRobot> {
     robot: &'a R,
     last_state: ds::State,
 
-    enabled_task: Option<SimpleHandle<'a, anyhow::Result<()>>>,
-    auto_task: Option<SimpleHandle<'a, anyhow::Result<()>>>,
-    teleop_task: Option<SimpleHandle<'a, anyhow::Result<()>>>,
+    task_sender: Sender<Runnable>,
+    task_receiver: Receiver<Runnable>,
+
+    enabled_task: Option<Task<anyhow::Result<()>>>,
+    auto_task: Option<Task<anyhow::Result<()>>>,
+    teleop_task: Option<Task<anyhow::Result<()>>>,
 }
 
 impl<'a, R: AsyncRobot> RobotScheduler<'a, R> {
     fn new(robot: &'a R) -> Self {
+        let (task_sender, task_receiver) = flume::unbounded();
+
         Self {
             robot,
             last_state: ds::State::Disabled,
+
+            task_sender,
+            task_receiver,
 
             enabled_task: None,
             auto_task: None,
             teleop_task: None,
         }
+    }
+
+    pub fn schedule<O, F: Future<Output = O> + 'a>(&self, fut: F) -> Task<O> {
+        let sender = self.task_sender.to_owned();
+
+        // SAFETY:
+        //
+        // Runnable never changes thread so F can be !Send
+        // Future is forced to outlive 'a which is longer than self. Since runnable has same
+        // lifetime as self, it will never outlive 'a
+        // schedule is send, sync, and 'static
+        let (runnable, task) = unsafe {
+            async_task::spawn_unchecked(fut, move |runnable| sender.send(runnable).unwrap())
+        };
+
+        runnable.schedule();
+
+        task
     }
 
     fn tick(&mut self) {
@@ -65,14 +94,20 @@ impl<'a, R: AsyncRobot> RobotScheduler<'a, R> {
         if state != self.last_state {
             match state {
                 ds::State::Auto => {
-                    self.auto_task = Some(SimpleHandle::spawn(self.robot.get_auto_future()));
+                    self.auto_task = Some(self.schedule(self.robot.get_auto_future().inspect_err(
+                        |err| error!("An error occured in the autonomous task: {}", err),
+                    )));
 
                     debug!("Auto task started");
 
                     self.teleop_task = None;
                 }
                 ds::State::Teleop => {
-                    self.teleop_task = Some(SimpleHandle::spawn(self.robot.get_teleop_future()));
+                    self.teleop_task = Some(self.schedule(
+                        self.robot.get_teleop_future().inspect_err(|err| {
+                            error!("An error occured in the teleop task: {}", err)
+                        }),
+                    ));
 
                     debug!("Teleop task started");
 
@@ -90,7 +125,11 @@ impl<'a, R: AsyncRobot> RobotScheduler<'a, R> {
             }
 
             if matches!(self.last_state, ds::State::Disabled) {
-                self.enabled_task = Some(SimpleHandle::spawn(self.robot.get_enabled_future()));
+                self.enabled_task = Some(
+                    self.schedule(self.robot.get_enabled_future().inspect_err(|err| {
+                        error!("An error occured in the enabled task: {}", err)
+                    })),
+                );
 
                 debug!("Enabled task started");
             }
@@ -98,28 +137,8 @@ impl<'a, R: AsyncRobot> RobotScheduler<'a, R> {
 
         self.last_state = state;
 
-        if let Some(task) = &mut self.enabled_task {
-            let err = task.poll();
-
-            if let Some(Err(err)) = err {
-                error!("An error occured in the enabled task: {}", err);
-            }
-        }
-
-        if let Some(task) = &mut self.auto_task {
-            let err = task.poll();
-
-            if let Some(Err(err)) = err {
-                error!("An error occured in the auto task: {}", err);
-            }
-        }
-
-        if let Some(task) = &mut self.teleop_task {
-            let err = task.poll();
-
-            if let Some(Err(err)) = err {
-                error!("An error occured in the teleop task: {}", err);
-            }
+        for task in self.task_receiver.drain() {
+            task.run();
         }
 
         for check in PERIODIC_CHECKS {
