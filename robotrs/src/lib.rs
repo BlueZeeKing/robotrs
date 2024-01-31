@@ -1,4 +1,5 @@
-#![allow(async_fn_in_trait)]
+#![allow(async_fn_in_trait, incomplete_features)]
+#![feature(adt_const_params, const_float_bits_conv)]
 
 use std::{
     cell::RefCell,
