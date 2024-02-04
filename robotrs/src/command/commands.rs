@@ -45,7 +45,7 @@ where
     }
 }
 
-/// Run somthing continously and at the end.
+/// Run somthing continuously and at the end.
 pub fn run_end<Start, Execute, End, State>(start: Start, execute: Execute, end: End) -> impl Command
 where
     Start: Func<State>,
@@ -88,7 +88,7 @@ pub fn wait(amount: Duration) -> impl Command {
     ErrorFutureWrapper(delay(amount)).to_command()
 }
 
-/// A command that does nothing and runs indefinetly
+/// A command that does nothing and runs indefinitely
 pub fn noop() -> impl Command {
     FuncCommand {
         start: (),

@@ -6,11 +6,11 @@ pub enum Error {
     CanTransmissionError = -1,
     #[error("Caller passed an invalid param")]
     InvalidParamValue = -2,
-    #[error("CAN frame could not be recieved properly")]
+    #[error("CAN frame could not be received properly")]
     RxError = -3,
-    #[error("A transmisson error occured")]
+    #[error("A transmission error occurred")]
     TxError = -4,
-    #[error("Specified device id is invalid or no more can sessions avaliable")]
+    #[error("Specified device id is invalid or no more can sessions available")]
     CanIdError = -5,
     #[error("CAN buffer was full and message could not be sent")]
     CanBufferFull = 6,
@@ -24,9 +24,9 @@ pub enum Error {
     CouldNotChangePeriod = -9,
     #[error("CAN buffer has failed")]
     BufferFailure = -10,
-    #[error("Firmware was of incorect type")]
+    #[error("Firmware was of incorrect type")]
     FirmwareNonFRC = -11,
-    #[error("A general error has occured")]
+    #[error("A general error has occurred")]
     GeneralError = -100,
     #[error("Have not received an value response for signal")]
     SigNotUpdated = -200,

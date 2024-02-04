@@ -149,7 +149,7 @@ impl SparkMax {
         Ok(SparkMaxRelativeEncoder::new(self.handle))
     }
 
-    pub fn set_refrence(&mut self, value: f32, control_type: ControlType) -> Result<(), REVError> {
+    pub fn set_reference(&mut self, value: f32, control_type: ControlType) -> Result<(), REVError> {
         unsafe {
             handle_error!(c_SparkMax_SetpointCommand(
                 self.handle,

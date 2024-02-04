@@ -95,7 +95,7 @@ impl<'a, R: AsyncRobot> RobotScheduler<'a, R> {
             match state {
                 ds::State::Auto => {
                     self.auto_task = Some(self.schedule(self.robot.get_auto_future().inspect_err(
-                        |err| error!("An error occured in the autonomous task: {}", err),
+                        |err| error!("An error occurred in the autonomous task: {}", err),
                     )));
 
                     debug!("Auto task started");
@@ -105,7 +105,7 @@ impl<'a, R: AsyncRobot> RobotScheduler<'a, R> {
                 ds::State::Teleop => {
                     self.teleop_task = Some(self.schedule(
                         self.robot.get_teleop_future().inspect_err(|err| {
-                            error!("An error occured in the teleop task: {}", err)
+                            error!("An error occurred in the teleop task: {}", err)
                         }),
                     ));
 
@@ -125,11 +125,11 @@ impl<'a, R: AsyncRobot> RobotScheduler<'a, R> {
             }
 
             if matches!(self.last_state, ds::State::Disabled) {
-                self.enabled_task = Some(
-                    self.schedule(self.robot.get_enabled_future().inspect_err(|err| {
-                        error!("An error occured in the enabled task: {}", err)
-                    })),
-                );
+                self.enabled_task = Some(self.schedule(
+                    self.robot.get_enabled_future().inspect_err(|err| {
+                        error!("An error occurred in the enabled task: {}", err)
+                    }),
+                ));
 
                 debug!("Enabled task started");
             }
@@ -163,7 +163,7 @@ impl<'a, R: AsyncRobot> RobotScheduler<'a, R> {
             .init();
 
         if let Err(err) = set_version() {
-            tracing::error!("An error occured while sending the version: {}", err);
+            tracing::error!("An error occurred while sending the version: {}", err);
         }
 
         unsafe {
@@ -200,8 +200,8 @@ impl<'a, R: AsyncRobot> RobotScheduler<'a, R> {
         let robot = match robot {
             Ok(robot) => robot,
             Err(err) => {
-                error!("An error has occured constructing the robot: {}", err);
-                panic!("An error has occured constructing the robot: {}", err);
+                error!("An error has occurred constructing the robot: {}", err);
+                panic!("An error has occurred constructing the robot: {}", err);
             }
         };
 
