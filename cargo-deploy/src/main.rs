@@ -25,6 +25,8 @@ struct DeployArgs {
     release: Option<bool>,
     #[arg(short, long)]
     build: Option<bool>,
+
+    team_number: u32,
 }
 
 #[tokio::main]
@@ -75,7 +77,7 @@ async fn main() {
         path
     });
 
-    let target = create_target(TeamNumber::new(9033))
+    let target = create_target(TeamNumber::new(args.team_number))
         .await
         .expect("Could not find target");
 

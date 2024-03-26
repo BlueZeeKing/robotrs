@@ -55,5 +55,5 @@ cargo install cargo-deploy --git https://github.com/BlueZeeKing/robotrs.git
 ```
 Then running it:
 ```
-cargo deploy
+cargo deploy [TEAM NUMBER]
 ```
