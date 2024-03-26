@@ -27,6 +27,9 @@ rustflags = ["-C", "target-cpu=cortex-a9"]
 
 [build]
 target = "arm-unknown-linux-gnueabi"
+
+[env]
+LIBS_OUT_DIR = { value = "target/lib", relative = true }
 ```
 
 3. Add the required dependencies to the `Cargo.toml` file. For example:
@@ -46,4 +49,11 @@ fn main() {
 }
 ```
 
-5. Deployment is a WIP
+5. Deploy your code by first installing the deployment tool:
+```
+cargo install cargo-deploy --git https://github.com/BlueZeeKing/robotrs.git
+```
+Then running it:
+```
+cargo deploy
+```
