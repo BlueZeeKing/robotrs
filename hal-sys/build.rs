@@ -33,6 +33,7 @@ async fn main() -> Result<()> {
             .version("2024.2.1".to_owned())
             .maven_url(MAVEN.to_owned())
             .lib_name("RoboRIO_FRC_ChipObject".to_owned())
+            .no_deploy()
             .no_headers()
             .build()?,
         Artifact::builder()
@@ -41,6 +42,7 @@ async fn main() -> Result<()> {
             .version("2024.2.1".to_owned())
             .maven_url(MAVEN.to_owned())
             .lib_name("FRC_NetworkCommunication".to_owned())
+            .no_deploy()
             .no_headers()
             .build()?,
         Artifact::builder()
@@ -49,6 +51,7 @@ async fn main() -> Result<()> {
             .version("2024.2.1".to_owned())
             .maven_url(MAVEN.to_owned())
             .lib_name("visa".to_owned())
+            .no_deploy()
             .no_headers()
             .build()?,
         Artifact::builder()

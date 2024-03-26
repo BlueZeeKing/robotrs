@@ -105,6 +105,13 @@ impl AsyncRobot for Robot {
             yield_now().await;
         }
     }
+
+    fn configure_bindings<'a>(
+        &'a self,
+        _scheduler: &'a robotrs::scheduler::RobotScheduler<'a, Self>,
+    ) -> anyhow::Result<()> {
+        Ok(())
+    }
 }
 
 impl Robot {

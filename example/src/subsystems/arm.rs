@@ -17,7 +17,7 @@ pub struct Arm {
 
 impl Arm {
     pub fn new() -> Result<Self> {
-        let mut motor = SparkMax::new(5, revlib::MotorType::Brushless);
+        let mut motor = SparkMax::new(5, revlib::MotorType::Brushless)?;
 
         motor.set_idle_mode(IdleMode::Brake)?;
         motor.set_smart_current_limit(AMP_LIMIT)?;

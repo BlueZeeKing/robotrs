@@ -28,7 +28,7 @@ pub fn delay(duration: Duration) -> Alarm {
     Alarm::new(duration)
 }
 
-pub(crate) struct RawNotifier {
+pub struct RawNotifier {
     handle: i32,
 }
 

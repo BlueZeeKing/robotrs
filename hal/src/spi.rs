@@ -82,7 +82,7 @@ impl RioSPI {
         }
     }
 
-    pub fn set_cs_active(&mut self, is_high: bool) -> Result<(), HalError> {
+    pub fn set_cs_active_high(&mut self, is_high: bool) -> Result<(), HalError> {
         let mut status = 0;
         if is_high {
             unsafe {
@@ -104,6 +104,14 @@ impl RioSPI {
 
 #[derive(Debug)]
 pub struct SPIError;
+
+impl std::fmt::Display for SPIError {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        write!(f, "SPI error")
+    }
+}
+
+impl std::error::Error for SPIError {}
 
 impl Error for SPIError {
     fn kind(&self) -> embedded_hal::spi::ErrorKind {

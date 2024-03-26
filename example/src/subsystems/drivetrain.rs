@@ -16,11 +16,11 @@ impl Drivetrain {
     pub fn new() -> Result<Self> {
         Ok(Self {
             right_motor: (
-                SparkMax::new(2, revlib::MotorType::Brushed),
+                SparkMax::new(2, revlib::MotorType::Brushed)?,
                 VictorSPX::new(4),
             ),
             left_motor: (
-                SparkMax::new(1, revlib::MotorType::Brushed),
+                SparkMax::new(1, revlib::MotorType::Brushed)?,
                 VictorSPX::new(3),
             ),
         })

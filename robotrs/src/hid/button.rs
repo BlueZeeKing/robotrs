@@ -1,10 +1,9 @@
 use std::{marker::PhantomData, pin::Pin, task::Poll};
 
-use futures::{select, Future, FutureExt};
+use futures::Future;
 use hal_sys::HAL_JoystickButtons;
-use tracing::error;
 
-use crate::{error::Result, scheduler::spawn};
+use crate::error::Result;
 
 use super::{joystick::Joystick, reactor::add_button};
 

@@ -1,24 +1,17 @@
 use std::{
     cell::OnceCell,
-    env,
-    ffi::CString,
     fs::File,
     io::{self, Write},
     thread,
-    time::{Duration, Instant},
+    time::Duration,
 };
 
 use async_task::{Runnable, Task};
 use flume::{unbounded, Receiver, Sender};
 use futures::{Future, TryFutureExt};
-use tracing::{debug, error, warn};
+use tracing::{debug, error};
 
-use crate::{
-    ds,
-    robot::AsyncRobot,
-    time::{get_time, RawNotifier},
-    DsTracingWriter, PERIODIC_CHECKS,
-};
+use crate::{ds, robot::AsyncRobot, DsTracingWriter, PERIODIC_CHECKS};
 
 use hal_sys::{
     HAL_HasMain, HAL_Initialize, HAL_ObserveUserProgramAutonomous, HAL_ObserveUserProgramDisabled,

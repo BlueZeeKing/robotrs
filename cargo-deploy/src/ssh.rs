@@ -39,25 +39,29 @@ impl Session {
         Ok(Self { session })
     }
 
-    pub async fn call(&self, command: impl Into<Vec<u8>>) -> Result<()> {
+    pub async fn call(&self, command: impl Into<Vec<u8>>) -> Result<Vec<u8>> {
         let mut channel = self.session.channel_open_session().await?;
 
         channel.exec(true, command).await?;
 
-        let mut stdout = tokio::io::stdout();
+        let mut result = vec![];
 
         loop {
             match channel.wait().await {
                 None => break,
                 Some(ChannelMsg::Data { ref data }) => {
-                    stdout.write_all(data).await?;
-                    stdout.flush().await?;
+                    result.write_all(data).await?;
+                }
+                Some(ChannelMsg::ExitStatus { exit_status }) => {
+                    if exit_status != 0 {
+                        bail!("Error with stats: {}", exit_status);
+                    }
                 }
                 _ => {}
             }
         }
 
-        Ok(())
+        Ok(result)
     }
 
     pub async fn sftp(&self) -> Result<SftpSession> {

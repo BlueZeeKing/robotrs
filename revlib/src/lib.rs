@@ -33,11 +33,19 @@ pub enum IdleMode {
 }
 
 impl SparkMax {
-    pub fn new(can_id: i32, motor_type: MotorType) -> SparkMax {
+    pub fn new(can_id: i32, motor_type: MotorType) -> Result<SparkMax, REVError> {
         let error_code = unsafe { c_SparkMax_RegisterId(can_id) };
+        if error_code != 0 {
+            return Err(REVError::from(error_code));
+        }
+
         let mut error_code = 0;
         let handle = unsafe { c_SparkMax_Create(can_id, motor_type as u32, 0, &mut error_code) };
-        SparkMax { handle }
+        if error_code != 0 {
+            return Err(REVError::from(error_code));
+        }
+
+        Ok(SparkMax { handle })
     }
 
     pub fn set(&mut self, speed: f32) -> Result<(), REVError> {

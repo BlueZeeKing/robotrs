@@ -100,7 +100,7 @@ impl MotorController for VictorSPX {
         self.set_percent_ctre(value as f64)
     }
 
-    fn set_voltage(&mut self, value: f32) -> Result<(), Self::Error> {
+    fn set_voltage(&mut self, _value: f32) -> Result<(), Self::Error> {
         todo!()
     }
 }
