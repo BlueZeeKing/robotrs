@@ -83,7 +83,7 @@ type D<const K: Gain> = Derive<P<K>>;
 
 pub type PID<const KP: Gain, const KI: Gain, const KD: Gain> = (P<KP>, I<KP>, D<KP>);
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct State {
     pub position: f32,
     pub velocity: f32,

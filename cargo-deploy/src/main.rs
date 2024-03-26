@@ -1,29 +1,40 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-use cargo_deploy::{create_target, TeamNumber, ProgramKill, ProgramRun, ProgramStart, DeployLibs, ConfigureLibs};
+use cargo_deploy::{
+    create_target, Action, DeployCode, DeployStartCommand, ProgramKill, StartProgram, TeamNumber,
+};
 use clap::Parser;
 
 #[derive(Parser)]
-struct Args {
+#[command(name = "cargo")]
+#[command(bin_name = "cargo")]
+enum Args {
+    Deploy(DeployArgs),
+}
+
+#[derive(clap::Args)]
+#[command(version, about, long_about = None)]
+struct DeployArgs {
     #[arg(short, long)]
     executable: PathBuf,
     #[arg(short, long)]
-    libs: PathBuf
+    libs: PathBuf,
 }
 
 #[tokio::main]
 async fn main() {
-    let args = Args::parse();
+    let Args::Deploy(args) = Args::parse();
 
-    let mut target = create_target(TeamNumber::new(9033)).await.expect("Could not find target");
+    let target = create_target(TeamNumber::new(9033))
+        .await
+        .expect("Could not find target");
 
-    target.run(&mut ProgramKill).await;
-    target.run(&mut ProgramRun {
-        local: &args.executable
-    }).await;
-    target.run(&mut DeployLibs {
-        dir: &args.libs
-    }).await;
-    target.run(&mut ConfigureLibs).await;
-    target.run(&mut ProgramStart).await;
+    ProgramKill.execute(&target).await;
+    DeployStartCommand.execute(&target).await;
+    DeployCode {
+        local: args.executable.as_path(),
+    }
+    .execute(&target)
+    .await;
+    StartProgram.execute(&target).await;
 }

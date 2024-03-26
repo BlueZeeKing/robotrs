@@ -11,7 +11,15 @@ pub struct Input;
 pub struct Output;
 
 #[derive(Debug)]
-pub struct DigitalError(HalError);
+pub struct DigitalError(pub HalError);
+
+impl std::fmt::Display for DigitalError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl std::error::Error for DigitalError {}
 
 impl From<HalError> for DigitalError {
     fn from(value: HalError) -> Self {
@@ -113,5 +121,27 @@ impl InputPin for RioPin<Input> {
 
     fn is_low(&mut self) -> Result<bool, Self::Error> {
         Ok(!self.is_high()?)
+    }
+}
+
+impl RioPin<Input> {
+    pub async fn wait_for_high(&mut self) -> Result<(), DigitalError> {
+        loop {
+            if self.is_high()? {
+                return Ok(());
+            }
+
+            robotrs::yield_now().await;
+        }
+    }
+
+    pub async fn wait_for_low(&mut self) -> Result<(), DigitalError> {
+        loop {
+            if self.is_low()? {
+                return Ok(());
+            }
+
+            robotrs::yield_now().await;
+        }
     }
 }

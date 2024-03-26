@@ -9,5 +9,7 @@ edition = "2021"
 robotrs = { path = "../robotrs" }
 revlib = { path = "../revlib" }
 ctre = { path = "../ctre" }
+utils = { path = "../utils" }
+hal-sys = { path = "../hal-sys" }
 futures = "0.3.28"
 anyhow = "1.0.75"

@@ -1,9 +1,10 @@
 use std::{marker::PhantomData, pin::Pin, task::Poll};
 
-use futures::Future;
+use futures::{select, Future, FutureExt};
 use hal_sys::HAL_JoystickButtons;
+use tracing::error;
 
-use crate::error::Result;
+use crate::{error::Result, scheduler::spawn};
 
 use super::{joystick::Joystick, reactor::add_button};
 
@@ -67,7 +68,9 @@ impl<T: Clone> ButtonFuture<T> {
     }
 }
 
-impl super::PressTrigger<ButtonFuture<Released>> for ButtonFuture<Pressed> {}
+impl super::PressTrigger for ButtonFuture<Pressed> {
+    type Release = ButtonFuture<Released>;
+}
 impl super::ReleaseTrigger for ButtonFuture<Released> {}
 
 impl Future for ButtonFuture<Pressed> {

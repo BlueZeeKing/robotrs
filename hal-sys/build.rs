@@ -2,6 +2,7 @@ use std::{env, path::Path};
 
 use anyhow::Result;
 use build_utils::{artifact::Artifact, build, WPI_VERSION};
+use tokio::{fs::File, io::AsyncWriteExt};
 
 const MAVEN: &str = "https://frcmaven.wpi.edu/artifactory/release/";
 
@@ -14,6 +15,7 @@ async fn main() -> Result<()> {
             .version("2024.2.1".to_owned())
             .maven_url(MAVEN.to_owned())
             .lib_name("embcanshim".to_owned())
+            .no_deploy()
             .no_headers()
             .build()?,
         Artifact::builder()
@@ -22,6 +24,7 @@ async fn main() -> Result<()> {
             .version("2024.2.1".to_owned())
             .maven_url(MAVEN.to_owned())
             .lib_name("fpgalvshim".to_owned())
+            .no_deploy()
             .no_headers()
             .build()?,
         Artifact::builder()
@@ -71,7 +74,13 @@ async fn main() -> Result<()> {
             .build()?,
     ];
 
-    env::set_var("WPI_VERSION", WPI_VERSION);
+    if let Some(out_str) = env::var_os("OUT_DIR") {
+        let out_dir = Path::new(&out_str);
 
-    build(&libs, "HAL_.*", Path::new("hal/HAL.h")).await
+        let mut version = File::create(out_dir.join("version.txt")).await?;
+
+        version.write_all(WPI_VERSION.as_bytes()).await?;
+    }
+
+    build(&libs, "(HAL|WPI)_.*", Path::new("hal/HAL.h")).await
 }

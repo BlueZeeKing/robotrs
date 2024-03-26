@@ -32,12 +32,16 @@ impl SlewRateLimiter {
 
 impl Filter for SlewRateLimiter {
     fn apply_with_time(&mut self, value: f32, time: Duration) -> f32 {
-        let new_val = if (self.last_val - value).abs() < self.limit {
+        let delta_time = time - self.last_time;
+        let max_delta_position = self.limit * delta_time.as_secs_f32();
+        let delta_position = (self.last_val - value).abs();
+
+        let new_val = if delta_position <= max_delta_position {
             value
         } else if self.last_val < value {
-            self.last_val + self.limit * time.as_secs_f32()
+            self.last_val + self.limit * delta_time.as_secs_f32()
         } else {
-            self.last_val - self.limit * time.as_secs_f32()
+            self.last_val - self.limit * delta_time.as_secs_f32()
         };
 
         self.last_val = new_val;

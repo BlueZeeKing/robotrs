@@ -15,7 +15,7 @@ pub(super) fn get_axis(data: &HAL_JoystickAxes, index: u32) -> Result<f32> {
     Ok(data.axes[index as usize])
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum AxisTarget {
     Away(f32),
     Up(f32),
@@ -88,7 +88,9 @@ impl<T> AxisFuture<T> {
     }
 }
 
-impl super::PressTrigger<AxisFuture<Release>> for AxisFuture<Initial> {}
+impl super::PressTrigger for AxisFuture<Initial> {
+    type Release = AxisFuture<Release>;
+}
 impl super::ReleaseTrigger for AxisFuture<Release> {}
 
 impl Future for AxisFuture<Initial> {
@@ -108,15 +110,15 @@ impl Future for AxisFuture<Initial> {
         };
 
         if val {
+            Poll::Ready(Ok(data.release()))
+        } else {
             add_axis(
                 &joystick,
-                data.joystick_index,
+                data.axis_index,
                 true,
                 data.target,
                 cx.waker().clone(),
             );
-            Poll::Ready(Ok(data.release()))
-        } else {
             Poll::Pending
         }
     }
@@ -138,16 +140,16 @@ impl Future for AxisFuture<Release> {
             }
         };
 
-        if val {
+        if !val {
+            Poll::Ready(Ok(()))
+        } else {
             add_axis(
                 &joystick,
-                data.joystick_index,
+                data.axis_index,
                 false,
                 data.target,
                 cx.waker().clone(),
             );
-            Poll::Ready(Ok(()))
-        } else {
             Poll::Pending
         }
     }

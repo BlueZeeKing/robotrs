@@ -18,12 +18,19 @@ pub trait MotorController: ControlSafe {
     type Error;
 
     /// This should only be called with a value between `-1` and `1`
-    fn set_percent_raw(&mut self, value: f64) -> Result<(), Self::Error>;
+    fn set_percent_raw(&mut self, value: f32) -> Result<(), Self::Error>;
 
     /// Set the percent output of the motor. This automatically clams the value between `-1` and
     /// `1`
-    fn set_percent(&mut self, value: f64) -> Result<(), Self::Error> {
+    fn set_percent(&mut self, value: f32) -> Result<(), Self::Error> {
         self.set_percent_raw(value.clamp(-1.0, 1.0))
+    }
+
+    fn set_voltage(&mut self, value: f32) -> Result<(), Self::Error>;
+
+    fn set_inverted(&mut self, is_inverted: bool) -> Result<(), Self::Error> {
+        let _ = is_inverted;
+        unimplemented!()
     }
 }
 
@@ -33,8 +40,14 @@ impl MotorController for Tuple {
     type Error = anyhow::Error;
     for_tuples!(where #(<Tuple as MotorController>::Error: std::error::Error + Send + Sync + 'static )* );
 
-    fn set_percent_raw(&mut self, value: f64) -> Result<(), Self::Error> {
+    fn set_percent_raw(&mut self, value: f32) -> Result<(), Self::Error> {
         for_tuples!( #( Tuple.set_percent_raw(value)?; )* );
+
+        Ok(())
+    }
+
+    fn set_voltage(&mut self, value: f32) -> Result<(), Self::Error> {
+        for_tuples!( #( Tuple.set_voltage(value)?; )* );
 
         Ok(())
     }

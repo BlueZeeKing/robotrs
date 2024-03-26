@@ -10,6 +10,7 @@ use super::{
 };
 use crate::PERIODIC_CHECKS;
 
+#[derive(Debug)]
 struct JoystickQueueItem {
     pub joystick: Joystick,
     pub buttons: Vec<(u32, bool, Waker)>,

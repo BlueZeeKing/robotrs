@@ -1,7 +1,7 @@
 use crate::error::{Error, HalError, Result};
 use hal_sys::{HAL_GetJoystickAxes, HAL_GetJoystickButtons, HAL_JoystickAxes, HAL_JoystickButtons};
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct Joystick {
     num: u32,
 }

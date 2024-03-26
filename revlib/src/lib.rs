@@ -34,9 +34,10 @@ pub enum IdleMode {
 
 impl SparkMax {
     pub fn new(can_id: i32, motor_type: MotorType) -> SparkMax {
-        SparkMax {
-            handle: unsafe { c_SparkMax_Create(can_id, motor_type as u32) },
-        }
+        let error_code = unsafe { c_SparkMax_RegisterId(can_id) };
+        let mut error_code = 0;
+        let handle = unsafe { c_SparkMax_Create(can_id, motor_type as u32, 0, &mut error_code) };
+        SparkMax { handle }
     }
 
     pub fn set(&mut self, speed: f32) -> Result<(), REVError> {
@@ -161,6 +162,26 @@ impl SparkMax {
             ))
         }
     }
+
+    pub fn follow(&mut self, other: &SparkMax, invert: bool) -> Result<(), REVError> {
+        let mut device_id = 0;
+        unsafe {
+            handle_error!(c_SparkMax_GetDeviceId(other.handle, &mut device_id))?;
+        }
+
+        unsafe {
+            handle_error!(c_SparkMax_SetFollow(
+                self.handle,
+                device_id as u32,
+                (0 & 0x3FFFF)
+                    | (if invert { 1 } else { 0 } & 0x1) << 18
+                    | (0 & 0x1F) << 19
+                    | (26 & 0xFF) << 24
+            ))?;
+        }
+
+        Ok(())
+    }
 }
 
 pub enum ControlType {
@@ -181,8 +202,23 @@ pub trait FeedbackSensor {
 impl MotorController for SparkMax {
     type Error = REVError;
 
-    fn set_percent_raw(&mut self, value: f64) -> Result<(), Self::Error> {
-        self.set(value as f32)
+    fn set_percent_raw(&mut self, value: f32) -> Result<(), Self::Error> {
+        self.set(value)
+    }
+
+    fn set_voltage(&mut self, value: f32) -> Result<(), Self::Error> {
+        self.set_reference(value, ControlType::Voltage)
+    }
+
+    fn set_inverted(&mut self, is_inverted: bool) -> Result<(), Self::Error> {
+        unsafe {
+            handle_error!(c_SparkMax_SetInverted(
+                self.handle,
+                if is_inverted { 1 } else { 0 }
+            ))?;
+        }
+
+        Ok(())
     }
 }
 

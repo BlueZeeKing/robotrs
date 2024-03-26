@@ -1,10 +1,7 @@
 use std::path::Path;
 
 use anyhow::Result;
-use build_utils::{
-    artifact::Artifact,
-    build,
-};
+use build_utils::{artifact::Artifact, build};
 
 const WPI_MAVEN: &str = "https://frcmaven.wpi.edu/artifactory/release/";
 const REV_MAVEN: &str = "https://maven.revrobotics.com/";
@@ -33,11 +30,16 @@ async fn main() -> Result<()> {
         Artifact::builder()
             .group_id("com.revrobotics.frc".to_owned())
             .artifact_id("REVLib-driver".to_owned())
-            .version("2023.1.3".to_owned())
+            .version("2024.2.4".to_owned())
             .maven_url(REV_MAVEN.to_owned())
             .lib_name("REVLibDriver".to_owned())
             .build()?,
     ];
 
-    build(&headers, "c_(SparkMax|REVLib)_.*", Path::new("rev/CANSparkMaxDriver.h")).await
+    build(
+        &headers,
+        "c_(SparkMax|REVLib)_.*",
+        Path::new("rev/CANSparkMaxDriver.h"),
+    )
+    .await
 }

@@ -2,7 +2,7 @@
 #![feature(adt_const_params, const_float_bits_conv)]
 
 use std::{
-    cell::RefCell,
+    ffi::c_char,
     io::Write,
     ops::DerefMut,
     pin::Pin,
@@ -12,6 +12,7 @@ use std::{
 use futures::Future;
 use hal_sys::HAL_SendConsoleLine;
 use linkme::distributed_slice;
+use parking_lot::Mutex;
 use pin_project::pin_project;
 use tracing_subscriber::fmt::MakeWriter;
 
@@ -30,23 +31,19 @@ pub(crate) mod waker;
 #[distributed_slice]
 pub static PERIODIC_CHECKS: [fn()] = [..];
 
-thread_local! {
-    static WAKERS: RefCell<Vec<Waker>> = RefCell::new(Vec::new());
-}
+static WAKERS: Mutex<Vec<Waker>> = Mutex::new(Vec::new());
 
 #[distributed_slice(PERIODIC_CHECKS)]
 fn poll() {
-    WAKERS.with(|wakers| {
-        for waker in std::mem::take(wakers.borrow_mut().deref_mut()) {
-            waker.wake();
-        }
-    });
+    let wakers = std::mem::take(WAKERS.lock().deref_mut());
+    // dbg!(wakers.len());
+    for waker in wakers {
+        waker.wake();
+    }
 }
 
 pub(crate) fn queue_waker(waker: Waker) {
-    WAKERS.with(|wakers| {
-        wakers.borrow_mut().push(waker);
-    })
+    WAKERS.lock().push(waker);
 }
 
 struct DsTracingWriter {}
@@ -69,7 +66,7 @@ impl Write for DsTracingWriter {
 
         data.push(0);
 
-        let error_code = unsafe { HAL_SendConsoleLine(data[..].as_ptr()) };
+        let error_code = unsafe { HAL_SendConsoleLine(data[..].as_ptr() as *const c_char) };
 
         if error_code == 0 {
             Ok(buf.len())
@@ -105,10 +102,12 @@ impl Future for Yield {
     type Output = ();
 
     fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
-        if Pin::into_inner(self).yielded {
+        let inner = Pin::into_inner(self);
+        if inner.yielded {
             Poll::Ready(())
         } else {
             queue_waker(cx.waker().clone());
+            inner.yielded = true;
             Poll::Pending
         }
     }

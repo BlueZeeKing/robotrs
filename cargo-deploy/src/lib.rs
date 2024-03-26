@@ -1,11 +1,19 @@
 #![allow(async_fn_in_trait)]
 
 use std::{
+    fs,
     net::{IpAddr, Ipv4Addr},
-    path::{Path, PathBuf}, fs,
+    path::{Path, PathBuf},
 };
 
-use tokio::process::Command as AsyncCommand;
+use ssh::Session;
+use tokio::{
+    fs::File,
+    io::{AsyncReadExt, AsyncWriteExt},
+    process::Command as AsyncCommand,
+};
+
+pub mod ssh;
 
 const LIB_DEPLOY_DIR: &str = "/usr/local/frc/third-party/lib";
 
@@ -40,146 +48,68 @@ async fn check_addr(addr: IpAddr) -> bool {
     surge_ping::ping(addr, &payload).await.is_ok()
 }
 
-pub struct RioTarget(IpAddr);
-
-pub async fn create_target(team_number: TeamNumber) -> Option<RioTarget> {
+pub async fn create_target(team_number: TeamNumber) -> Option<Session> {
     let addr = find_rio_address(team_number).await?;
 
-    Some(RioTarget(addr))
-}
-
-impl RioTarget {
-    pub async fn execute(&mut self, command: &str) {
-        AsyncCommand::new("ssh")
-            .arg(format!("admin@{}", self.0))
-            .arg("-t")
-            .arg(command)
-            .output()
-            .await
-            .expect("Could not execute command on target");
-    }
-
-    pub async fn execute_many<'a, I: Iterator<Item = &'a str>>(&mut self, commands: I) {
-        AsyncCommand::new("ssh")
-            .arg(format!(
-                "admin@{}<<EOF\n{}\nEOF",
-                self.0,
-                commands.collect::<Vec<_>>().join("\n")
-            ))
-            .output()
-            .await
-            .expect("Could not execute command on target");
-    }
-
-    pub async fn put(&mut self, local: &Path, remote: &Path) {
-        AsyncCommand::new("scp")
-            .args([
-                local.to_str().unwrap(),
-                &format!("admin@{}:{}", self.0, remote.to_str().unwrap()),
-            ])
-            .output()
-            .await
-            .expect("Could not copy file to target");
-    }
-
-    pub async fn run<A: Action>(&mut self, action: &mut A) {
-        action.execute(self).await;
-    }
+    Session::connect(addr).await.ok()
 }
 
 pub trait Action {
-    async fn execute(&mut self, target: &mut RioTarget);
+    async fn execute(&mut self, target: &Session);
 }
 
 pub struct ProgramKill;
 
 impl Action for ProgramKill {
-    async fn execute(&mut self, target: &mut RioTarget) {
+    async fn execute(&mut self, target: &Session) {
         target
-            .execute_many(
-                [
-                    ". /etc/profile.d/natinst-path.sh",
-                    "/usr/local/frc/bin/frcKillRobot.sh -t 2> /dev/null",
-                ]
-                .into_iter(),
+            .call(
+                "cd /home/lvuser; . /etc/profile.d/natinst-path.sh; /usr/local/frc/bin/frcKillRobot.sh -t 2> /dev/null"
             )
-            .await;
+            .await.unwrap();
     }
 }
 
-pub struct ProgramStart;
+pub struct DeployStartCommand;
 
-impl Action for ProgramStart {
-    async fn execute(&mut self, target: &mut RioTarget) {
-        target
-            .execute_many(
-                [
-                    "sync",
-                    ". /etc/profile.d/natinst-path.sh",
-                    "/usr/local/frc/bin/frcKillRobot.sh -t -r 2> /dev/null",
-                ]
-                .into_iter(),
-            )
-            .await;
+impl Action for DeployStartCommand {
+    async fn execute(&mut self, target: &Session) {
+        target.call("cd /home/lvuser; echo '\"/home/lvuser/frcUserProgram\" ' > /home/lvuser/robotCommand").await.unwrap();
+        target.call("cd /home/lvuser; chmod +x /home/lvuser/robotCommand; chown lvuser /home/lvuser/robotCommand").await.unwrap();
     }
 }
 
-pub struct ProgramRun<'a> {
+pub struct DeployCode<'a> {
     pub local: &'a Path,
 }
 
-impl<'a> Action for ProgramRun<'a> {
-    async fn execute(&mut self, target: &mut RioTarget) {
-        let remote =
-            PathBuf::from("/home/lvuser/").join(self.local.file_name().unwrap().to_str().unwrap());
-        target.put(self.local, &remote).await;
-        target
-            .execute(&format!(
-                "echo \"{}\" > /home/lvuser/robotCommand",
-                remote.to_str().unwrap()
-            ))
-            .await;
-        target
-            .execute("chmod +x /home/lvuser/robotCommand; chown lvuser /home/lvuser/robotCommand")
-            .await;
+impl<'a> Action for DeployCode<'a> {
+    async fn execute(&mut self, target: &Session) {
+        let sftp = target.sftp().await.unwrap();
 
-        let remote = remote.to_str().unwrap();
+        let mut local_file = File::open(self.local).await.unwrap();
+        sftp.create("/home/lvuser/frcUserProgram").await.unwrap();
 
+        let mut buf = vec![];
+
+        local_file.read_to_end(&mut buf).await.unwrap();
+
+        sftp.write("/home/lvuser/frcUserProgram", &buf)
+            .await
+            .unwrap();
+
+        target.call("cd /home/lvuser; chmod +x \"/home/lvuser/frcUserProgram\"; chown lvuser \"/home/lvuser/frcUserProgram\"").await.unwrap();
         target
-            .execute_many(
-                [
-                    format!("chmod +x \"{}\"", remote).as_str(),
-                    format!("chown lvuser \"{}\"", remote).as_str(),
-                    format!("setcap cap_sys_nice+eip \"{}\"", remote).as_str(),
-                ]
-                .into_iter(),
-            )
-            .await;
+            .call("cd /home/lvuser; setcap cap_sys_nice+eip \"/home/lvuser/frcUserProgram\"")
+            .await
+            .unwrap();
     }
 }
 
-pub struct ConfigureLibs;
+pub struct StartProgram;
 
-impl Action for ConfigureLibs {
-    async fn execute(&mut self, target: &mut RioTarget) {
-        target.execute_many([
-            format!("chmod -R 777 \"{}\" || true", LIB_DEPLOY_DIR).as_str(),
-            format!("chown -R lvuser:ni \"{}\"", LIB_DEPLOY_DIR).as_str(),
-            "ldconfig"
-        ].into_iter()).await;
-    }
-}
-
-pub struct DeployLibs<'a> {
-    pub dir: &'a Path
-}
-
-impl<'a> Action for DeployLibs<'a> {
-    async fn execute(&mut self, target: &mut RioTarget) {
-        for lib in fs::read_dir(self.dir).expect("Could not find files in libs dir") {
-            let lib = lib.expect("Error getting directory entry");
-
-            target.put(&lib.path(), &Path::new(LIB_DEPLOY_DIR).join(lib.file_name())).await;
-        }
+impl Action for StartProgram {
+    async fn execute(&mut self, target: &Session) {
+        target.call("cd /home/lvuser; sync; /usr/local/natinst/bin/nirtcfg --file=/etc/natinst/share/ni-rt.ini --get section=systemsettings,token=NoApp.enabled,value=unknown; . /etc/profile.d/natinst-path.sh; /usr/local/frc/bin/frcKillRobot.sh -t -r 2> /dev/null").await.unwrap();
     }
 }

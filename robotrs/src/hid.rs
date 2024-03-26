@@ -9,7 +9,9 @@ pub mod controller;
 pub mod joystick;
 mod reactor;
 
-pub trait PressTrigger<T: ReleaseTrigger>: Future<Output = Result<T, crate::error::Error>> {}
+pub trait PressTrigger: Future<Output = Result<Self::Release, crate::error::Error>> {
+    type Release: ReleaseTrigger;
+}
 pub trait ReleaseTrigger: Future<Output = Result<(), crate::error::Error>> {}
 
 pub trait DoubleClick<T>: Sized {
@@ -24,7 +26,7 @@ pub trait DoubleClick<T>: Sized {
 impl<Rt, T> DoubleClick<Result<Rt, crate::error::Error>> for T
 where
     Rt: ReleaseTrigger,
-    T: PressTrigger<Rt> + Clone,
+    T: PressTrigger<Release = Rt> + Clone,
 {
     async fn double_click_with_duration(
         self,

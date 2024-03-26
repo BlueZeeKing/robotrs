@@ -28,9 +28,9 @@ impl Drivetrain {
 
     pub fn arcade_drive(&mut self, forward: f32, turn: f32) -> Result<()> {
         self.left_motor
-            .set_percent((forward + turn).clamp(-1.0, 1.0) as f64)?;
+            .set_percent((forward + turn).clamp(-1.0, 1.0))?;
         self.right_motor
-            .set_percent((forward - turn).clamp(-1.0, 1.0) as f64)?;
+            .set_percent((forward - turn).clamp(-1.0, 1.0))?;
 
         Ok(())
     }
@@ -43,10 +43,8 @@ impl Drivetrain {
     }
 
     pub fn drive(&mut self, amount: f32) -> Result<()> {
-        self.left_motor
-            .set_percent(amount.clamp(-1.0, 1.0) as f64)?;
-        self.right_motor
-            .set_percent(amount.clamp(-1.0, 1.0) as f64)?;
+        self.left_motor.set_percent(amount.clamp(-1.0, 1.0))?;
+        self.right_motor.set_percent(amount.clamp(-1.0, 1.0))?;
 
         Ok(())
     }
