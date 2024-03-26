@@ -12,7 +12,7 @@ the downloading of these libs can be found in the `build-utils` crate and the
 
 ## Not affilited with or supported by WPILib, REV Robotics, or FIRST
 
-## Getting Started
+## Quick Start
 
 0. Install the compiler toolchain by running the `installRoboRioToolchain` task
    in allwpilib or downloading from
@@ -41,15 +41,22 @@ ctre = { git = "https://github.com/BlueZeeKing/robotrs.git", tag="v0.1.0" }
 anyhow = "1.0.75" # This is an error handling library that is used extensively
 ```
 
-4. In the `src/main.rs` file run the scheduler with a struct that implements
+4. Add a `rust-toolchain.toml` file to the root of the project with the following contents:
+```toml
+[toolchain]
+channel = "nightly"
+targets = ["arm-unknown-linux-gnueabi"]
+```
+
+5. In the `src/main.rs` file run the scheduler with closure that produces a struct that implements
    the `AsyncRobot` trait. For example:
 ```rust
 fn main() {
-    robotrs::scheduler::RobotScheduler::start_robot(example::Robot::new());
+    robotrs::scheduler::RobotScheduler::start_robot(|| example::Robot::new());
 }
 ```
 
-5. Deploy your code by first installing the deployment tool:
+6. Deploy your code by first installing the deployment tool:
 ```
 cargo install cargo-deploy --git https://github.com/BlueZeeKing/robotrs.git
 ```
