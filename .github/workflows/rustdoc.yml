@@ -1,0 +1,22 @@
+name: rustdoc
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  doc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate docs
+        run: cargo doc
+        working-directory: ./robotrs
+      - name: Deploy docs
+        uses: crazy-max/ghaction-github-pages@v3
+        with:
+          target_branch: gh-pages
+          build_dir: target/arm-unknown-linux-gnueabi/doc
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
