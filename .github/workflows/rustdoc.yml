@@ -11,16 +11,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Generate robotrs docs
-        run: cargo doc
+        run: cargo doc --target arm-unknown-linux-gnueabi
         working-directory: ./robotrs
       - name: Generate utils docs
-        run: cargo doc
+        run: cargo doc --target arm-unknown-linux-gnueabi
         working-directory: ./utils
       - name: Generate revlib docs
-        run: cargo doc
+        run: cargo doc --target arm-unknown-linux-gnueabi
         working-directory: ./revlib
       - name: Generate ctre docs
-        run: cargo doc
+        run: cargo doc --target arm-unknown-linux-gnueabi
         working-directory: ./ctre
       - name: Deploy docs
         uses: crazy-max/ghaction-github-pages@v4
