@@ -10,11 +10,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Generate docs
+      - name: Generate robotrs docs
         run: cargo doc
         working-directory: ./robotrs
+      - name: Generate utils docs
+        run: cargo doc
+        working-directory: ./utils
+      - name: Generate revlib docs
+        run: cargo doc
+        working-directory: ./revlib
+      - name: Generate ctre docs
+        run: cargo doc
+        working-directory: ./ctre
       - name: Deploy docs
-        uses: crazy-max/ghaction-github-pages@v3
+        uses: crazy-max/ghaction-github-pages@v4
         with:
           target_branch: gh-pages
           build_dir: target/arm-unknown-linux-gnueabi/doc
