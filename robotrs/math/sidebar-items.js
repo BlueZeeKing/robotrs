@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["feedforward","filter","profile"],"struct":["ConstFloat","Derive","I","P","Position","State","Velocity"],"trait":["Controller"],"type":["Gain","PID"]};

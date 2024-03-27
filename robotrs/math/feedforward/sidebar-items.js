@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["Arm","Elevator","InnerStatic","TargetProportional"],"type":["Acceleration","FullArm","FullElevator","Static","Velocity"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["ParallelWrapper","RaceWrapper"],"trait":["GroupExt","ParallelGroup","RaceGroup"]};

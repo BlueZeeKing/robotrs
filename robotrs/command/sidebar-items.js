@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["commands","ext","group"],"struct":["CommandFuture","FutureCommand"],"trait":["Command","Func","IntoErr","StateFunc","ToCommand","ToFuture"]};
