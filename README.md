@@ -10,7 +10,7 @@ themselves are automatically downloaded at compile time. All code related to
 the downloading of these libs can be found in the `build-utils` crate and the
 `build.rs` of the 3 crates mentioned earlier.
 
-## Not affilited with or supported by WPILib, REV Robotics, or FIRST
+## Not affilited with or supported by WPILib, REV Robotics, CTRE, or FIRST
 
 ## Quick Start
 
