@@ -47,11 +47,10 @@ pub fn spawn<O, F: Future<Output = O> + 'static>(fut: F) -> Task<O> {
     task
 }
 
-pub struct RobotScheduler<'a, R: AsyncRobot> {
-    robot: &'a R,
+pub struct RobotScheduler<R: AsyncRobot> {
+    robot: &'static R,
     last_state: ds::State,
 
-    task_sender: Sender<Runnable>,
     task_receiver: Receiver<Runnable>,
 
     enabled_task: Option<Task<anyhow::Result<()>>>,
@@ -59,13 +58,12 @@ pub struct RobotScheduler<'a, R: AsyncRobot> {
     teleop_task: Option<Task<anyhow::Result<()>>>,
 }
 
-impl<'a, R: AsyncRobot> RobotScheduler<'a, R> {
-    fn new(robot: &'a R, task_sender: Sender<Runnable>, task_receiver: Receiver<Runnable>) -> Self {
+impl<R: AsyncRobot> RobotScheduler<R> {
+    fn new(robot: &'static R, task_receiver: Receiver<Runnable>) -> Self {
         Self {
             robot,
             last_state: ds::State::Disabled,
 
-            task_sender,
             task_receiver,
 
             enabled_task: None,
@@ -74,11 +72,14 @@ impl<'a, R: AsyncRobot> RobotScheduler<'a, R> {
         }
     }
 
-    pub fn add_binding<F: Fn() -> Fut, Fut: Future<Output = anyhow::Result<()>> + 'a>(
+    pub fn add_binding<
+        F: Fn() -> Fut + 'static,
+        Fut: Future<Output = anyhow::Result<()>> + 'static,
+    >(
         &self,
         func: F,
     ) {
-        self.schedule(async move {
+        spawn(async move {
             loop {
                 if let Err(err) = func().await {
                     error!("An error occurred in a binding: {}", err);
@@ -86,24 +87,6 @@ impl<'a, R: AsyncRobot> RobotScheduler<'a, R> {
             }
         })
         .detach();
-    }
-
-    pub fn schedule<O, F: Future<Output = O> + 'a>(&self, fut: F) -> Task<O> {
-        let sender = self.task_sender.to_owned();
-
-        // SAFETY:
-        //
-        // Runnable never changes thread so F can be !Send
-        // Future is forced to outlive 'a which is longer than self. Since runnable has same
-        // lifetime as self, it will never outlive 'a
-        // schedule is send, sync, and 'static
-        let (runnable, task) = unsafe {
-            async_task::spawn_unchecked(fut, move |runnable| sender.send(runnable).unwrap())
-        };
-
-        runnable.schedule();
-
-        task
     }
 
     fn tick(&mut self) {
@@ -128,20 +111,19 @@ impl<'a, R: AsyncRobot> RobotScheduler<'a, R> {
             dbg!(&state);
             match state {
                 ds::State::Auto => {
-                    self.auto_task = Some(self.schedule(self.robot.get_auto_future().inspect_err(
-                        |err| error!("An error occurred in the autonomous task: {}", err),
-                    )));
+                    self.auto_task = Some(spawn(self.robot.get_auto_future().inspect_err(|err| {
+                        error!("An error occurred in the autonomous task: {}", err)
+                    })));
 
                     debug!("Auto task started");
 
                     self.teleop_task = None;
                 }
                 ds::State::Teleop => {
-                    self.teleop_task = Some(self.schedule(
-                        self.robot.get_teleop_future().inspect_err(|err| {
+                    self.teleop_task =
+                        Some(spawn(self.robot.get_teleop_future().inspect_err(|err| {
                             error!("An error occurred in the teleop task: {}", err)
-                        }),
-                    ));
+                        })));
 
                     debug!("Teleop task started");
 
@@ -159,11 +141,10 @@ impl<'a, R: AsyncRobot> RobotScheduler<'a, R> {
             }
 
             if matches!(self.last_state, ds::State::Disabled) {
-                self.enabled_task = Some(self.schedule(
-                    self.robot.get_enabled_future().inspect_err(|err| {
+                self.enabled_task =
+                    Some(spawn(self.robot.get_enabled_future().inspect_err(|err| {
                         error!("An error occurred in the enabled task: {}", err)
-                    }),
-                ));
+                    })));
 
                 debug!("Enabled task started");
             }
@@ -219,9 +200,11 @@ impl<'a, R: AsyncRobot> RobotScheduler<'a, R> {
             }
         };
 
+        let robot = Box::leak::<'static>(Box::new(robot));
+
         println!("Robot started");
 
-        let mut scheduler = RobotScheduler::new(&robot, task_sender, task_receiver);
+        let mut scheduler = RobotScheduler::new(robot, task_receiver);
 
         robot
             .configure_bindings(&scheduler)

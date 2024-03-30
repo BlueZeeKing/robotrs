@@ -42,6 +42,7 @@ macro_rules! define_axes {
     };
 }
 
+#[derive(Clone, Copy)]
 pub struct XboxController {
     joystick: Joystick,
 }

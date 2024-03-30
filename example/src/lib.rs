@@ -1,15 +1,19 @@
 use std::time::Duration;
 
-use futures::{join, select, FutureExt};
 use robotrs::{
-    control::{ControlLock, ControlSafe},
+    control::ControlSafe,
     hid::{axis::AxisTarget, controller::XboxController},
     motor::IdleMode,
     robot::AsyncRobot,
-    time::Alarm,
+    time::delay,
     yield_now, Deadzone, FailableDefault,
 };
 use subsystems::{Arm, Drivetrain, Intake};
+use utils::{
+    subsystem::{Subsystem, SubsystemGroup},
+    trigger::TriggerExt,
+    wait, while_pressed_subsystem,
+};
 
 pub mod subsystems;
 
@@ -21,180 +25,160 @@ pub enum GamePiece {
 }
 
 pub struct Robot {
-    drivetrain: ControlLock<Drivetrain>,
-    arm: ControlLock<Arm>,
-    intake: ControlLock<Intake>,
+    drivetrain: Subsystem<Drivetrain>,
+    arm: Subsystem<Arm>,
+    intake: Subsystem<Intake>,
     controller: XboxController,
 }
 
 impl AsyncRobot for Robot {
-    async fn get_auto_future(&self) -> anyhow::Result<()> {
-        let mut arm = self.arm.lock().await;
+    async fn get_auto_future(&'static self) -> anyhow::Result<()> {
+        (&self.arm, &self.intake, &self.drivetrain)
+            .run(
+                |(mut arm, mut intake, mut drivetrain)| async move {
+                    arm.raise().await?;
 
-        arm.raise().await?;
+                    intake.release_cube().await?;
 
-        let mut intake = self.intake.lock().await;
+                    arm.lower().await?;
 
-        intake.release_cube().await?;
+                    drivetrain.drive(-1.0)?;
 
-        drop(intake);
+                    delay(Duration::from_secs(2)).await?;
 
-        arm.lower().await?;
+                    drivetrain.stop(); // this is not really needed because this is called when the guard
+                                       // is dropped
+                    anyhow::Ok(())
+                },
+                0,
+            )
+            .await
+            .expect("Could not run auto")
+    }
 
-        drop(arm);
-
-        let mut drivetrain = self.drivetrain.lock().await;
-
-        drivetrain.drive(-1.0)?;
-
-        Alarm::new(Duration::from_secs(2)).await?;
-
-        drivetrain.stop(); // this is not really needed because this is called when the guard
-                           // is dropped
-
-        drop(drivetrain);
-
+    async fn get_enabled_future(&'static self) -> anyhow::Result<()> {
         Ok(())
     }
 
-    async fn get_enabled_future(&self) -> anyhow::Result<()> {
-        let vals = join!(
-            Self::raise(self),
-            Self::lower(self),
-            Self::cube(self),
-            Self::cone(self),
-            Self::release(self)
-        );
-
-        vals.0?;
-        vals.1?;
-        vals.2?;
-        vals.3?;
-        vals.4?;
-
-        Ok(())
-    }
-
-    async fn get_teleop_future(&self) -> anyhow::Result<()> {
+    async fn get_teleop_future(&'static self) -> anyhow::Result<()> {
         // The periodic runs every 20ms because thats how fast the executor ticks
-        let mut drivetrain = self.drivetrain.lock().await;
-
         loop {
-            if self.controller.b().value()? {
-                drivetrain.set_idle_mode(IdleMode::Brake)?;
-            } else {
-                drivetrain.set_idle_mode(IdleMode::Coast)?;
-            }
+            self.drivetrain
+                .run(
+                    |mut drivetrain| async move {
+                        loop {
+                            if self.controller.b().value()? {
+                                drivetrain.set_idle_mode(IdleMode::Brake)?;
+                            } else {
+                                drivetrain.set_idle_mode(IdleMode::Coast)?;
+                            }
 
-            if self.controller.left_trigger().unwrap().deadzone(0.1) != 0.0
-                || self.controller.right_trigger().unwrap().deadzone(0.1) != 0.0
-            {
+                            drivetrain.arcade_drive(
+                                self.controller.left_y().unwrap().deadzone(0.1),
+                                self.controller.right_x().unwrap().deadzone(0.1),
+                            )?;
+
+                            yield_now().await;
+                        }
+
+                        #[allow(unreachable_code)]
+                        anyhow::Ok(())
+                    },
+                    0,
+                )
+                .await
+                .expect_err("drivetrain failed");
+        }
+    }
+
+    fn configure_bindings(
+        &'static self,
+        _scheduler: &robotrs::scheduler::RobotScheduler<Self>,
+    ) -> anyhow::Result<()> {
+        while_pressed_subsystem!(
+            self.controller
+                .wait_left_trigger(AxisTarget::Away(0.1))
+                .or(self.controller.wait_right_trigger(AxisTarget::Away(0.1))),
+            &self.drivetrain,
+            1,
+            |mut drivetrain| async move {
                 drivetrain.arcade_drive(
                     0.0,
                     (self.controller.left_trigger().unwrap().deadzone(0.1) * -1.0
                         + self.controller.right_trigger().unwrap().deadzone(0.1))
                         * SLOW_TURN_MODIFIER,
                 )?;
-            } else {
-                drivetrain.arcade_drive(
-                    self.controller.left_y().unwrap().deadzone(0.1),
-                    self.controller.right_x().unwrap().deadzone(0.1),
-                )?;
+
+                anyhow::Ok(())
             }
+        );
+        while_pressed_subsystem!(self.controller.y(), &self.arm, 1, |mut arm| async move {
+            arm.raise().await?;
 
-            yield_now().await;
-        }
-    }
+            wait!();
 
-    fn configure_bindings<'a>(
-        &'a self,
-        _scheduler: &'a robotrs::scheduler::RobotScheduler<'a, Self>,
-    ) -> anyhow::Result<()> {
+            anyhow::Ok(())
+        });
+
+        while_pressed_subsystem!(self.controller.a(), &self.arm, 1, |mut arm| async move {
+            arm.lower().await?;
+
+            wait!();
+
+            anyhow::Ok(())
+        });
+
+        while_pressed_subsystem!(
+            self.controller.wait_right_y(AxisTarget::Up(0.65)),
+            &self.intake,
+            1,
+            |mut intake| async move {
+                intake.intake_cube()?;
+
+                wait!();
+
+                anyhow::Ok(())
+            }
+        );
+
+        while_pressed_subsystem!(
+            self.controller.wait_right_y(AxisTarget::Down(0.65)),
+            &self.intake,
+            1,
+            |mut intake| async move {
+                intake.intake_cone()?;
+
+                wait!();
+
+                anyhow::Ok(())
+            }
+        );
+
+        while_pressed_subsystem!(
+            self.controller
+                .left_bumper()
+                .or(self.controller.right_bumper()),
+            &self.intake,
+            1,
+            |mut intake| async move {
+                intake.start_release()?;
+
+                wait!();
+
+                anyhow::Ok(())
+            }
+        );
+
         Ok(())
-    }
-}
-
-impl Robot {
-    pub async fn raise(&self) -> anyhow::Result<()> {
-        loop {
-            let released = self.controller.y().await?;
-
-            let mut arm_lock = self.arm.lock().await;
-
-            arm_lock.start_raise()?;
-
-            released.await?;
-
-            arm_lock.stop();
-        }
-    }
-
-    pub async fn lower(&self) -> anyhow::Result<()> {
-        loop {
-            let released = self.controller.a().await?;
-
-            let mut arm_lock = self.arm.lock().await;
-
-            arm_lock.start_lower()?;
-
-            released.await?;
-
-            arm_lock.stop();
-        }
-    }
-
-    pub async fn cube(&self) -> anyhow::Result<()> {
-        loop {
-            let released = self.controller.wait_right_y(AxisTarget::Up(0.65)).await?;
-
-            let mut intake_lock = self.intake.lock().await;
-
-            intake_lock.intake_cube()?;
-
-            released.await?;
-
-            intake_lock.stop();
-        }
-    }
-
-    pub async fn cone(&self) -> anyhow::Result<()> {
-        loop {
-            let released = self.controller.wait_right_y(AxisTarget::Down(0.65)).await?;
-
-            let mut intake_lock = self.intake.lock().await;
-
-            intake_lock.intake_cone()?;
-
-            released.await?;
-
-            intake_lock.stop();
-        }
-    }
-
-    pub async fn release(&self) -> anyhow::Result<()> {
-        loop {
-            let released = select! {
-                released = self.controller.left_bumper().fuse() => released,
-                released = self.controller.right_bumper().fuse() => released
-            }?;
-
-            let mut intake_lock = self.intake.lock().await;
-
-            intake_lock.start_release()?;
-
-            released.await?;
-
-            intake_lock.stop();
-        }
     }
 }
 
 impl FailableDefault for Robot {
     fn failable_default() -> anyhow::Result<Self> {
         Ok(Self {
-            drivetrain: FailableDefault::failable_default()?,
-            arm: FailableDefault::failable_default()?,
-            intake: FailableDefault::failable_default()?,
+            drivetrain: Subsystem::new(FailableDefault::failable_default()?),
+            arm: Subsystem::new(FailableDefault::failable_default()?),
+            intake: Subsystem::new(FailableDefault::failable_default()?),
             controller: XboxController::new(0)?,
         })
     }

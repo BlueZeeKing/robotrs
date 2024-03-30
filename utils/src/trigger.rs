@@ -4,64 +4,58 @@ use futures::{join, select, FutureExt};
 use pin_project::pin_project;
 use robotrs::{
     hid::{PressTrigger, ReleaseTrigger},
-    robot::AsyncRobot,
-    scheduler::RobotScheduler,
+    scheduler::spawn,
 };
 use tracing::error;
 
-pub trait TriggerExt: PressTrigger + Sized + Clone {
-    fn on_press<'a, Func, Fut>(self, scheduler: &'a RobotScheduler<'a, impl AsyncRobot>, func: Func)
+pub trait TriggerExt: PressTrigger + Sized + Clone + 'static {
+    fn on_press<Func, Fut>(self, func: Func)
     where
-        Func: Fn() -> Fut + 'a,
-        Fut: Future,
+        Func: Fn() -> Fut + 'static,
+        Fut: Future + 'static,
     {
-        scheduler
-            .schedule(async move {
-                loop {
-                    let released = match self.clone().await {
-                        Err(err) => {
-                            error!("button failed in trigger: {:?}", err);
-                            continue;
-                        }
-                        Ok(released) => released,
-                    };
-
-                    let (_, released) = join!(func(), released);
-
-                    if let Err(err) = released {
+        spawn(async move {
+            loop {
+                let released = match self.clone().await {
+                    Err(err) => {
                         error!("button failed in trigger: {:?}", err);
+                        continue;
                     }
+                    Ok(released) => released,
+                };
+
+                let (_, released) = join!(func(), released);
+
+                if let Err(err) = released {
+                    error!("button failed in trigger: {:?}", err);
                 }
-            })
-            .detach();
+            }
+        })
+        .detach();
     }
 
-    fn while_pressed<'a, Func, Fut>(
-        self,
-        scheduler: &'a RobotScheduler<'a, impl AsyncRobot>,
-        func: Func,
-    ) where
-        Func: Fn() -> Fut + 'a,
-        Fut: Future,
+    fn while_pressed<'a, Func, Fut>(self, func: Func)
+    where
+        Func: Fn() -> Fut + 'static,
+        Fut: Future + 'static,
     {
-        scheduler
-            .schedule(async move {
-                loop {
-                    let released = match self.clone().await {
-                        Err(err) => {
-                            error!("Button failed in trigger: {:?}", err);
-                            continue;
-                        }
-                        Ok(released) => released,
-                    };
-
-                    select! {
-                        _ = func().fuse() => {},
-                        _ = released.fuse() => {},
+        spawn(async move {
+            loop {
+                let released = match self.clone().await {
+                    Err(err) => {
+                        error!("Button failed in trigger: {:?}", err);
+                        continue;
                     }
+                    Ok(released) => released,
+                };
+
+                select! {
+                    _ = func().fuse() => {},
+                    _ = released.fuse() => {},
                 }
-            })
-            .detach();
+            }
+        })
+        .detach();
     }
 
     fn or<T: PressTrigger>(self, other: T) -> EitherTriggerPressed<Self, T> {
@@ -72,7 +66,7 @@ pub trait TriggerExt: PressTrigger + Sized + Clone {
     }
 }
 
-impl<T: PressTrigger + Sized + Clone> TriggerExt for T {}
+impl<T: PressTrigger + Sized + Clone + 'static> TriggerExt for T {}
 
 #[derive(Clone)]
 #[pin_project]
