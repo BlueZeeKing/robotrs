@@ -13,4 +13,5 @@ members = [
   "hal",
   "utils",
   "navx",
+  "math",
 ]
