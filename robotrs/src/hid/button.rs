@@ -12,7 +12,7 @@ pub(super) fn get_button(buttons: &HAL_JoystickButtons, index: u32) -> Result<bo
         return Err(crate::error::Error::ButtonIndexOutOfRange(index));
     }
 
-    Ok(buttons.buttons & (1 >> index) > 0)
+    Ok(buttons.buttons & (1 << index) > 0)
 }
 
 #[derive(Clone)]
