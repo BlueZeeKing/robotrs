@@ -7,3 +7,4 @@ edition = "2021"
 embedded-hal = { version = "1.0.0-rc.3" }
 hal-sys = { path = "../hal-sys" }
 robotrs = { path = "../robotrs" }
+tracing = "0.1.40"
