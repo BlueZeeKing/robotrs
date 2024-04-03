@@ -9,6 +9,7 @@ use robotrs::{
 use tracing::error;
 
 pub trait TriggerExt: PressTrigger + Sized + Clone + 'static {
+    /// When the trigger is pressed, run the given [Future].
     fn on_press<Func, Fut>(self, func: Func)
     where
         Func: Fn() -> Fut + 'static,
@@ -34,6 +35,7 @@ pub trait TriggerExt: PressTrigger + Sized + Clone + 'static {
         .detach();
     }
 
+    /// While the trigger is pressed, run the given [Future].
     fn while_pressed<'a, Func, Fut>(self, func: Func)
     where
         Func: Fn() -> Fut + 'static,
@@ -58,6 +60,7 @@ pub trait TriggerExt: PressTrigger + Sized + Clone + 'static {
         .detach();
     }
 
+    /// Create a new trigger that is pressed when either this trigger or the given trigger is pressed.
     fn or<T: PressTrigger>(self, other: T) -> EitherTriggerPressed<Self, T> {
         EitherTriggerPressed {
             trigger1: self,
@@ -68,6 +71,7 @@ pub trait TriggerExt: PressTrigger + Sized + Clone + 'static {
 
 impl<T: PressTrigger + Sized + Clone + 'static> TriggerExt for T {}
 
+/// A trigger that is pressed when either of the two triggers are pressed.
 #[derive(Clone)]
 #[pin_project]
 pub struct EitherTriggerPressed<T1: PressTrigger, T2: PressTrigger> {
@@ -100,6 +104,7 @@ impl<T1: PressTrigger, T2: PressTrigger> PressTrigger for EitherTriggerPressed<T
     type Release = EitherTriggerReleased<T1::Release, T2::Release>;
 }
 
+/// The release trigger for [EitherTriggerPressed].
 #[derive(Clone)]
 #[pin_project(project = EitherTriggerReleasedProjection)]
 pub enum EitherTriggerReleased<T1: ReleaseTrigger, T2: ReleaseTrigger> {
