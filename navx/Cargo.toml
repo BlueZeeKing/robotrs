@@ -6,6 +6,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+bitflags = "2.5.0"
 embedded-hal = "1.0.0"
 hal = { path = "../hal" }
+parking_lot = "0.12.1"
 robotrs = { path = "../robotrs" }
+thiserror = "1.0.58"

@@ -1,10 +1,10 @@
-use std::error::Error;
+use std::{error::Error, thread, time::Duration};
 
 use embedded_hal::spi::{Operation, SpiDevice};
 use hal::spi::{RioSPI, SPIError};
 
 pub trait IO {
-    type Error: Error;
+    type Error: Error + 'static;
 
     fn init(&mut self) -> Result<(), Self::Error>;
     fn write(&mut self, address: u8, value: u8) -> Result<(), Self::Error>;
@@ -39,13 +39,15 @@ impl IO for RioSPI {
 
         SpiDevice::write(self, &command)?;
 
+        thread::sleep(Duration::from_micros(200));
+
+        buffer.fill(0x95);
+
         let mut check = [0x3E];
 
         let mut operations = [
-            Operation::Write(&command),
-            Operation::DelayNs(1000000),
-            Operation::Read(buffer),
-            Operation::Read(&mut check),
+            Operation::TransferInPlace(buffer),
+            Operation::TransferInPlace(&mut check),
         ];
 
         SpiDevice::transaction(self, &mut operations)?;
@@ -56,8 +58,6 @@ impl IO for RioSPI {
             return Err(SPIError);
         }
 
-        SpiDevice::read(self, buffer)?;
-
         Ok(())
     }
 
@@ -66,16 +66,15 @@ impl IO for RioSPI {
     }
 }
 
-fn get_crc(data: &[u8]) -> u8 {
+pub fn get_crc(buffer: &[u8]) -> u8 {
     let mut crc = 0;
-
-    for byte in data {
-        crc ^= 0x00ff & byte;
+    for val in buffer {
+        crc ^= 0x00ff & val;
         for _ in 0..8 {
             if crc & 0x0001 != 0 {
-                crc ^= 145;
+                crc ^= 0x0091;
             }
-            crc = crc.wrapping_shr(1);
+            crc >>= 1;
         }
     }
 
