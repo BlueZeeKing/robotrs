@@ -1,30 +1,42 @@
+use core::panic;
 use std::{
     cell::OnceCell,
     fs::File,
-    io::{self, Write},
+    io::Write,
     thread,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
+use anyhow::anyhow;
 use async_task::{Runnable, Task};
 use flume::{unbounded, Receiver, Sender};
-use futures::{Future, TryFutureExt};
-use tracing::{debug, error};
+use futures::{Future, FutureExt, TryFutureExt};
+use tracing::{debug, error, info, warn};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
-use crate::{ds, robot::AsyncRobot, DsTracingWriter, PERIODIC_CHECKS};
+use crate::{ds, robot::AsyncRobot, status_to_result, PERIODIC_CHECKS};
 
 use hal_sys::{
     HAL_HasMain, HAL_Initialize, HAL_ObserveUserProgramAutonomous, HAL_ObserveUserProgramDisabled,
     HAL_ObserveUserProgramStarting, HAL_ObserveUserProgramTeleop, HAL_ObserveUserProgramTest,
+    HAL_SetNotifierThreadPriority,
 };
+
+mod cancellation;
+
+pub use cancellation::{guard, CancellationHandle};
 
 static PERIOD: Duration = Duration::from_millis(20);
 thread_local! {
-    static TASK_SENDER: OnceCell<Sender<Runnable>> = OnceCell::new();
+    static TASK_SENDER: OnceCell<Sender<Runnable>> = const { OnceCell::new() };
 }
 
 /// Panics if not called after the robot is scheduled or during the robot create closure
-pub fn spawn<O, F: Future<Output = O> + 'static>(fut: F) -> Task<O> {
+pub fn spawn<O, F: Future<Output = O> + 'static>(fut: F) -> Task<Result<O, ()>> {
+    spawn_inner(guard(fut))
+}
+
+fn spawn_inner<O, F: Future<Output = O> + 'static>(fut: F) -> Task<O> {
     // SAFETY:
     //
     // Runnable never changes thread so F can be !Send
@@ -81,8 +93,14 @@ impl<R: AsyncRobot> RobotScheduler<R> {
     ) {
         spawn(async move {
             loop {
-                if let Err(err) = func().await {
-                    error!("An error occurred in a binding: {}", err);
+                match guard(func()).await {
+                    Ok(Err(err)) => {
+                        error!("An error occurred in a binding: {}", err);
+                    }
+                    Err(_) => {
+                        warn!("Binding was canceled");
+                    }
+                    _ => {}
                 }
             }
         })
@@ -108,22 +126,34 @@ impl<R: AsyncRobot> RobotScheduler<R> {
         }
 
         if state != self.last_state {
-            dbg!(&state);
             match state {
                 ds::State::Auto => {
-                    self.auto_task = Some(spawn(self.robot.get_auto_future().inspect_err(|err| {
-                        error!("An error occurred in the autonomous task: {}", err)
-                    })));
+                    self.auto_task = Some(spawn_inner(
+                        guard(self.robot.get_auto_future())
+                            .map(|val| match val {
+                                Ok(val) => val,
+                                Err(_) => Err(anyhow!("Task cancelled")),
+                            })
+                            .inspect_err(|err| {
+                                error!("An error occurred in the autonomous task: {}", err)
+                            }),
+                    ));
 
                     debug!("Auto task started");
 
                     self.teleop_task = None;
                 }
                 ds::State::Teleop => {
-                    self.teleop_task =
-                        Some(spawn(self.robot.get_teleop_future().inspect_err(|err| {
-                            error!("An error occurred in the teleop task: {}", err)
-                        })));
+                    self.teleop_task = Some(spawn_inner(
+                        guard(self.robot.get_teleop_future())
+                            .map(|val| match val {
+                                Ok(val) => val,
+                                Err(_) => Err(anyhow!("Task cancelled")),
+                            })
+                            .inspect_err(|err| {
+                                error!("An error occurred in the teleop task: {}", err)
+                            }),
+                    ));
 
                     debug!("Teleop task started");
 
@@ -141,10 +171,16 @@ impl<R: AsyncRobot> RobotScheduler<R> {
             }
 
             if matches!(self.last_state, ds::State::Disabled) {
-                self.enabled_task =
-                    Some(spawn(self.robot.get_enabled_future().inspect_err(|err| {
-                        error!("An error occurred in the enabled task: {}", err)
-                    })));
+                self.enabled_task = Some(spawn_inner(
+                    guard(self.robot.get_enabled_future())
+                        .map(|val| match val {
+                            Ok(val) => val,
+                            Err(_) => Err(anyhow!("Task cancelled")),
+                        })
+                        .inspect_err(|err| {
+                            error!("An error occurred in the enabled task: {}", err)
+                        }),
+                ));
 
                 debug!("Enabled task started");
             }
@@ -152,7 +188,7 @@ impl<R: AsyncRobot> RobotScheduler<R> {
 
         self.last_state = state;
 
-        for task in self.task_receiver.drain() {
+        for task in self.task_receiver.try_iter() {
             task.run();
         }
 
@@ -173,9 +209,19 @@ impl<R: AsyncRobot> RobotScheduler<R> {
             panic!("A main function was given and that is probably wrong (idk)");
         }
 
-        tracing_subscriber::fmt()
-            .with_writer(DsTracingWriter {})
-            .with_writer(io::stderr)
+        if let Err(err) = unsafe { status_to_result!(HAL_SetNotifierThreadPriority(1, 40)) } {
+            panic!("Could not set notifier thread priority: {}", err);
+        }
+
+        tracing_subscriber::registry()
+            .with(EnvFilter::builder().parse("trace").unwrap())
+            .with(
+                tracing_subscriber::fmt::layer().event_format(
+                    tracing_subscriber::fmt::format()
+                        .without_time()
+                        .with_ansi(false),
+                ),
+            )
             .init();
 
         if let Err(err) = set_version() {
@@ -190,7 +236,9 @@ impl<R: AsyncRobot> RobotScheduler<R> {
                 .expect("Robot was already started")
         });
 
-        println!("Starting robot");
+        cancellation::init_runtime();
+
+        info!("Starting robot");
 
         let robot = match robot() {
             Ok(robot) => robot,
@@ -202,7 +250,7 @@ impl<R: AsyncRobot> RobotScheduler<R> {
 
         let robot = Box::leak::<'static>(Box::new(robot));
 
-        println!("Robot started");
+        info!("Robot started");
 
         let mut scheduler = RobotScheduler::new(robot, task_receiver);
 
@@ -215,18 +263,27 @@ impl<R: AsyncRobot> RobotScheduler<R> {
 
         unsafe { HAL_ObserveUserProgramStarting() };
 
-        println!(
+        info!(
             "Robot code started with period of {} milliseconds",
             PERIOD.as_millis()
         );
 
         loop {
+            let start = Instant::now();
+
             scheduler.tick();
 
+            if start.elapsed() > PERIOD {
+                warn!(
+                    "Loop over run by {} milliseconds",
+                    (start.elapsed() - PERIOD).as_millis()
+                );
+            } else {
+                thread::sleep(PERIOD - start.elapsed());
+            }
+
             // notifier = notifier.block_until_alarm().unwrap(); // add error handling
-            // dbg!(get_time().unwrap().as_millis(), time);
             // time += PERIOD;
-            thread::sleep(PERIOD);
             // if time < get_time().unwrap() {
             //     warn!(
             //         "Loop over run by {} milliseconds",
