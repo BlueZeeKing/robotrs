@@ -36,7 +36,6 @@ static WAKERS: Mutex<Vec<Waker>> = Mutex::new(Vec::new());
 #[distributed_slice(PERIODIC_CHECKS)]
 fn poll() {
     let wakers = std::mem::take(WAKERS.lock().deref_mut());
-    // dbg!(wakers.len());
     for waker in wakers {
         waker.wake();
     }
