@@ -28,7 +28,7 @@ macro_rules! wait {
 macro_rules! periodic {
     ([$($name:ident = $subsystem:expr => $priority:expr),*], $task:expr) => {
         loop {
-            let Ok(val) = guard(async {
+            let Ok(val) = robotrs::scheduler::guard(async {
                 $(
                     let mut $name = $subsystem.lock($priority).await
                 )*;

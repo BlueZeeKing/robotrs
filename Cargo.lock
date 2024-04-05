@@ -1626,6 +1626,7 @@ dependencies = [
  "bitflags 2.5.0",
  "embedded-hal",
  "hal",
+ "oneshot",
  "parking_lot",
  "robotrs",
  "thiserror",

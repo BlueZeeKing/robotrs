@@ -1,8 +1,15 @@
-use flume::{Receiver, Sender};
-use futures::{select, FutureExt};
-use robotrs::{control::ControlSafe, math::Controller, motor::MotorController, scheduler};
+use defer_lite::defer;
+use flume::{select, Receiver, Sender};
+use futures::{
+    channel::oneshot,
+    future::{select, Either},
+    select, FutureExt,
+};
+use robotrs::{
+    control::ControlSafe, math::Controller, motor::MotorController, scheduler, yield_now,
+};
 use std::fmt::Debug;
-use tracing::{error, warn};
+use tracing::{error, trace, warn};
 
 use async_deadman::{Deadman, DeadmanReceiver};
 
@@ -12,6 +19,7 @@ struct MechanismRequest<I> {
     deadman: DeadmanReceiver,
 }
 
+#[derive(Debug)]
 pub enum MechanismState<O> {
     Value(O),
     Stop,
@@ -60,7 +68,23 @@ impl<I: 'static, E: Debug + 'static> Mechanism<I, E> {
 
         scheduler::spawn(async move {
             loop {
-                let Ok(request) = receiver.recv_async().await else {
+                let Either::Left((request, _)) =
+                    select(receiver.recv_async(), stop_receiver.recv_async()).await
+                else {
+                    if let Err(err) = consumer(MechanismState::Stop) {
+                        error!(
+                            "A mechanism has encountered an error while stopping: {:?}",
+                            err
+                        );
+                        if errors_sender.send(MechanismError::User(err)).is_err() {
+                            break;
+                        }
+                    }
+
+                    continue;
+                };
+
+                let Ok(request) = request else {
                     break;
                 };
 
@@ -93,6 +117,8 @@ impl<I: 'static, E: Debug + 'static> Mechanism<I, E> {
                                     break;
                                 }
                             }
+
+                            yield_now().await;
                         }
                     }.fuse() => {
                         break;
@@ -122,6 +148,7 @@ impl<I: 'static, E: Debug + 'static> Mechanism<I, E> {
     }
 
     pub async fn set(&mut self, state: I) -> Deadman {
+        // TODO: Link deadman and self lifetime
         let (response_sender, response_receiver) = oneshot::channel();
         let (deadman, deadman_receiver) = Deadman::new();
 
