@@ -16,7 +16,7 @@ pub trait Controller<State, Output = f32> {
     }
 }
 
-#[impl_for_tuples(2, 8)]
+#[impl_for_tuples(1, 8)]
 impl<State, Output: Add<Output = Output>> Controller<State, Output> for Tuple {
     fn calculate_with_time(&mut self, current: &State, target: &State, time: Duration) -> Output {
         for_tuples!( #( Tuple.calculate_with_time(current, target, time) )+* )
