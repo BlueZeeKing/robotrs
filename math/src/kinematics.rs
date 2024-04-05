@@ -1,6 +1,6 @@
 use std::f32::{consts::PI, EPSILON};
 
-use nalgebra::{matrix, Dim, SMatrix, Vector2, Vector3, VectorView2, U1, U2};
+use nalgebra::{matrix, ComplexField, Dim, SMatrix, Vector2, Vector3, VectorView2, U1, U2};
 
 use crate::normalize_angle;
 
@@ -177,6 +177,13 @@ impl SwerveState {
 
     /// Optimize the module state to prevent the module from spinning 180 degrees
     pub fn optimize(self, old: SwerveState) -> SwerveState {
+        if self.drive.abs() < f32::EPSILON {
+            return SwerveState {
+                drive: 0.0,
+                angle: old.angle,
+            };
+        }
+
         let new_angle = normalize_angle(self.angle);
         let old_angle = normalize_angle(old.angle);
         let diff = new_angle - old_angle;
