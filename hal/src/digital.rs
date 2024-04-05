@@ -1,6 +1,7 @@
 use embedded_hal::digital::{Error, ErrorKind, ErrorType, InputPin, OutputPin};
 use robotrs::error::HalError;
 use std::{marker::PhantomData, ptr};
+use tracing::debug;
 
 pub struct RioPin<T> {
     data: PhantomData<T>,
@@ -41,11 +42,14 @@ impl<T> RioPin<T> {
     pub fn new_input(channel: u8) -> Result<RioPin<Input>, HalError> {
         let mut error = 0;
 
-        let handle;
-        unsafe {
-            handle = hal_sys::HAL_GetPort(channel as i32);
-            hal_sys::HAL_InitializeDIOPort(handle, 1, ptr::null(), &mut error);
-        }
+        let handle = unsafe {
+            hal_sys::HAL_InitializeDIOPort(
+                hal_sys::HAL_GetPort(channel as i32),
+                1,
+                ptr::null(),
+                &mut error,
+            )
+        };
 
         if error != 0 {
             Err(HalError::from_raw(error))
@@ -127,7 +131,12 @@ impl InputPin for RioPin<Input> {
 impl RioPin<Input> {
     pub async fn wait_for_high(&mut self) -> Result<(), DigitalError> {
         loop {
-            if self.is_high()? {
+            println!("Starting");
+            let is_high = dbg!(self.is_high())?;
+
+            debug!(is_high);
+
+            if is_high {
                 return Ok(());
             }
 
