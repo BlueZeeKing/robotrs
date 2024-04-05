@@ -5,6 +5,7 @@ use robotrs::{
     motor::{MotorController, SetIdleMode},
 };
 use std::ops::RangeInclusive;
+use tracing::trace;
 
 use crate::bindings::*;
 
@@ -33,19 +34,33 @@ pub enum IdleMode {
 }
 
 impl SparkMax {
-    pub fn new(can_id: i32, motor_type: MotorType) -> Result<SparkMax, REVError> {
+    fn new_raw(can_id: i32, motor_type: MotorType, model: u32) -> Result<SparkMax, REVError> {
+        trace!("Creating sparkmax");
         let error_code = unsafe { c_SparkMax_RegisterId(can_id) };
         if error_code != 0 {
+            trace!("Error while creating Spark with id: {}", can_id);
             return Err(REVError::from(error_code));
         }
 
         let mut error_code = 0;
-        let handle = unsafe { c_SparkMax_Create(can_id, motor_type as u32, 0, &mut error_code) };
+        let handle =
+            unsafe { c_SparkMax_Create(can_id, motor_type as u32, model, &mut error_code) };
         if error_code != 0 {
+            trace!("Error while creating Spark with id: {}", can_id);
             return Err(REVError::from(error_code));
         }
 
         Ok(SparkMax { handle })
+    }
+
+    pub fn new(can_id: i32, motor_type: MotorType) -> Result<SparkMax, REVError> {
+        SparkMax::new_raw(can_id, motor_type, 0)
+    }
+
+    /// This should work for getting the relative encoder and setting the voltage, but it is
+    /// untested. All other functionality has been ignored.
+    pub fn new_flex(can_id: i32, motor_type: MotorType) -> Result<SparkMax, REVError> {
+        SparkMax::new_raw(can_id, motor_type, 1)
     }
 
     pub fn set(&mut self, speed: f32) -> Result<(), REVError> {
@@ -177,14 +192,17 @@ impl SparkMax {
             handle_error!(c_SparkMax_GetDeviceId(other.handle, &mut device_id))?;
         }
 
+        let id = 0x2051800 | device_id;
+        let predefined = 26;
+
         unsafe {
             handle_error!(c_SparkMax_SetFollow(
                 self.handle,
-                device_id as u32,
+                id as u32,
                 (0 & 0x3FFFF)
                     | (if invert { 1 } else { 0 } & 0x1) << 18
                     | (0 & 0x1F) << 19
-                    | (26 & 0xFF) << 24
+                    | (predefined & 0xFF) << 24
             ))?;
         }
 

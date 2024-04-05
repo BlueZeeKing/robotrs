@@ -57,7 +57,7 @@ pub enum REVError {
 
 impl From<u32> for REVError {
     fn from(value: u32) -> Self {
-        match value {
+        let error = match value {
             1 => Self::General,
             2 => Self::CANTimeout,
             3 => Self::NotImplemented,
@@ -82,6 +82,10 @@ impl From<u32> for REVError {
                 error!("Unknown rev error code {code}, exiting");
                 panic!("Unknown rev error code {code}");
             }
-        }
+        };
+
+        error!("REV Error: {error}");
+
+        error
     }
 }
