@@ -19,7 +19,10 @@ pub struct NavX {
 }
 
 impl NavX {
-    pub fn new<I: IO + Send + 'static>(mut io: I, update_rate: u8) -> Self {
+    pub fn new<I: IO + Send + 'static>(
+        mut io: I,
+        update_rate: u8,
+    ) -> (Self, oneshot::Receiver<()>) {
         io.init().unwrap();
 
         io.write(registers::NAVX_REG_UPDATE_RATE_HZ as u8, update_rate)
@@ -45,6 +48,10 @@ impl NavX {
         let config2 = config.clone();
         let data2 = data.clone();
 
+        let (sender, reciever) = oneshot::channel();
+
+        let mut sender = Some(sender);
+
         thread::spawn(move || loop {
             let (state, board_state_update) = if has_displacement {
                 let mut buffer =
@@ -65,6 +72,9 @@ impl NavX {
 
             if let Some(mut data) = data2.try_lock() {
                 *data = state;
+                if let Some(data) = sender.take() {
+                    let _ = data.send(());
+                }
             }
 
             if board_state_update.update_rate_hz != update_rate {
@@ -79,7 +89,7 @@ impl NavX {
             thread::sleep(Duration::from_secs_f64(delay_time));
         });
 
-        NavX { config, data }
+        (NavX { config, data }, reciever)
     }
 
     pub fn get_data(&self) -> State {

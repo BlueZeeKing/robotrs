@@ -9,6 +9,7 @@ edition = "2021"
 bitflags = "2.5.0"
 embedded-hal = "1.0.0"
 hal = { path = "../hal" }
+oneshot = "0.1.6"
 parking_lot = "0.12.1"
 robotrs = { path = "../robotrs" }
 thiserror = "1.0.58"
