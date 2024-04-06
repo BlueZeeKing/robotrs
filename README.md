@@ -14,10 +14,28 @@ the downloading of these libs can be found in the `build-utils` crate and the
 
 ## Quick Start
 
+### Cargo Generate
+
 0. Install the compiler toolchain by running the `installRoboRioToolchain` task
    in allwpilib or downloading from
-   (Github)[https://github.com/wpilibsuite/opensdk/releases) and putting the
+   [Github](https://github.com/wpilibsuite/opensdk/releases) and putting the
    `bin` directory on the path. 
+1. First, install
+   [cargo-generate](https://github.com/cargo-generate/cargo-generate) using
+   `cargo install cargo-generate`. Then, generate from the template using
+   `cargo generate https://github.com/BlueZeeKing/robotrs.git`
+2. Deploy your code by first installing the deployment tool:
+```
+cargo install cargo-deploy --git https://github.com/BlueZeeKing/robotrs.git
+```
+Then running it in the root directory:
+```
+cargo deploy [TEAM NUMBER]
+```
+
+### Manual
+
+0. Install the compiler toolchain the same way as in cargo generate step 0 
 1. Create a new binary Rust crate with `cargo new <NAME>`
 2. Add the following to the ./.cargo/config.toml file
 ```toml
