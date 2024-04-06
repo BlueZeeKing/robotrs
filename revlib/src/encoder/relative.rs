@@ -31,7 +31,7 @@ impl Encoder for SparkMaxRelativeEncoder {
         let mut velocity = 0.0;
 
         unsafe {
-            handle_error!(c_SparkMax_GetEncoderPosition(self.handle, &mut velocity))?;
+            handle_error!(c_SparkMax_GetEncoderVelocity(self.handle, &mut velocity))?;
         }
 
         Ok(velocity)

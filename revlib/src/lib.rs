@@ -4,8 +4,8 @@ use robotrs::{
     control::ControlSafe,
     motor::{MotorController, SetIdleMode},
 };
-use std::ops::RangeInclusive;
-use tracing::trace;
+use std::{mem::MaybeUninit, ops::RangeInclusive};
+use tracing::{trace, warn};
 
 use crate::bindings::*;
 
@@ -50,7 +50,26 @@ impl SparkMax {
             return Err(REVError::from(error_code));
         }
 
-        Ok(SparkMax { handle })
+        let res = Ok(SparkMax { handle });
+
+        let mut model_ptr = MaybeUninit::uninit();
+        let error;
+        let model;
+
+        unsafe {
+            error = c_SparkMax_GetSparkModel(handle, model_ptr.as_mut_ptr());
+            model = model_ptr.assume_init();
+        }
+
+        if model != model {
+            warn!("Incorrect model");
+        }
+
+        if error_code != 0 {
+            warn!("Could not get model of Spark with id: {}", can_id);
+        }
+
+        res
     }
 
     pub fn new(can_id: i32, motor_type: MotorType) -> Result<SparkMax, REVError> {
