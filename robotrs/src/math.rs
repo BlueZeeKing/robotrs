@@ -147,10 +147,10 @@ impl<C: Controller<f32>> Controller<f32> for Derive<C> {
     fn calculate_with_time(&mut self, current: &f32, target: &f32, time: Duration) -> f32 {
         if let Some(last_time) = self.last_time {
             let target_vel =
-                (target - self.last_target) / (time.as_secs_f32() / last_time.as_secs_f32());
+                (target - self.last_target) / (time.as_secs_f32() - last_time.as_secs_f32());
 
             let current_vel =
-                (current - self.last_current) / (time.as_secs_f32() / last_time.as_secs_f32());
+                (current - self.last_current) / (time.as_secs_f32() - last_time.as_secs_f32());
 
             self.last_current = *current;
             self.last_target = *target;

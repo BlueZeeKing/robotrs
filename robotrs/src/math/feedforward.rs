@@ -1,19 +1,17 @@
 use super::{Controller, Derive, Gain, State, Velocity as VelocityExtractor};
 
-pub struct InnerStatic<const K: Gain>;
+pub struct Static<const K: Gain>;
 
-impl<const K: Gain> Controller<f32> for InnerStatic<K> {
+impl<const K: Gain> Controller<State> for Static<K> {
     fn calculate_with_time(
         &mut self,
-        _current: &f32,
-        target: &f32,
+        _current: &State,
+        target: &State,
         _time: std::time::Duration,
     ) -> f32 {
-        target.signum() * K.get()
+        target.velocity.signum() * K.get()
     }
 }
-
-pub type Static<const K: Gain> = VelocityExtractor<InnerStatic<K>>;
 
 pub struct TargetProportional<const K: Gain>;
 
@@ -34,7 +32,7 @@ impl<const K: Gain> Default for TargetProportional<K> {
     }
 }
 
-impl<const K: Gain> Default for InnerStatic<K> {
+impl<const K: Gain> Default for Static<K> {
     fn default() -> Self {
         Self
     }
