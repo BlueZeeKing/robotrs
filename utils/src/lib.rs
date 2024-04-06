@@ -5,6 +5,7 @@ pub mod mechanism;
 pub mod subsystem;
 pub mod trigger;
 
+use robotrs::ds::{get_state, wait_for_state_change, State};
 pub use tracing;
 
 /// A macro that creates a future that will never resolve. This is useful when using [trigger::TriggerExt::while_pressed].
@@ -46,4 +47,16 @@ macro_rules! periodic {
     ($name:ident = $subsystem:expr => $priority:expr, $task:expr) => {
         $crate::periodic!([$name = $subsystem => $priority], $task);
     };
+}
+
+pub async fn wait_for_enabled() {
+    if get_state() != State::Disabled {
+        return;
+    }
+
+    loop {
+        if wait_for_state_change().await != State::Disabled {
+            return;
+        }
+    }
 }
