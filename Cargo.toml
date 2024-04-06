@@ -2,16 +2,16 @@
 
 resolver = "2"
 members = [
-  "hal-sys",
-  "robotrs",
-  "revlib",
+  "crates/hal-sys",
+  "crates/robotrs",
+  "crates/revlib",
   "example",
-  "ctre",
-  "build-utils",
-  "nt",
-  "cargo-deploy",
-  "hal",
-  "utils",
-  "navx",
-  "math",
+  "crates/ctre",
+  "build-system/build-utils",
+  "crates/nt",
+  "build-system/cargo-deploy",
+  "crates/hal",
+  "crates/utils",
+  "crates/navx",
+  "crates/math",
 ]

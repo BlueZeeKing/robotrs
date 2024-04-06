@@ -6,10 +6,10 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-robotrs = { path = "../robotrs" }
-revlib = { path = "../revlib" }
-ctre = { path = "../ctre" }
-utils = { path = "../utils" }
-hal-sys = { path = "../hal-sys" }
+robotrs = { path = "../crates/robotrs" }
+revlib = { path = "../crates/revlib" }
+ctre = { path = "../crates/ctre" }
+utils = { path = "../crates/utils" }
+hal-sys = { path = "../crates/hal-sys" }
 futures = "0.3.28"
 anyhow = "1.0.75"
