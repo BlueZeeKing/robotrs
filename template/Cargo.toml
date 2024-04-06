@@ -1,0 +1,11 @@
+[package]
+name = "{{project-name}}"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+robotrs = { git = "https://github.com/BlueZeeKing/robotrs.git" }
+revlib = { git = "https://github.com/BlueZeeKing/robotrs.git" }
+math = { git = "https://github.com/BlueZeeKing/robotrs.git" }
+utils = { git = "https://github.com/BlueZeeKing/robotrs.git" }
+anyhow = "1.0.75"
