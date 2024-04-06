@@ -9,7 +9,11 @@ use std::{
 };
 
 use futures::{task::AtomicWaker, Future};
-use robotrs::{control::ControlSafe, scheduler::CancellationHandle};
+use robotrs::{
+    control::ControlSafe,
+    ds::{self, get_state},
+    scheduler::{spawn, CancellationHandle},
+};
 use tracing::warn;
 
 /// A subsystem that allows for priority-based locking.
@@ -17,7 +21,7 @@ pub struct Subsystem<T: ControlSafe> {
     value: RefCell<T>,
     tasks: RefCell<BinaryHeap<LockRequest>>,
     current_priority: Cell<u32>,
-    current_cancellation: RefCell<Option<CancellationHandle>>,
+    current_cancellation: Rc<RefCell<Option<CancellationHandle>>>,
 }
 
 struct LockRequest {
@@ -48,11 +52,27 @@ impl PartialEq for LockRequest {
 impl<T: ControlSafe> Subsystem<T> {
     /// Create a new subsystem with the given value.
     pub fn new(value: T) -> Self {
+        let current_cancellation = Rc::new(RefCell::new(None));
+        let current_cancellation2 = current_cancellation.clone();
+
+        spawn(async move {
+            loop {
+                ds::wait_for_state_change().await;
+                if get_state().disabled() {
+                    current_cancellation2
+                        .borrow()
+                        .as_ref()
+                        .map(|handle: &CancellationHandle| handle.cancel());
+                }
+            }
+        })
+        .detach();
+
         Self {
             value: RefCell::new(value),
             tasks: RefCell::new(BinaryHeap::new()),
             current_priority: Cell::new(0),
-            current_cancellation: RefCell::new(None),
+            current_cancellation,
         }
     }
 
@@ -87,6 +107,11 @@ impl<'a, T: ControlSafe> Future for LockFuture<'a, T> {
         let inner = Pin::into_inner(self);
 
         let mut tasks = inner.lock.tasks.borrow_mut();
+
+        if get_state().disabled() {
+            ds::register_waker(cx.waker().clone());
+            return Poll::Pending;
+        }
 
         if Rc::ptr_eq(
             &tasks.peek().expect("No registered lock request").waker,
