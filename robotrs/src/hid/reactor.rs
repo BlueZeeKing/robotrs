@@ -27,7 +27,7 @@ pub fn add_button(joystick: &Joystick, index: u32, pressed: bool, waker: Waker) 
         item.buttons.push((index, pressed, waker));
     } else {
         queue[joystick.get_num() as usize] = Some(JoystickQueueItem {
-            joystick: joystick.clone(),
+            joystick: *joystick,
             buttons: vec![(index, pressed, waker)],
             axis: vec![],
         });
@@ -41,7 +41,7 @@ pub fn add_axis(joystick: &Joystick, index: u32, initial: bool, target: AxisTarg
         item.axis.push((index, initial, target, waker));
     } else {
         queue[joystick.get_num() as usize] = Some(JoystickQueueItem {
-            joystick: joystick.clone(),
+            joystick: *joystick,
             buttons: vec![],
             axis: vec![(index, initial, target, waker)],
         })

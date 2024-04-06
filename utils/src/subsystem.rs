@@ -37,7 +37,7 @@ impl Ord for LockRequest {
 
 impl PartialOrd for LockRequest {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.priority.partial_cmp(&other.priority)
+        Some(self.priority.cmp(&other.priority))
     }
 }
 
@@ -52,17 +52,17 @@ impl PartialEq for LockRequest {
 impl<T: ControlSafe> Subsystem<T> {
     /// Create a new subsystem with the given value.
     pub fn new(value: T) -> Self {
-        let current_cancellation = Rc::new(RefCell::new(None));
+        let current_cancellation: Rc<RefCell<Option<CancellationHandle>>> =
+            Rc::new(RefCell::new(None));
         let current_cancellation2 = current_cancellation.clone();
 
         spawn(async move {
             loop {
                 ds::wait_for_state_change().await;
                 if get_state().disabled() {
-                    current_cancellation2
-                        .borrow()
-                        .as_ref()
-                        .map(|handle: &CancellationHandle| handle.cancel());
+                    if let Some(handle) = current_cancellation2.borrow().as_ref() {
+                        handle.cancel();
+                    }
                 }
             }
         })
@@ -137,12 +137,9 @@ impl<'a, T: ControlSafe> Future for LockFuture<'a, T> {
                 })
             } else {
                 if inner.lock.current_priority.get() <= inner.priority {
-                    inner
-                        .lock
-                        .current_cancellation
-                        .borrow()
-                        .as_ref()
-                        .map(|handle| handle.cancel());
+                    if let Some(handle) = inner.lock.current_cancellation.borrow().as_ref() {
+                        handle.cancel();
+                    }
                 }
                 inner.waker.register(cx.waker());
                 Poll::Pending

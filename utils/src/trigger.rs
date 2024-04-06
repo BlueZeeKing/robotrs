@@ -36,7 +36,7 @@ pub trait TriggerExt: PressTrigger + Sized + Clone + 'static {
     }
 
     /// While the trigger is pressed, run the given [Future].
-    fn while_pressed<'a, Func, Fut>(self, func: Func)
+    fn while_pressed<Func, Fut>(self, func: Func)
     where
         Func: Fn() -> Fut + 'static,
         Fut: Future + 'static,

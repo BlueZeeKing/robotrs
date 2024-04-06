@@ -62,7 +62,7 @@ pub async fn build<'a>(
         bail!("Unable to find libs dir");
     };
 
-    let out_dir = env::var("LIBS_OUT_DIR").map(|dir| PathBuf::from(dir)).ok();
+    let out_dir = env::var("LIBS_OUT_DIR").map(PathBuf::from).ok();
 
     fs::create_dir_all(&libs_dir)?;
     if let Some(out_dir) = &out_dir {

@@ -54,18 +54,18 @@ impl SparkMax {
 
         let mut model_ptr = MaybeUninit::uninit();
         let error;
-        let model;
+        let real_model;
 
         unsafe {
             error = c_SparkMax_GetSparkModel(handle, model_ptr.as_mut_ptr());
-            model = model_ptr.assume_init();
+            real_model = model_ptr.assume_init();
         }
 
-        if model != model {
+        if model != real_model {
             warn!("Incorrect model");
         }
 
-        if error_code != 0 {
+        if error != 0 {
             warn!("Could not get model of Spark with id: {}", can_id);
         }
 
@@ -218,10 +218,7 @@ impl SparkMax {
             handle_error!(c_SparkMax_SetFollow(
                 self.handle,
                 id as u32,
-                (0 & 0x3FFFF)
-                    | (if invert { 1 } else { 0 } & 0x1) << 18
-                    | (0 & 0x1F) << 19
-                    | (predefined & 0xFF) << 24
+                (if invert { 1 } else { 0 } & 0x1) << 18 | (predefined & 0xFF) << 24
             ))?;
         }
 

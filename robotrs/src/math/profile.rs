@@ -152,8 +152,8 @@ impl Trajectory {
         let full_speed_time = full_speed_displacement / max_velocity;
 
         Self {
-            start: start.clone(),
-            final_target: target.clone(),
+            start: *start,
+            final_target: *target,
 
             start_max_speed: accel_duration,
             end_max_speed: accel_duration + full_speed_time,

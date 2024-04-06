@@ -7,8 +7,5 @@ pub trait AsyncRobot: Sized + 'static {
 
     async fn get_teleop_future(&'static self) -> anyhow::Result<()>;
 
-    fn configure_bindings<'a>(
-        &'static self,
-        scheduler: &RobotScheduler<Self>,
-    ) -> anyhow::Result<()>;
+    fn configure_bindings(&'static self, scheduler: &RobotScheduler<Self>) -> anyhow::Result<()>;
 }

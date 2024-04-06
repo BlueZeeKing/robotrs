@@ -30,7 +30,7 @@ pub struct ButtonFuture<T: Clone> {
 impl ButtonFuture<Pressed> {
     pub fn released(&self) -> ButtonFuture<Released> {
         ButtonFuture {
-            joystick: self.joystick.clone(),
+            joystick: self.joystick,
             button_index: self.button_index,
             phantom: PhantomData,
         }
@@ -40,7 +40,7 @@ impl ButtonFuture<Pressed> {
 impl ButtonFuture<Released> {
     pub fn pressed(&self) -> ButtonFuture<Pressed> {
         ButtonFuture {
-            joystick: self.joystick.clone(),
+            joystick: self.joystick,
             button_index: self.button_index,
             phantom: PhantomData,
         }

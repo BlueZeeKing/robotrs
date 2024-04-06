@@ -1,5 +1,4 @@
-use defer_lite::defer;
-use flume::{select, Receiver, Sender};
+use flume::{Receiver, Sender};
 use futures::{
     channel::oneshot,
     future::{select, Either},
@@ -9,7 +8,7 @@ use robotrs::{
     control::ControlSafe, math::Controller, motor::MotorController, scheduler, yield_now,
 };
 use std::fmt::Debug;
-use tracing::{error, trace, warn};
+use tracing::{error, warn};
 
 use async_deadman::{Deadman, DeadmanReceiver};
 

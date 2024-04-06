@@ -1,4 +1,4 @@
-use std::io::Cursor;
+use std::{fmt::Display, io::Cursor};
 
 use bytes::Bytes;
 use thiserror::Error;
@@ -92,11 +92,11 @@ pub enum Target {
     RoboRio,
 }
 
-impl ToString for Target {
-    fn to_string(&self) -> String {
+impl Display for Target {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Target::Headers => "headers".to_string(),
-            Target::RoboRio => "linuxathena".to_string(),
+            Target::Headers => write!(f, "headers"),
+            Target::RoboRio => write!(f, "linuxathena"),
         }
     }
 }
