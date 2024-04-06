@@ -10,9 +10,7 @@ use tracing::{trace, warn};
 use crate::bindings::*;
 
 #[allow(warnings)]
-mod bindings {
-    include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
-}
+mod bindings;
 
 pub mod encoder;
 pub mod error;

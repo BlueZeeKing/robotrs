@@ -22,10 +22,11 @@ pub fn get_client() -> &'static Client {
     CLIENT.get_or_init(Client::new)
 }
 
-pub async fn build<'a>(
+pub async fn gen_bindings(
     artifacts: &[Artifact],
     allow: &'static str,
-    path: &'a Path,
+    path: &Path,
+    out_path: &Path,
 ) -> anyhow::Result<()> {
     let tempdir = TempDir::new()?;
     let include_path = tempdir.path().join("include");
@@ -52,12 +53,12 @@ pub async fn build<'a>(
         .allowlist_var(allow)
         .generate()?;
 
-    if let Some(out_str) = env::var_os("OUT_DIR") {
-        let out_dir = Path::new(&out_str);
+    result.write_to_file(out_path)?;
 
-        result.write_to_file(out_dir.join("bindings.rs"))?;
-    }
+    Ok(())
+}
 
+pub async fn build<'a>(artifacts: &[Artifact]) -> anyhow::Result<()> {
     let Some(libs_dir) = env::var_os("OUT_DIR").map(|dir| PathBuf::from(dir).join("lib")) else {
         bail!("Unable to find libs dir");
     };

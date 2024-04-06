@@ -6,9 +6,7 @@ use robotrs::{
 };
 
 #[allow(warnings)]
-mod bindings {
-    include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
-}
+mod bindings;
 
 pub mod error;
 
