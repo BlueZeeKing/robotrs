@@ -1,5 +1,10 @@
+use std::mem::MaybeUninit;
+
 use crate::error::{Error, HalError, Result};
-use hal_sys::{HAL_GetJoystickAxes, HAL_GetJoystickButtons, HAL_JoystickAxes, HAL_JoystickButtons};
+use hal_sys::{
+    HAL_GetJoystickAxes, HAL_GetJoystickButtons, HAL_GetJoystickPOVs, HAL_JoystickAxes,
+    HAL_JoystickButtons, HAL_JoystickPOVs,
+};
 
 #[derive(PartialEq, Clone, Debug, Copy)]
 pub struct Joystick {
@@ -21,33 +26,38 @@ impl Joystick {
     }
 
     pub fn get_button_data(&self) -> Result<HAL_JoystickButtons> {
-        let mut buttons = HAL_JoystickButtons {
-            buttons: 0,
-            count: 0,
-        };
+        let mut buttons = MaybeUninit::uninit();
 
-        let status = unsafe { HAL_GetJoystickButtons(self.num as i32, &mut buttons) };
+        let status = unsafe { HAL_GetJoystickButtons(self.num as i32, buttons.as_mut_ptr()) };
 
         if status != 0 {
             return Err(HalError(status).into());
         }
 
-        Ok(buttons)
+        Ok(unsafe { buttons.assume_init() })
     }
 
     pub fn get_axes_data(&self) -> Result<HAL_JoystickAxes> {
-        let mut axes = HAL_JoystickAxes {
-            count: 0,
-            axes: [0.; 12],
-            raw: [0; 12],
-        };
+        let mut axes = MaybeUninit::uninit();
 
-        let status = unsafe { HAL_GetJoystickAxes(self.num as i32, &mut axes) };
+        let status = unsafe { HAL_GetJoystickAxes(self.num as i32, axes.as_mut_ptr()) };
 
         if status != 0 {
             return Err(HalError(status).into());
         }
 
-        Ok(axes)
+        Ok(unsafe { axes.assume_init() })
+    }
+
+    pub fn get_pov_data(&self) -> Result<HAL_JoystickPOVs> {
+        let mut povs = MaybeUninit::uninit();
+
+        let status = unsafe { HAL_GetJoystickPOVs(self.num as i32, povs.as_mut_ptr()) };
+
+        if status != 0 {
+            return Err(HalError(status).into());
+        }
+
+        Ok(unsafe { povs.assume_init() })
     }
 }

@@ -40,6 +40,8 @@ pub enum Error {
     JoystickIndexOutOfRange(u32),
     #[error("The axis {0} was out of range")]
     AxisIndexOutOfRange(u32),
+    #[error("The pov {0} was out of range")]
+    PovIndexOutOfRange(u32),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

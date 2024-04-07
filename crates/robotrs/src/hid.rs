@@ -7,6 +7,7 @@ pub mod axis;
 pub mod button;
 pub mod controller;
 pub mod joystick;
+pub mod pov;
 mod reactor;
 
 pub trait PressTrigger: Future<Output = Result<Self::Release, crate::error::Error>> {
