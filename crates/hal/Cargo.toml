@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-embedded-hal = { version = "1.0.0-rc.3" }
+embedded-hal = { version = "1.0.0" }
 hal-sys = { path = "../hal-sys" }
 robotrs = { path = "../robotrs" }
 tracing = "0.1.40"
