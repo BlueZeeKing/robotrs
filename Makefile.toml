@@ -1,0 +1,85 @@
+[config]
+default_to_workspace = false
+
+[tasks.install-binding-cli]
+cwd = "./build-system/bindings"
+command = "cargo"
+args = ["build", "--target=${CARGO_MAKE_RUST_TARGET_TRIPLE}"]
+
+[tasks.rev-bindings]
+cwd = "./crates/revlib"
+command = "${CARGO_MAKE_CRATE_TARGET_DIRECTORY}/${CARGO_MAKE_RUST_TARGET_TRIPLE}/debug/bindings"
+args = ["rev", "src/bindings.rs"]
+dependencies = ["install-binding-cli"]
+
+[tasks.ctre-bindings]
+cwd = "./crates/ctre"
+command = "${CARGO_MAKE_CRATE_TARGET_DIRECTORY}/${CARGO_MAKE_RUST_TARGET_TRIPLE}/debug/bindings"
+args = ["ctre", "src/bindings.rs"]
+dependencies = ["install-binding-cli"]
+
+[tasks.nt-bindings]
+cwd = "./crates/nt"
+command = "${CARGO_MAKE_CRATE_TARGET_DIRECTORY}/${CARGO_MAKE_RUST_TARGET_TRIPLE}/debug/bindings"
+args = ["nt", "src/bindings.rs"]
+dependencies = ["install-binding-cli"]
+
+[tasks.hal-bindings]
+cwd = "./crates/hal-sys"
+command = "${CARGO_MAKE_CRATE_TARGET_DIRECTORY}/${CARGO_MAKE_RUST_TARGET_TRIPLE}/debug/bindings"
+args = ["hal", "src/bindings.rs"]
+dependencies = ["install-binding-cli"]
+
+[tasks.bindings]
+dependencies = ["hal-bindings", "rev-bindings", "nt-bindings", "ctre-bindings"]
+
+[tasks.robotrs-doc]
+cwd = "./crates/robotrs"
+command = "cargo"
+args = ["doc", "--target=arm-unknown-linux-gnueabi"]
+
+[tasks.revlib-doc]
+cwd = "./crates/revlib"
+command = "cargo"
+args = ["doc", "--target=arm-unknown-linux-gnueabi"]
+
+[tasks.ctre-doc]
+cwd = "./crates/ctre"
+command = "cargo"
+args = ["doc", "--target=arm-unknown-linux-gnueabi"]
+
+[tasks.navx-doc]
+cwd = "./crates/navx"
+command = "cargo"
+args = ["doc", "--target=arm-unknown-linux-gnueabi"]
+
+[tasks.utils-doc]
+cwd = "./crates/utils"
+command = "cargo"
+args = ["doc", "--target=arm-unknown-linux-gnueabi"]
+
+[tasks.math-doc]
+cwd = "./crates/math"
+command = "cargo"
+args = ["doc", "--target=arm-unknown-linux-gnueabi"]
+
+[tasks.hal-doc]
+cwd = "./crates/hal"
+command = "cargo"
+args = ["doc", "--target=arm-unknown-linux-gnueabi"]
+
+[tasks.generate-index]
+script = [
+  "echo \"<meta http-equiv=\\\"refresh\\\" content=\\\"0; url=robotrs/index.html\\\">\" > ${CARGO_MAKE_CRATE_TARGET_DIRECTORY}/arm-unknown-linux-gnueabi/doc/index.html",
+]
+
+[tasks.doc]
+dependencies = [
+  "robotrs-doc",
+  "ctre-doc",
+  "navx-doc",
+  "utils-doc",
+  "math-doc",
+  "hal-doc",
+  "generate-index",
+]

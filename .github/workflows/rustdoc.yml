@@ -10,27 +10,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Generate robotrs docs
-        run: cargo doc --target arm-unknown-linux-gnueabi
-        working-directory: ./crates/robotrs
-      - name: Generate utils docs
-        run: cargo doc --target arm-unknown-linux-gnueabi
-        working-directory: ./crates/utils
-      - name: Generate revlib docs
-        run: cargo doc --target arm-unknown-linux-gnueabi
-        working-directory: ./crates/revlib
-      - name: Generate ctre docs
-        run: cargo doc --target arm-unknown-linux-gnueabi
-        working-directory: ./crates/ctre
-      - name: Generate math docs
-        run: cargo doc --target arm-unknown-linux-gnueabi
-        working-directory: ./crates/math
-      - name: Generate navx docs
-        run: cargo doc --target arm-unknown-linux-gnueabi
-        working-directory: ./crates/navx
-      - name: Generate hal docs
-        run: cargo doc --target arm-unknown-linux-gnueabi
-        working-directory: ./crates/hal
+      - name: Install deps
+        run: cargo install cargo-make
+      - name: Generate docs
+        run: cargo make doc 
       - name: Deploy docs
         uses: crazy-max/ghaction-github-pages@v4
         with:
