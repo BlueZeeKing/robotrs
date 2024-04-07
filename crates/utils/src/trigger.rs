@@ -8,6 +8,8 @@ use robotrs::{
 };
 use tracing::error;
 
+use crate::{wait_for_disabled, wait_for_enabled};
+
 pub trait TriggerExt: PressTrigger + Sized + Clone + 'static {
     /// When the trigger is pressed, run the given [Future].
     fn on_press<Func, Fut>(self, func: Func)
@@ -17,18 +19,24 @@ pub trait TriggerExt: PressTrigger + Sized + Clone + 'static {
     {
         spawn(async move {
             loop {
-                let released = match self.clone().await {
-                    Err(err) => {
-                        error!("button failed in trigger: {:?}", err);
-                        continue;
-                    }
-                    Ok(released) => released,
-                };
+                wait_for_enabled().await;
+                select! {
+                    _ = async {
+                        let released = match self.clone().await {
+                            Err(err) => {
+                                error!("button failed in trigger: {:?}", err);
+                                return;
+                            }
+                            Ok(released) => released,
+                        };
 
-                let (_, released) = join!(func(), released);
+                        let (_, released) = join!(func(), released);
 
-                if let Err(err) = released {
-                    error!("button failed in trigger: {:?}", err);
+                        if let Err(err) = released {
+                            error!("button failed in trigger: {:?}", err);
+                        }
+                    }.fuse() => {},
+                    _ = wait_for_disabled().fuse() => {}
                 }
             }
         })
@@ -43,17 +51,23 @@ pub trait TriggerExt: PressTrigger + Sized + Clone + 'static {
     {
         spawn(async move {
             loop {
-                let released = match self.clone().await {
-                    Err(err) => {
-                        error!("Button failed in trigger: {:?}", err);
-                        continue;
-                    }
-                    Ok(released) => released,
-                };
-
+                wait_for_enabled().await;
                 select! {
-                    _ = func().fuse() => {},
-                    _ = released.fuse() => {},
+                    _ = async {
+                        let released = match self.clone().await {
+                            Err(err) => {
+                                error!("Button failed in trigger: {:?}", err);
+                                return;
+                            }
+                            Ok(released) => released,
+                        };
+
+                        select! {
+                            _ = func().fuse() => {},
+                            _ = released.fuse() => {},
+                        }
+                    }.fuse() => {},
+                    _ = wait_for_disabled().fuse() => {}
                 }
             }
         })

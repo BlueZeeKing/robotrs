@@ -3,7 +3,7 @@ use std::{marker::PhantomData, pin::Pin, task::Poll};
 use futures::Future;
 use hal_sys::HAL_JoystickPOVs;
 
-use crate::error::Result;
+use crate::{error::Result, queue_waker};
 
 use super::{
     button::{Pressed, Released},
@@ -25,6 +25,7 @@ pub struct PovFuture<T: Clone> {
     pov_index: u32,
     phantom: PhantomData<T>,
     direction: i16,
+    run: bool,
 }
 
 impl PovFuture<Pressed> {
@@ -34,6 +35,7 @@ impl PovFuture<Pressed> {
             pov_index: self.pov_index,
             phantom: PhantomData,
             direction: self.direction,
+            run: false,
         }
     }
 }
@@ -45,6 +47,7 @@ impl PovFuture<Released> {
             pov_index: self.pov_index,
             phantom: PhantomData,
             direction: self.direction,
+            run: false,
         }
     }
 }
@@ -56,6 +59,7 @@ impl<T: Clone> PovFuture<T> {
             pov_index,
             direction,
             phantom: PhantomData,
+            run: false,
         }
     }
 
@@ -87,9 +91,16 @@ impl Future for PovFuture<Pressed> {
         let button_val = match data.poll() {
             Ok(val) => val,
             Err(err) => {
-                return Poll::Ready(Err(err));
+                return if data.run {
+                    Poll::Ready(Err(err))
+                } else {
+                    queue_waker(cx.waker().clone());
+                    Poll::Pending
+                };
             }
         };
+
+        data.run = true;
 
         if button_val {
             Poll::Ready(Ok(data.released()))
@@ -118,9 +129,16 @@ impl Future for PovFuture<Released> {
         let button_val = match data.poll() {
             Ok(val) => val,
             Err(err) => {
-                return Poll::Ready(Err(err));
+                return if data.run {
+                    Poll::Ready(Err(err))
+                } else {
+                    queue_waker(cx.waker().clone());
+                    Poll::Pending
+                };
             }
         };
+
+        data.run = true;
 
         if !button_val {
             Poll::Ready(Ok(()))

@@ -2,8 +2,9 @@ use std::{marker::PhantomData, pin::Pin, task::Poll};
 
 use futures::Future;
 use hal_sys::HAL_JoystickButtons;
+use tracing::error;
 
-use crate::error::Result;
+use crate::{error::Result, queue_waker};
 
 use super::{joystick::Joystick, reactor::add_button};
 
@@ -25,6 +26,7 @@ pub struct ButtonFuture<T: Clone> {
     joystick: Joystick,
     button_index: u32,
     phantom: PhantomData<T>,
+    run: bool,
 }
 
 impl ButtonFuture<Pressed> {
@@ -33,6 +35,7 @@ impl ButtonFuture<Pressed> {
             joystick: self.joystick,
             button_index: self.button_index,
             phantom: PhantomData,
+            run: false,
         }
     }
 }
@@ -43,6 +46,7 @@ impl ButtonFuture<Released> {
             joystick: self.joystick,
             button_index: self.button_index,
             phantom: PhantomData,
+            run: false,
         }
     }
 }
@@ -53,6 +57,7 @@ impl<T: Clone> ButtonFuture<T> {
             joystick,
             button_index,
             phantom: PhantomData,
+            run: false,
         }
     }
 
@@ -84,9 +89,18 @@ impl Future for ButtonFuture<Pressed> {
         let button_val = match data.poll() {
             Ok(val) => val,
             Err(err) => {
-                return Poll::Ready(Err(err));
+                return if data.run {
+                    error!("Rerun");
+                    Poll::Ready(Err(err))
+                } else {
+                    error!("Error");
+                    queue_waker(cx.waker().clone());
+                    Poll::Pending
+                }
             }
         };
+
+        data.run = true;
 
         if button_val {
             Poll::Ready(Ok(data.released()))
@@ -109,9 +123,18 @@ impl Future for ButtonFuture<Released> {
         let button_val = match data.poll() {
             Ok(val) => val,
             Err(err) => {
-                return Poll::Ready(Err(err));
+                return if data.run {
+                    error!("Rerun");
+                    Poll::Ready(Err(err))
+                } else {
+                    error!("Error");
+                    queue_waker(cx.waker().clone());
+                    Poll::Pending
+                }
             }
         };
+
+        data.run = true;
 
         if !button_val {
             Poll::Ready(Ok(()))

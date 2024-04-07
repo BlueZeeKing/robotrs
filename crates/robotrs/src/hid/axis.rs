@@ -3,7 +3,10 @@ use std::{marker::PhantomData, pin::Pin, task::Poll};
 use futures::Future;
 use hal_sys::HAL_JoystickAxes;
 
-use crate::error::{Error, Result};
+use crate::{
+    error::{Error, Result},
+    queue_waker,
+};
 
 use super::{joystick::Joystick, reactor::add_axis};
 
@@ -43,6 +46,7 @@ pub struct AxisFuture<T> {
     axis_index: u32,
     target: AxisTarget,
     phantom: PhantomData<T>,
+    run: bool,
 }
 
 impl AxisFuture<Initial> {
@@ -52,6 +56,7 @@ impl AxisFuture<Initial> {
             axis_index: self.axis_index,
             target: self.target,
             phantom: PhantomData,
+            run: false,
         }
     }
 }
@@ -63,6 +68,7 @@ impl AxisFuture<Release> {
             axis_index: self.axis_index,
             target: self.target,
             phantom: PhantomData,
+            run: false,
         }
     }
 }
@@ -74,6 +80,7 @@ impl<T> AxisFuture<T> {
             axis_index,
             target,
             phantom: PhantomData,
+            run: false,
         }
     }
 
@@ -105,9 +112,16 @@ impl Future for AxisFuture<Initial> {
         let (joystick, val) = match data.poll() {
             Ok(val) => val,
             Err(err) => {
-                return Poll::Ready(Err(err));
+                return if data.run {
+                    Poll::Ready(Err(err))
+                } else {
+                    queue_waker(cx.waker().clone());
+                    Poll::Pending
+                };
             }
         };
+
+        data.run = true;
 
         if val {
             Poll::Ready(Ok(data.release()))
@@ -136,9 +150,16 @@ impl Future for AxisFuture<Release> {
         let (joystick, val) = match data.poll() {
             Ok(val) => val,
             Err(err) => {
-                return Poll::Ready(Err(err));
+                return if data.run {
+                    Poll::Ready(Err(err))
+                } else {
+                    queue_waker(cx.waker().clone());
+                    Poll::Pending
+                };
             }
         };
+
+        data.run = true;
 
         if !val {
             Poll::Ready(Ok(()))
