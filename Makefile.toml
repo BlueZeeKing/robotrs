@@ -76,6 +76,7 @@ script = [
 [tasks.doc]
 dependencies = [
   "robotrs-doc",
+  "revlib-doc",
   "ctre-doc",
   "navx-doc",
   "utils-doc",
