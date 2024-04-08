@@ -664,6 +664,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bindgen 0.66.1",
+ "bindings",
  "build-utils",
  "bytes",
  "reqwest",
@@ -1188,6 +1189,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bindgen 0.66.1",
+ "bindings",
  "build-utils",
  "bytes",
  "reqwest",
@@ -1663,6 +1665,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bindgen 0.66.1",
+ "bindings",
  "build-utils",
  "bytes",
  "reqwest",
@@ -2302,6 +2305,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bindgen 0.66.1",
+ "bindings",
  "build-utils",
  "bytes",
  "reqwest",

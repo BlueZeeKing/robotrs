@@ -1,38 +1,9 @@
 use anyhow::Result;
-use build_utils::{artifact::Artifact, build};
-
-const WPI_MAVEN: &str = "https://frcmaven.wpi.edu/artifactory/release/";
-const REV_MAVEN: &str = "https://maven.revrobotics.com/";
+use build_utils::build;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let headers = vec![
-        Artifact::builder()
-            .group_id("edu.wpi.first.hal".to_owned())
-            .artifact_id("hal-cpp".to_owned())
-            .version(build_utils::WPI_VERSION.to_owned())
-            .maven_url(WPI_MAVEN.to_owned())
-            .build()?,
-        Artifact::builder()
-            .group_id("edu.wpi.first.wpiutil".to_owned())
-            .artifact_id("wpiutil-cpp".to_owned())
-            .version(build_utils::WPI_VERSION.to_owned())
-            .maven_url(WPI_MAVEN.to_owned())
-            .build()?,
-        Artifact::builder()
-            .group_id("edu.wpi.first.wpimath".to_owned())
-            .artifact_id("wpimath-cpp".to_owned())
-            .version(build_utils::WPI_VERSION.to_owned())
-            .maven_url(WPI_MAVEN.to_owned())
-            .build()?,
-        Artifact::builder()
-            .group_id("com.revrobotics.frc".to_owned())
-            .artifact_id("REVLib-driver".to_owned())
-            .version("2024.2.4".to_owned())
-            .maven_url(REV_MAVEN.to_owned())
-            .lib_name("REVLibDriver".to_owned())
-            .build()?,
-    ];
+    let headers = bindings::rev::get_artifacts();
 
     build(&headers).await
 }
