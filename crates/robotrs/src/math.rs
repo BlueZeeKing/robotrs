@@ -18,6 +18,7 @@ pub trait Controller<State, Output = f32> {
 
 #[impl_for_tuples(1, 8)]
 impl<State, Output: Add<Output = Output>> Controller<State, Output> for Tuple {
+    #[inline]
     fn calculate_with_time(&mut self, current: &State, target: &State, time: Duration) -> Output {
         for_tuples!( #( Tuple.calculate_with_time(current, target, time) )+* )
     }
@@ -41,6 +42,7 @@ pub type Gain = ConstFloat;
 pub struct P<const K: Gain>;
 
 impl<const K: Gain> Controller<f32> for P<K> {
+    #[inline]
     fn calculate_with_time(&mut self, current: &f32, target: &f32, _time: Duration) -> f32 {
         (target - current) * K.get()
     }
@@ -58,6 +60,7 @@ pub struct I<const K: Gain> {
 }
 
 impl<const K: Gain> Controller<f32> for I<K> {
+    #[inline]
     fn calculate_with_time(&mut self, current: &f32, target: &f32, time: Duration) -> f32 {
         if let Some(last_time) = self.last_time {
             self.accum += (target - current) * (time.as_secs_f32() - last_time.as_secs_f32());
@@ -98,6 +101,7 @@ impl State {
 pub struct Velocity<C: Controller<f32>>(C);
 
 impl<C: Controller<f32>> Controller<State> for Velocity<C> {
+    #[inline]
     fn calculate_with_time(&mut self, current: &State, target: &State, time: Duration) -> f32 {
         self.0
             .calculate_with_time(&current.velocity, &target.velocity, time)
@@ -107,6 +111,7 @@ impl<C: Controller<f32>> Controller<State> for Velocity<C> {
 pub struct Position<C: Controller<f32>>(C);
 
 impl<C: Controller<f32>> Controller<State> for Position<C> {
+    #[inline]
     fn calculate_with_time(&mut self, current: &State, target: &State, time: Duration) -> f32 {
         self.0
             .calculate_with_time(&current.position, &target.position, time)
@@ -144,6 +149,7 @@ impl<C: Controller<f32> + Default> Default for Derive<C> {
 }
 
 impl<C: Controller<f32>> Controller<f32> for Derive<C> {
+    #[inline]
     fn calculate_with_time(&mut self, current: &f32, target: &f32, time: Duration) -> f32 {
         if let Some(last_time) = self.last_time {
             let target_vel =
