@@ -1,3 +1,6 @@
+> [!CAUTION]
+> Not updated for 2024
+
 # CTRE-rs
 
 This crate hold binding the CTRE Phoenix library for Rust. This currently had
