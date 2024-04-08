@@ -5,10 +5,10 @@ use std::{
     ops::{Deref, DerefMut},
     pin::Pin,
     rc::{Rc, Weak},
-    task::{Context, Poll},
+    task::{Context, Poll, Waker},
 };
 
-use futures::{task::AtomicWaker, Future};
+use futures::Future;
 use robotrs::{
     control::ControlSafe,
     ds::{self, get_state},
@@ -26,7 +26,7 @@ pub struct Subsystem<T: ControlSafe> {
 
 struct LockRequest {
     priority: u32,
-    waker: Weak<AtomicWaker>,
+    waker: Weak<Cell<Option<Waker>>>,
 }
 
 impl Ord for LockRequest {
@@ -78,7 +78,7 @@ impl<T: ControlSafe> Subsystem<T> {
 
     /// Lock the subsystem with the given priority. This will cancel the scope of any locks that have a lower priority.
     pub fn lock(&self, priority: u32) -> LockFuture<'_, T> {
-        let waker = Rc::new(AtomicWaker::new());
+        let waker = Rc::new(Cell::new(None));
 
         self.tasks.borrow_mut().push(LockRequest {
             priority,
@@ -96,11 +96,11 @@ impl<T: ControlSafe> Subsystem<T> {
 /// A future that resolves when the subsystem is locked.
 pub struct LockFuture<'a, T: ControlSafe> {
     lock: &'a Subsystem<T>,
-    waker: Rc<AtomicWaker>,
+    waker: Rc<Cell<Option<Waker>>>,
     priority: u32,
 }
 
-fn peek<'a>(val: &mut RefMut<'a, BinaryHeap<LockRequest>>) -> Option<Rc<AtomicWaker>> {
+fn peek<'a>(val: &mut RefMut<'a, BinaryHeap<LockRequest>>) -> Option<Rc<Cell<Option<Waker>>>> {
     while let Some(next) = val.peek() {
         if let Some(waker) = next.waker.upgrade() {
             return Some(waker);
@@ -153,11 +153,11 @@ impl<'a, T: ControlSafe> Future for LockFuture<'a, T> {
                         handle.cancel();
                     }
                 }
-                inner.waker.register(cx.waker());
+                inner.waker.set(Some(cx.waker().clone()));
                 Poll::Pending
             }
         } else {
-            inner.waker.register(cx.waker());
+            inner.waker.set(Some(cx.waker().clone()));
             Poll::Pending
         }
     }
@@ -186,7 +186,7 @@ impl<'a, T: ControlSafe> DerefMut for LockGuard<'a, T> {
 impl<'a, T: ControlSafe> Drop for LockGuard<'a, T> {
     fn drop(&mut self) {
         self.guard.stop();
-        if let Some(val) = peek(&mut self.lock.tasks.borrow_mut()) {
+        if let Some(val) = peek(&mut self.lock.tasks.borrow_mut()).and_then(|val| val.take()) {
             val.wake();
         }
     }
