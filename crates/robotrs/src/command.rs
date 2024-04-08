@@ -9,9 +9,7 @@ use futures::{task::waker_ref, Future};
 
 use crate::{queue_waker, waker::SingleWaker};
 
-pub mod commands;
 pub mod ext;
-pub mod group;
 
 /// A composable action
 pub trait Command {
@@ -166,69 +164,5 @@ impl<F: Future<Output = anyhow::Result<()>>> ToCommand for F {
             should_wake: Default::default(),
             done: false,
         }
-    }
-}
-
-/// A generic function trait used as a runnable and predicate
-pub trait Func<R> {
-    fn run(&mut self) -> anyhow::Result<R>;
-}
-
-impl Func<bool> for bool {
-    fn run(&mut self) -> anyhow::Result<bool> {
-        Ok(*self)
-    }
-}
-
-impl Func<()> for () {
-    fn run(&mut self) -> anyhow::Result<()> {
-        Ok(())
-    }
-}
-
-impl<E: IntoErr<R>, F: FnMut() -> E, R> Func<R> for F {
-    fn run(&mut self) -> anyhow::Result<R> {
-        self().into_err()
-    }
-}
-
-/// A generic function trait used as a runnable and predicate with state
-pub trait StateFunc<R, S> {
-    fn run(&mut self, state: &mut S) -> anyhow::Result<R>;
-}
-
-impl<S> StateFunc<bool, S> for bool {
-    fn run(&mut self, _state: &mut S) -> anyhow::Result<bool> {
-        Ok(*self)
-    }
-}
-
-impl<S> StateFunc<(), S> for () {
-    fn run(&mut self, _state: &mut S) -> anyhow::Result<()> {
-        Ok(())
-    }
-}
-
-impl<E: IntoErr<R>, F: FnMut(&mut S) -> E, R, S> StateFunc<R, S> for F {
-    fn run(&mut self, state: &mut S) -> anyhow::Result<R> {
-        self(state).into_err()
-    }
-}
-
-/// A helper trait to convert both a type and an result with that type into a result. Should not be
-/// implemented by the user
-pub trait IntoErr<V> {
-    fn into_err(self) -> anyhow::Result<V>;
-}
-
-impl<V> IntoErr<V> for V {
-    fn into_err(self) -> anyhow::Result<V> {
-        Ok(self)
-    }
-}
-
-impl<V> IntoErr<V> for anyhow::Result<V> {
-    fn into_err(self) -> anyhow::Result<V> {
-        self
     }
 }
