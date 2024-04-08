@@ -4,7 +4,7 @@ use std::{
     collections::BinaryHeap,
     ops::{Deref, DerefMut},
     pin::Pin,
-    rc::Rc,
+    rc::{Rc, Weak},
     task::{Context, Poll},
 };
 
@@ -26,7 +26,7 @@ pub struct Subsystem<T: ControlSafe> {
 
 struct LockRequest {
     priority: u32,
-    waker: Rc<AtomicWaker>,
+    waker: Weak<AtomicWaker>,
 }
 
 impl Ord for LockRequest {
@@ -82,7 +82,7 @@ impl<T: ControlSafe> Subsystem<T> {
 
         self.tasks.borrow_mut().push(LockRequest {
             priority,
-            waker: waker.clone(),
+            waker: Rc::downgrade(&waker),
         });
 
         LockFuture {
@@ -100,6 +100,18 @@ pub struct LockFuture<'a, T: ControlSafe> {
     priority: u32,
 }
 
+fn peek<'a>(val: &mut RefMut<'a, BinaryHeap<LockRequest>>) -> Option<Rc<AtomicWaker>> {
+    while let Some(next) = val.peek() {
+        if let Some(waker) = next.waker.upgrade() {
+            return Some(waker);
+        } else {
+            val.pop().unwrap();
+        }
+    }
+
+    None
+}
+
 impl<'a, T: ControlSafe> Future for LockFuture<'a, T> {
     type Output = LockGuard<'a, T>;
 
@@ -114,7 +126,7 @@ impl<'a, T: ControlSafe> Future for LockFuture<'a, T> {
         }
 
         if Rc::ptr_eq(
-            &tasks.peek().expect("No registered lock request").waker,
+            &peek(&mut tasks).expect("No registered lock request"),
             &inner.waker,
         ) {
             if let Ok(guard) = inner.lock.value.try_borrow_mut() {
@@ -174,8 +186,8 @@ impl<'a, T: ControlSafe> DerefMut for LockGuard<'a, T> {
 impl<'a, T: ControlSafe> Drop for LockGuard<'a, T> {
     fn drop(&mut self) {
         self.guard.stop();
-        if let Some(val) = self.lock.tasks.borrow().peek() {
-            val.waker.wake();
+        if let Some(val) = peek(&mut self.lock.tasks.borrow_mut()) {
+            val.wake();
         }
     }
 }
