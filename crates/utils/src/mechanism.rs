@@ -7,7 +7,7 @@ use futures::{
 use robotrs::{
     control::ControlSafe, math::Controller, motor::MotorController, scheduler, yield_now,
 };
-use std::{fmt::Debug, marker::PhantomData};
+use std::fmt::Debug;
 use tracing::{error, warn};
 
 use async_deadman::{Deadman, DeadmanReceiver};
@@ -146,7 +146,8 @@ impl<I: 'static, E: Debug + 'static> Mechanism<I, E> {
         }
     }
 
-    pub async fn set<'a>(&'a mut self, state: I) -> DeadmanWrapper<'a> {
+    pub async fn set(&mut self, state: I) -> Deadman {
+        // TODO: Link deadman and self lifetime
         let (response_sender, response_receiver) = oneshot::channel();
         let (deadman, deadman_receiver) = Deadman::new();
 
@@ -160,7 +161,7 @@ impl<I: 'static, E: Debug + 'static> Mechanism<I, E> {
 
         response_receiver.await.expect("Mechanism task has crashed");
 
-        deadman.into()
+        deadman
     }
 
     pub async fn errors(&self) -> &Receiver<MechanismError<E>> {
@@ -189,17 +190,3 @@ pub trait MechanismMotor: MotorController {
 }
 
 impl<M: MotorController> MechanismMotor for M {}
-
-pub struct DeadmanWrapper<'a>(Option<Deadman>, PhantomData<&'a ()>);
-
-impl<'a> Drop for DeadmanWrapper<'a> {
-    fn drop(&mut self) {
-        drop(self.0.take().unwrap())
-    }
-}
-
-impl<'a> From<Deadman> for DeadmanWrapper<'a> {
-    fn from(value: Deadman) -> Self {
-        Self(Some(value), PhantomData)
-    }
-}
