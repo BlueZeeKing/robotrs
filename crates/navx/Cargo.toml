@@ -13,3 +13,4 @@ oneshot = "0.1.6"
 parking_lot = "0.12.1"
 robotrs = { path = "../robotrs" }
 thiserror = "1.0.58"
+tracing = "0.1.40"

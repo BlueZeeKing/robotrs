@@ -5,6 +5,7 @@ use io::IO;
 use parking_lot::Mutex;
 use protocol::{AHRSPosUpdate, AHRSUpdateBase, BoardID, GyroUpdate};
 use thiserror::Error;
+use tracing::warn;
 
 pub mod io;
 pub mod protocol;
@@ -22,15 +23,15 @@ impl NavX {
     pub fn new<I: IO + Send + 'static>(
         mut io: I,
         update_rate: u8,
-    ) -> (Self, oneshot::Receiver<()>) {
-        io.init().unwrap();
+    ) -> Result<(Self, oneshot::Receiver<()>), Error<I>> {
+        io.init().map_err(|err| Error::Io(err))?;
 
         io.write(registers::NAVX_REG_UPDATE_RATE_HZ as u8, update_rate)
-            .unwrap();
+            .map_err(|err| Error::Io(err))?;
 
         thread::sleep(Duration::from_millis(50));
 
-        let config = get_configuration(&mut io).unwrap();
+        let config = get_configuration(&mut io)?;
 
         let mut delay_time = 1.0 / update_rate as f64;
         if delay_time > DELAY_OVERHEAD_SECONDS {
@@ -53,7 +54,7 @@ impl NavX {
         let mut sender = Some(sender);
 
         thread::spawn(move || loop {
-            let (state, board_state_update) = if has_displacement {
+            let update = if has_displacement {
                 let mut buffer =
                     [0; registers::NAVX_REG_LAST + 1 - registers::NAVX_REG_UPDATE_RATE_HZ];
 
@@ -63,8 +64,12 @@ impl NavX {
                     - registers::NAVX_REG_UPDATE_RATE_HZ];
 
                 get_data(&mut io, &mut buffer, has_displacement)
-            }
-            .unwrap();
+            };
+
+            let Ok((state, board_state_update)) = update else {
+                warn!("Error while getting navx data");
+                continue;
+            };
 
             if let Some(mut config) = config2.try_lock() {
                 config.merge(&board_state_update);
@@ -78,8 +83,12 @@ impl NavX {
             }
 
             if board_state_update.update_rate_hz != update_rate {
-                io.write(registers::NAVX_REG_UPDATE_RATE_HZ as u8, update_rate)
-                    .unwrap();
+                if io
+                    .write(registers::NAVX_REG_UPDATE_RATE_HZ as u8, update_rate)
+                    .is_err()
+                {
+                    warn!("Error setting navx refresh rate");
+                }
             }
 
             has_displacement = board_state_update
@@ -89,7 +98,7 @@ impl NavX {
             thread::sleep(Duration::from_secs_f64(delay_time));
         });
 
-        (NavX { config, data }, reciever)
+        Ok((NavX { config, data }, reciever))
     }
 
     pub fn get_data(&self) -> State {
@@ -144,14 +153,14 @@ bitflags! {
 }
 
 #[derive(Error)]
-enum ConfigError<I: IO> {
+pub enum Error<I: IO> {
     #[error("IO error: {0}")]
     Io(I::Error),
     #[error("Invalid WHO_AM_I value")]
     InvalidWhoAmI,
 }
 
-impl<I: IO> std::fmt::Debug for ConfigError<I> {
+impl<I: IO> std::fmt::Debug for Error<I> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         match self {
             Self::Io(arg0) => f.debug_tuple("Io").field(arg0).finish(),
@@ -160,14 +169,14 @@ impl<I: IO> std::fmt::Debug for ConfigError<I> {
     }
 }
 
-fn get_configuration<I: IO>(io: &mut I) -> Result<Config, ConfigError<I>> {
+fn get_configuration<I: IO>(io: &mut I) -> Result<Config, Error<I>> {
     let mut buffer = [0; registers::NAVX_REG_SENSOR_STATUS_H as usize + 1];
 
     io.read(registers::NAVX_REG_WHOAMI as u8, &mut buffer)
-        .map_err(|err| ConfigError::Io(err))?;
+        .map_err(|err| Error::Io(err))?;
 
     if buffer[registers::NAVX_REG_WHOAMI] != 0x32 {
-        return Err(ConfigError::InvalidWhoAmI);
+        return Err(Error::InvalidWhoAmI);
     }
 
     let mut board_id = BoardID::default();
@@ -218,11 +227,10 @@ fn get_data<I: IO>(
     io: &mut I,
     buffer: &mut [u8],
     displacement: bool,
-) -> Result<(State, StateUpdate), ConfigError<I>> {
+) -> Result<(State, StateUpdate), Error<I>> {
     let start = registers::NAVX_REG_UPDATE_RATE_HZ;
 
-    io.read(start as u8, buffer)
-        .map_err(|err| ConfigError::Io(err))?;
+    io.read(start as u8, buffer).map_err(|err| Error::Io(err))?;
 
     // let sensor_timestamp = decode_u32(buffer, registers::NAVX_REG_TIMESTAMP_L_L - start);
 
