@@ -41,9 +41,7 @@ where
                 button = self.clone().fuse() => {
                     return button;
                 }
-                alarm = delay(duration).fuse() => {
-                    alarm?;
-                }
+                _ = delay(duration).fuse() => {}
             }
         }
     }
