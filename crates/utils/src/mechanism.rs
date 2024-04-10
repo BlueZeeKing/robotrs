@@ -7,18 +7,12 @@ use futures::{
 use robotrs::{
     control::ControlSafe, math::Controller, motor::MotorController, scheduler, yield_now,
 };
-use std::{
-    error::Error,
-    fmt::{Debug, Display},
-};
+use std::fmt::Debug;
 use tracing::{error, warn};
-
-use async_deadman::{Deadman, DeadmanReceiver};
 
 struct MechanismRequest<I> {
     state: I,
     response: oneshot::Sender<()>,
-    deadman: DeadmanReceiver,
 }
 
 #[derive(Debug)]
@@ -109,7 +103,6 @@ impl<I: 'static, E: Debug + 'static> Mechanism<I, E> {
                     }.fuse() => {
                         break;
                     }
-                    _ = request.deadman.fuse() => {}
                     _ = stop_receiver.recv_async() => {}
                 }
 
@@ -133,22 +126,18 @@ impl<I: 'static, E: Debug + 'static> Mechanism<I, E> {
         }
     }
 
-    pub async fn set(&mut self, state: I) -> Deadman {
+    pub async fn set(&mut self, state: I) {
         // TODO: Link deadman and self lifetime
         let (response_sender, response_receiver) = oneshot::channel();
-        let (deadman, deadman_receiver) = Deadman::new();
 
         self.sender
             .send(MechanismRequest {
                 state,
                 response: response_sender,
-                deadman: deadman_receiver,
             })
             .expect("Mechanism task has crashed");
 
         response_receiver.await.expect("Mechanism task has crashed");
-
-        deadman
     }
 
     pub async fn errors(&self) -> &Receiver<E> {
