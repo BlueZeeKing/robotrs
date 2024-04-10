@@ -1,4 +1,4 @@
-use std::{ops::DerefMut, task::Waker, time::Duration};
+use std::{task::Waker, time::Duration};
 
 use linkme::distributed_slice;
 use parking_lot::Mutex;
@@ -32,19 +32,13 @@ pub fn add_time(end_time: Duration, waker: Waker) {
 fn poll() {
     let mut queue = QUEUE.lock();
 
-    if let Ok(time) = get_time() {
-        while let Some(item) = queue.last() {
-            if item.1 > time {
-                break;
-            }
+    let time = get_time();
 
-            queue.pop().unwrap_or_else(|| unreachable!()).0.wake();
+    while let Some(item) = queue.last() {
+        if item.1 > time {
+            break;
         }
-    } else {
-        let items = std::mem::take(queue.deref_mut());
 
-        for item in items {
-            item.0.wake();
-        }
+        queue.pop().unwrap_or_else(|| unreachable!()).0.wake();
     }
 }

@@ -17,11 +17,9 @@ mod reactor;
 pub use alarm::Alarm;
 pub use periodic::Periodic;
 
-pub fn get_time() -> Result<Duration> {
+pub fn get_time() -> Duration {
     // Possibly use a custom instant implementation?
-    Ok(Duration::from_micros(unsafe {
-        status_to_result!(HAL_GetFPGATime())
-    }?))
+    Duration::from_micros(unsafe { status_to_result!(HAL_GetFPGATime()) }.unwrap())
 }
 
 pub fn delay(duration: Duration) -> Alarm {
@@ -47,7 +45,7 @@ impl RawNotifier {
         unsafe {
             status_to_result!(HAL_UpdateNotifierAlarm(
                 self.handle,
-                (get_time()? + new_time).as_micros() as u64
+                (get_time() + new_time).as_micros() as u64
             ))
         }?;
 

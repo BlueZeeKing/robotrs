@@ -47,7 +47,7 @@ impl AsyncRobot for Robot {
 
         drivetrain.drive(-1.0)?;
 
-        delay(Duration::from_secs(2)).await?;
+        delay(Duration::from_secs(2)).await;
 
         drivetrain.stop(); // this is not really needed because this is called when the guard
                            // is dropped

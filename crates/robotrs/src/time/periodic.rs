@@ -10,22 +10,20 @@ pub struct Periodic {
 }
 
 impl Periodic {
-    pub fn new(period: Duration) -> Result<Self> {
-        Ok(Self {
+    pub fn new(period: Duration) -> Self {
+        Self {
             period,
-            end_time: get_time()? + period,
-        })
+            end_time: get_time() + period,
+        }
     }
 
-    pub async fn wait(&mut self) -> Result<()> {
+    pub async fn wait(&mut self) {
         Alarm {
             end_time: Some(self.end_time),
             duration: self.period, // not actually used
         }
-        .await?;
+        .await;
 
         self.end_time += self.period;
-
-        Ok(())
     }
 }

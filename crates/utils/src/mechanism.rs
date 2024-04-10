@@ -7,7 +7,10 @@ use futures::{
 use robotrs::{
     control::ControlSafe, math::Controller, motor::MotorController, scheduler, yield_now,
 };
-use std::fmt::Debug;
+use std::{
+    error::Error,
+    fmt::{Debug, Display},
+};
 use tracing::{error, warn};
 
 use async_deadman::{Deadman, DeadmanReceiver};
@@ -26,20 +29,8 @@ pub enum MechanismState<O> {
 
 pub struct Mechanism<I: 'static, E: 'static + Debug> {
     sender: Sender<MechanismRequest<I>>,
-    errors: Receiver<MechanismError<E>>,
+    errors: Receiver<E>,
     stop: Sender<()>,
-}
-
-#[derive(Debug)]
-pub enum MechanismError<E: Debug> {
-    User(E),
-    Time(robotrs::error::Error),
-}
-
-impl<E: Debug> From<E> for MechanismError<E> {
-    fn from(e: E) -> Self {
-        Self::User(e)
-    }
 }
 
 impl<I: 'static, E: Debug + 'static> Mechanism<I, E> {
@@ -58,10 +49,7 @@ impl<I: 'static, E: Debug + 'static> Mechanism<I, E> {
         let (sender, receiver): (Sender<MechanismRequest<I>>, Receiver<MechanismRequest<I>>) =
             flume::unbounded();
 
-        let (errors_sender, errors_receiver): (
-            Sender<MechanismError<E>>,
-            Receiver<MechanismError<E>>,
-        ) = flume::unbounded();
+        let (errors_sender, errors_receiver): (Sender<E>, Receiver<E>) = flume::unbounded();
 
         let (stop_sender, stop_receiver) = flume::bounded(1);
 
@@ -75,7 +63,7 @@ impl<I: 'static, E: Debug + 'static> Mechanism<I, E> {
                             "A mechanism has encountered an error while stopping: {:?}",
                             err
                         );
-                        if errors_sender.send(MechanismError::User(err)).is_err() {
+                        if errors_sender.send(err).is_err() {
                             break;
                         }
                     }
@@ -92,13 +80,12 @@ impl<I: 'static, E: Debug + 'static> Mechanism<I, E> {
                 select! {
                     _ = async {
                         loop {
-                            let result: Result<(), MechanismError<E>> = try {
+                            let result: Result<(), E> = try {
                                 let current_state = supplier()?;
 
                                 consumer(MechanismState::Value(
                                     controller
                                         .calculate(&current_state, &request.state)
-                                        .map_err(|err| MechanismError::Time(err))?,
                                 ))?;
 
                                 if at_setpoint(&current_state, &request.state) {
@@ -131,7 +118,7 @@ impl<I: 'static, E: Debug + 'static> Mechanism<I, E> {
                         "A mechanism has encountered an error while stopping: {:?}",
                         err
                     );
-                    if errors_sender.send(MechanismError::User(err)).is_err() {
+                    if errors_sender.send(err).is_err() {
                         break;
                     }
                 }
@@ -164,7 +151,7 @@ impl<I: 'static, E: Debug + 'static> Mechanism<I, E> {
         deadman
     }
 
-    pub async fn errors(&self) -> &Receiver<MechanismError<E>> {
+    pub async fn errors(&self) -> &Receiver<E> {
         &self.errors
     }
 }

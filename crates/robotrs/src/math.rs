@@ -11,8 +11,8 @@ pub mod profile;
 pub trait Controller<State, Output = f32> {
     fn calculate_with_time(&mut self, current: &State, target: &State, time: Duration) -> Output;
 
-    fn calculate(&mut self, current: &State, target: &State) -> crate::error::Result<Output> {
-        Ok(self.calculate_with_time(current, target, get_time()?))
+    fn calculate(&mut self, current: &State, target: &State) -> Output {
+        self.calculate_with_time(current, target, get_time())
     }
 }
 

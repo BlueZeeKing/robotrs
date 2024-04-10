@@ -1,12 +1,20 @@
 use std::task::{Poll, Waker};
 
 use futures::{future::poll_fn, Stream};
-use hal_sys::{HAL_ControlWord, HAL_GetControlWord, HAL_RefreshDSData};
+use hal_sys::{
+    HAL_AllianceStationID_HAL_AllianceStationID_kBlue1,
+    HAL_AllianceStationID_HAL_AllianceStationID_kBlue2,
+    HAL_AllianceStationID_HAL_AllianceStationID_kBlue3,
+    HAL_AllianceStationID_HAL_AllianceStationID_kRed1,
+    HAL_AllianceStationID_HAL_AllianceStationID_kRed2,
+    HAL_AllianceStationID_HAL_AllianceStationID_kRed3, HAL_ControlWord, HAL_GetAllianceStation,
+    HAL_GetControlWord, HAL_RefreshDSData,
+};
 use parking_lot::Mutex;
 
 use crate::{
     error::{HalError, Result},
-    PERIODIC_CHECKS,
+    status_to_result, PERIODIC_CHECKS,
 };
 
 static CURRENT_STATE: Mutex<State> = Mutex::new(State::Disabled);
@@ -103,5 +111,35 @@ impl State {
 
     pub fn disabled(&self) -> bool {
         *self == Self::Disabled
+    }
+}
+
+pub enum Alliance {
+    Blue(u8),
+    Red(u8),
+}
+
+#[allow(non_upper_case_globals)]
+pub fn get_alliance() -> Option<Alliance> {
+    let station = unsafe { status_to_result!(HAL_GetAllianceStation()) }.ok()?;
+
+    match station {
+        HAL_AllianceStationID_HAL_AllianceStationID_kBlue1 => Some(Alliance::Blue(1)),
+        HAL_AllianceStationID_HAL_AllianceStationID_kBlue2 => Some(Alliance::Blue(2)),
+        HAL_AllianceStationID_HAL_AllianceStationID_kBlue3 => Some(Alliance::Blue(3)),
+        HAL_AllianceStationID_HAL_AllianceStationID_kRed1 => Some(Alliance::Red(1)),
+        HAL_AllianceStationID_HAL_AllianceStationID_kRed2 => Some(Alliance::Red(2)),
+        HAL_AllianceStationID_HAL_AllianceStationID_kRed3 => Some(Alliance::Red(3)),
+        _ => None,
+    }
+}
+
+impl Alliance {
+    pub fn is_blue(&self) -> bool {
+        matches!(self, Alliance::Blue(_))
+    }
+
+    pub fn is_red(&self) -> bool {
+        !self.is_blue()
     }
 }

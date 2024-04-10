@@ -5,8 +5,12 @@ pub mod mechanism;
 pub mod subsystem;
 pub mod trigger;
 
-use robotrs::ds::{get_state, wait_for_state_change, State};
+use robotrs::{
+    ds::{get_state, wait_for_state_change, State},
+    time::get_time,
+};
 pub use tracing;
+pub mod control;
 
 /// A macro that creates a future that will never resolve. This is useful when using [trigger::TriggerExt::while_pressed].
 #[macro_export]
