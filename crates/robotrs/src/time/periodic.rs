@@ -1,7 +1,5 @@
 use std::time::Duration;
 
-use crate::error::Result;
-
 use super::{alarm::Alarm, get_time};
 
 pub struct Periodic {
