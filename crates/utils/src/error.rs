@@ -27,12 +27,7 @@ where
                 }
                 tracing::error!("Error occured on {}/{} try: {}", failures, retries, err);
 
-                if let Err(time_err) =
-                    delay(Duration::from_millis(50) * 2u32.pow(failures - 1)).await
-                {
-                    tracing::error!("Failure while delaying, ending retries early: {}", time_err);
-                    break Err(err);
-                }
+                delay(Duration::from_millis(50) * 2u32.pow(failures - 1)).await;
             }
         }
     }
