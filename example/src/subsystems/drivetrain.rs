@@ -4,7 +4,6 @@ use revlib::SparkMax;
 use robotrs::{
     control::ControlSafe,
     motor::{IdleMode, MotorController, SetIdleMode},
-    FailableDefault,
 };
 
 pub struct Drivetrain {
@@ -54,11 +53,5 @@ impl ControlSafe for Drivetrain {
     fn stop(&mut self) {
         self.left_motor.stop();
         self.right_motor.stop();
-    }
-}
-
-impl FailableDefault for Drivetrain {
-    fn failable_default() -> Result<Self> {
-        Self::new()
     }
 }

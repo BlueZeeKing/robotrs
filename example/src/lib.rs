@@ -7,10 +7,10 @@ use robotrs::{
     robot::AsyncRobot,
     scheduler::guard,
     time::delay,
-    yield_now, Deadzone, FailableDefault,
+    yield_now, Deadzone,
 };
 use subsystems::{Arm, Drivetrain, Intake};
-use utils::{subsystem::Subsystem, trigger::TriggerExt, wait};
+use utils::{subsystem::Subsystem, trigger::TriggerExt};
 
 pub mod subsystems;
 
@@ -112,68 +112,37 @@ impl AsyncRobot for Robot {
                 anyhow::Ok(())
             });
 
-        self.controller.y().while_pressed(|| async {
-            let mut arm = self.arm.lock(1).await;
-            arm.start_raise()?;
+        self.controller
+            .y()
+            .while_pressed(|| Arm::start_raise_subsystem(&self.arm, 1));
 
-            wait!();
-
-            anyhow::Ok(())
-        });
-
-        self.controller.a().while_pressed(|| async {
-            let mut arm = self.arm.lock(1).await;
-            arm.start_lower()?;
-
-            wait!();
-
-            anyhow::Ok(())
-        });
+        self.controller
+            .a()
+            .while_pressed(|| Arm::start_lower_subsystem(&self.arm, 1));
 
         self.controller
             .wait_right_y(AxisTarget::Up(0.65))
-            .while_pressed(|| async {
-                let mut intake = self.intake.lock(1).await;
-                intake.intake_cube()?;
-
-                wait!();
-
-                anyhow::Ok(())
-            });
+            .while_pressed(|| Intake::intake_cube_subsystem(&self.intake, 1));
 
         self.controller
             .wait_right_y(AxisTarget::Down(0.65))
-            .while_pressed(|| async {
-                let mut intake = self.intake.lock(1).await;
-                intake.intake_cone()?;
-
-                wait!();
-
-                anyhow::Ok(())
-            });
+            .while_pressed(|| Intake::intake_cone_subsystem(&self.intake, 1));
 
         self.controller
             .left_bumper()
             .or(self.controller.right_bumper())
-            .while_pressed(|| async {
-                let mut intake = self.intake.lock(1).await;
-                intake.start_release()?;
-
-                wait!();
-
-                anyhow::Ok(())
-            });
+            .while_pressed(|| Intake::start_release_subsystem(&self.intake, 1));
 
         Ok(())
     }
 }
 
-impl FailableDefault for Robot {
-    fn failable_default() -> anyhow::Result<Self> {
+impl Robot {
+    pub fn new() -> anyhow::Result<Self> {
         Ok(Self {
-            drivetrain: Subsystem::new(FailableDefault::failable_default()?),
-            arm: Subsystem::new(FailableDefault::failable_default()?),
-            intake: Subsystem::new(FailableDefault::failable_default()?),
+            drivetrain: Subsystem::new(Drivetrain::new()?),
+            arm: Subsystem::new(Arm::new()?),
+            intake: Subsystem::new(Intake::new()?),
             controller: XboxController::new(0)?,
         })
     }

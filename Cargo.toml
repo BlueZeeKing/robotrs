@@ -14,5 +14,5 @@ members = [
   "crates/utils",
   "crates/navx",
   "crates/math",
-  "build-system/bindings",
+  "build-system/bindings", "crates/macros",
 ]

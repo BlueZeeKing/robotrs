@@ -1,10 +1,10 @@
 use anyhow::Result;
+use macros::subsystem_task;
 use revlib::SparkMax;
 use robotrs::{
     control::ControlSafe,
     motor::{IdleMode, SetIdleMode},
-    time::Alarm,
-    FailableDefault,
+    time::delay,
 };
 use std::time::Duration;
 
@@ -30,16 +30,18 @@ impl Intake {
         })
     }
 
+    #[subsystem_task]
     pub async fn release_cube(&mut self) -> Result<()> {
         self.motor.set(-1.0)?;
 
-        Alarm::new(Duration::from_secs(1)).await?;
+        delay(Duration::from_secs(1)).await;
 
         self.motor.stop();
 
         Ok(())
     }
 
+    #[subsystem_task(wait)]
     pub fn intake_cube(&mut self) -> Result<()> {
         self.motor.set(0.66)?;
 
@@ -48,6 +50,7 @@ impl Intake {
         Ok(())
     }
 
+    #[subsystem_task(wait)]
     pub fn intake_cone(&mut self) -> Result<()> {
         self.motor.set(-1.0)?;
 
@@ -56,6 +59,7 @@ impl Intake {
         Ok(())
     }
 
+    #[subsystem_task(wait)]
     pub fn start_release(&mut self) -> Result<()> {
         if let Some(item) = &self.last_item {
             self.motor.set(match item {
@@ -71,11 +75,5 @@ impl Intake {
 impl ControlSafe for Intake {
     fn stop(&mut self) {
         self.motor.stop();
-    }
-}
-
-impl FailableDefault for Intake {
-    fn failable_default() -> Result<Self> {
-        Self::new()
     }
 }

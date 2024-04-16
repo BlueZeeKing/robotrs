@@ -11,5 +11,6 @@ revlib = { path = "../crates/revlib" }
 ctre = { path = "../crates/ctre" }
 utils = { path = "../crates/utils" }
 hal-sys = { path = "../crates/hal-sys" }
+macros = { path = "../crates/macros" }
 futures = "0.3.28"
 anyhow = "1.0.75"

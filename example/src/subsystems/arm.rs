@@ -1,10 +1,10 @@
 use anyhow::Result;
+use macros::subsystem_task;
 use revlib::SparkMax;
 use robotrs::{
     control::ControlSafe,
     motor::{IdleMode, SetIdleMode},
-    time::Alarm,
-    FailableDefault,
+    time::delay,
 };
 use std::time::Duration;
 
@@ -25,12 +25,14 @@ impl Arm {
         Ok(Self { motor })
     }
 
+    #[subsystem_task(wait)]
     pub fn start_raise(&mut self) -> Result<()> {
         self.motor.set(-ARM_SPEED)?;
 
         Ok(())
     }
 
+    #[subsystem_task(wait)]
     pub fn start_lower(&mut self) -> Result<()> {
         self.motor.set(ARM_SPEED)?;
 
@@ -40,7 +42,7 @@ impl Arm {
     pub async fn raise(&mut self) -> Result<()> {
         self.start_raise()?;
 
-        Alarm::new(Duration::from_secs(2)).await?;
+        delay(Duration::from_secs(2)).await;
 
         self.stop();
 
@@ -50,7 +52,7 @@ impl Arm {
     pub async fn lower(&mut self) -> Result<()> {
         self.start_lower()?;
 
-        Alarm::new(Duration::from_secs(2)).await?;
+        delay(Duration::from_secs(2)).await;
 
         self.stop();
 
@@ -61,11 +63,5 @@ impl Arm {
 impl ControlSafe for Arm {
     fn stop(&mut self) {
         self.motor.stop();
-    }
-}
-
-impl FailableDefault for Arm {
-    fn failable_default() -> Result<Self> {
-        Self::new()
     }
 }
