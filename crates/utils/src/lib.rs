@@ -5,10 +5,7 @@ pub mod mechanism;
 pub mod subsystem;
 pub mod trigger;
 
-use robotrs::{
-    ds::{get_state, wait_for_state_change, State},
-    time::get_time,
-};
+use robotrs::ds::{get_state, wait_for_state_change, State};
 pub use tracing;
 pub mod control;
 
