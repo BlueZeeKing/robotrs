@@ -1,6 +1,6 @@
 use std::f32::{consts::PI, EPSILON};
 
-use nalgebra::{matrix, ComplexField, Dim, SMatrix, Vector2, Vector3, VectorView2, U1, U2};
+use nalgebra::{matrix, Dim, SMatrix, Vector2, Vector3, VectorView2, U1, U2};
 
 use crate::normalize_angle;
 
