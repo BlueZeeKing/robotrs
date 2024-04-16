@@ -20,12 +20,12 @@ use tracing::warn;
 pub struct Subsystem<T: ControlSafe> {
     value: RefCell<T>,
     tasks: RefCell<BinaryHeap<LockRequest>>,
-    current_priority: Cell<u32>,
+    current_priority: Cell<Priority>,
     current_cancellation: Rc<RefCell<Option<CancellationHandle>>>,
 }
 
 struct LockRequest {
-    priority: u32,
+    priority: Priority,
     waker: Weak<Cell<Option<Waker>>>,
 }
 
@@ -71,14 +71,19 @@ impl<T: ControlSafe> Subsystem<T> {
         Self {
             value: RefCell::new(value),
             tasks: RefCell::new(BinaryHeap::new()),
-            current_priority: Cell::new(0),
+            current_priority: Cell::new(Priority {
+                value: 0,
+                should_cancel: false,
+            }),
             current_cancellation,
         }
     }
 
     /// Lock the subsystem with the given priority. This will cancel the scope of any locks that have a lower priority.
-    pub fn lock(&self, priority: u32) -> LockFuture<'_, T> {
+    pub fn lock<P: AsPriority>(&self, priority: P) -> LockFuture<'_, T> {
         let waker = Rc::new(Cell::new(None));
+
+        let priority = priority.as_priority();
 
         self.tasks.borrow_mut().push(LockRequest {
             priority,
@@ -97,7 +102,7 @@ impl<T: ControlSafe> Subsystem<T> {
 pub struct LockFuture<'a, T: ControlSafe> {
     lock: &'a Subsystem<T>,
     waker: Rc<Cell<Option<Waker>>>,
-    priority: u32,
+    priority: Priority,
 }
 
 fn peek<'a>(val: &mut RefMut<'a, BinaryHeap<LockRequest>>) -> Option<Rc<Cell<Option<Waker>>>> {
@@ -148,7 +153,7 @@ impl<'a, T: ControlSafe> Future for LockFuture<'a, T> {
                     guard,
                 })
             } else {
-                if inner.lock.current_priority.get() <= inner.priority {
+                if inner.priority.is_higher(&inner.lock.current_priority.get()) {
                     if let Some(handle) = inner.lock.current_cancellation.borrow().as_ref() {
                         handle.cancel();
                     }
@@ -188,6 +193,60 @@ impl<'a, T: ControlSafe> Drop for LockGuard<'a, T> {
         self.guard.stop();
         if let Some(val) = peek(&mut self.lock.tasks.borrow_mut()).and_then(|val| val.take()) {
             val.wake();
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Priority {
+    value: u32,
+    /// If this is set to true, it will cancel tasks with the same or a lower priority value
+    should_cancel: bool,
+}
+
+impl Priority {
+    fn is_higher(&self, other: &Priority) -> bool {
+        (self.value > other.value) || (self.should_cancel && self.value >= other.value)
+    }
+}
+
+pub trait AsPriority {
+    fn as_priority(self) -> Priority;
+}
+
+impl AsPriority for Priority {
+    fn as_priority(self) -> Priority {
+        self
+    }
+}
+
+impl AsPriority for u32 {
+    fn as_priority(self) -> Priority {
+        Priority {
+            value: self,
+            should_cancel: false,
+        }
+    }
+}
+
+pub trait PriorityExt {
+    fn cancelling(self) -> Priority;
+}
+
+impl PriorityExt for Priority {
+    fn cancelling(self) -> Priority {
+        Self {
+            should_cancel: true,
+            value: self.value,
+        }
+    }
+}
+
+impl PriorityExt for u32 {
+    fn cancelling(self) -> Priority {
+        Priority {
+            value: self,
+            should_cancel: true,
         }
     }
 }
