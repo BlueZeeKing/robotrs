@@ -48,25 +48,32 @@ impl<I: 'static, E: Debug + 'static> Mechanism<I, E> {
         let (stop_sender, stop_receiver) = flume::bounded(1);
 
         scheduler::spawn(async move {
+            let mut next_value = None;
             loop {
-                let Either::Left((request, _)) =
-                    select(receiver.recv_async(), stop_receiver.recv_async()).await
-                else {
-                    if let Err(err) = consumer(MechanismState::Stop) {
-                        error!(
-                            "A mechanism has encountered an error while stopping: {:?}",
-                            err
-                        );
-                        if errors_sender.send(err).is_err() {
-                            break;
+                let request = if let Some(next_value) = next_value.take() {
+                    next_value
+                } else {
+                    let Either::Left((request, _)) =
+                        select(receiver.recv_async(), stop_receiver.recv_async()).await
+                    else {
+                        if let Err(err) = consumer(MechanismState::Stop) {
+                            error!(
+                                "A mechanism has encountered an error while stopping: {:?}",
+                                err
+                            );
+                            if errors_sender.send(err).is_err() {
+                                break;
+                            }
                         }
-                    }
 
-                    continue;
-                };
+                        continue;
+                    };
 
-                let Ok(request) = request else {
-                    break;
+                    let Ok(request) = request else {
+                        break;
+                    };
+
+                    request
                 };
 
                 let mut response = Some(request.response);
@@ -104,6 +111,13 @@ impl<I: 'static, E: Debug + 'static> Mechanism<I, E> {
                         break;
                     }
                     _ = stop_receiver.recv_async() => {}
+                    next_request = receiver.recv_async() => {
+                        if let Ok(next_request) = next_request {
+                            next_value = Some(next_request);
+                        } else {
+                            break;
+                        }
+                    }
                 }
 
                 if let Err(err) = consumer(MechanismState::Stop) {
@@ -127,7 +141,6 @@ impl<I: 'static, E: Debug + 'static> Mechanism<I, E> {
     }
 
     pub async fn set(&mut self, state: I) {
-        // TODO: Link deadman and self lifetime
         let (response_sender, response_receiver) = oneshot::channel();
 
         self.sender
