@@ -1,18 +1,20 @@
-use crate::{bindings::*, error::REVError, handle_error, FeedbackSensor};
+use std::sync::Arc;
+
+use crate::{bindings::*, error::REVError, handle_error, FeedbackSensor, Handle};
 
 use super::Encoder;
 
 pub struct SparkMaxRelativeEncoder {
-    handle: c_SparkMax_handle,
+    handle: Handle,
 }
 
 impl SparkMaxRelativeEncoder {
-    pub(crate) fn new(handle: c_SparkMax_handle) -> Self {
+    pub(crate) fn new(handle: Handle) -> Self {
         Self { handle }
     }
 
     pub fn set_position(&mut self, value: f32) -> Result<(), REVError> {
-        unsafe { handle_error!(c_SparkMax_SetEncoderPosition(self.handle, value)) }
+        unsafe { handle_error!(c_SparkMax_SetEncoderPosition(*self.handle, value)) }
     }
 }
 
@@ -21,7 +23,7 @@ impl Encoder for SparkMaxRelativeEncoder {
         let mut pos = 0.0;
 
         unsafe {
-            handle_error!(c_SparkMax_GetEncoderPosition(self.handle, &mut pos))?;
+            handle_error!(c_SparkMax_GetEncoderPosition(*self.handle, &mut pos))?;
         }
 
         Ok(pos)
@@ -31,23 +33,23 @@ impl Encoder for SparkMaxRelativeEncoder {
         let mut velocity = 0.0;
 
         unsafe {
-            handle_error!(c_SparkMax_GetEncoderVelocity(self.handle, &mut velocity))?;
+            handle_error!(c_SparkMax_GetEncoderVelocity(*self.handle, &mut velocity))?;
         }
 
         Ok(velocity)
     }
 
     fn set_position_conversion_factor(&mut self, factor: f32) -> Result<(), REVError> {
-        unsafe { handle_error!(c_SparkMax_SetPositionConversionFactor(self.handle, factor)) }
+        unsafe { handle_error!(c_SparkMax_SetPositionConversionFactor(*self.handle, factor)) }
     }
 
     fn set_velocity_conversion_factor(&mut self, factor: f32) -> Result<(), REVError> {
-        unsafe { handle_error!(c_SparkMax_SetVelocityConversionFactor(self.handle, factor)) }
+        unsafe { handle_error!(c_SparkMax_SetVelocityConversionFactor(*self.handle, factor)) }
     }
 
     fn set_inverted(&mut self, inverted: bool) -> Result<(), REVError> {
         let mut motor_type: c_SparkMax_MotorType = 0;
-        unsafe { handle_error!(c_SparkMax_GetMotorType(self.handle, &mut motor_type)) }?;
+        unsafe { handle_error!(c_SparkMax_GetMotorType(*self.handle, &mut motor_type)) }?;
 
         if motor_type == c_SparkMax_MotorType_c_SparkMax_kBrushless {
             return Err(REVError::General);
@@ -55,7 +57,7 @@ impl Encoder for SparkMaxRelativeEncoder {
 
         unsafe {
             handle_error!(c_SparkMax_SetInverted(
-                self.handle,
+                *self.handle,
                 if inverted { 1 } else { 0 }
             ))
         }
@@ -67,7 +69,7 @@ impl FeedbackSensor for SparkMaxRelativeEncoder {
         1
     }
 
-    fn is_handle(&self, handle: c_SparkMax_handle) -> bool {
-        self.handle == handle
+    fn is_handle(&self, handle: &Handle) -> bool {
+        Arc::ptr_eq(&self.handle.0, &handle.0)
     }
 }

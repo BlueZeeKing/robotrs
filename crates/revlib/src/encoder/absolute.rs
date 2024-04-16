@@ -1,13 +1,15 @@
-use crate::{bindings::*, error::REVError, handle_error, FeedbackSensor};
+use std::sync::Arc;
+
+use crate::{bindings::*, error::REVError, handle_error, FeedbackSensor, Handle};
 
 use super::Encoder;
 
 pub struct SparkMaxAbsoluteEncoder {
-    spark_max_handle: c_SparkMax_handle,
+    spark_max_handle: Handle,
 }
 
 impl SparkMaxAbsoluteEncoder {
-    pub(crate) fn new(handle: c_SparkMax_handle) -> Self {
+    pub(crate) fn new(handle: Handle) -> Self {
         Self {
             spark_max_handle: handle,
         }
@@ -20,7 +22,7 @@ impl Encoder for SparkMaxAbsoluteEncoder {
 
         unsafe {
             handle_error!(c_SparkMax_GetDutyCyclePosition(
-                self.spark_max_handle,
+                *self.spark_max_handle,
                 &mut pos
             ))
         }?;
@@ -33,7 +35,7 @@ impl Encoder for SparkMaxAbsoluteEncoder {
 
         unsafe {
             handle_error!(c_SparkMax_GetDutyCycleVelocity(
-                self.spark_max_handle,
+                *self.spark_max_handle,
                 &mut velocity
             ))
         }?;
@@ -44,7 +46,7 @@ impl Encoder for SparkMaxAbsoluteEncoder {
     fn set_position_conversion_factor(&mut self, factor: f32) -> Result<(), REVError> {
         unsafe {
             handle_error!(c_SparkMax_SetDutyCyclePositionFactor(
-                self.spark_max_handle,
+                *self.spark_max_handle,
                 factor
             ))
         }
@@ -53,7 +55,7 @@ impl Encoder for SparkMaxAbsoluteEncoder {
     fn set_velocity_conversion_factor(&mut self, factor: f32) -> Result<(), REVError> {
         unsafe {
             handle_error!(c_SparkMax_SetDutyCycleVelocityFactor(
-                self.spark_max_handle,
+                *self.spark_max_handle,
                 factor
             ))
         }
@@ -62,7 +64,7 @@ impl Encoder for SparkMaxAbsoluteEncoder {
     fn set_inverted(&mut self, inverted: bool) -> Result<(), REVError> {
         unsafe {
             handle_error!(c_SparkMax_SetDutyCycleInverted(
-                self.spark_max_handle,
+                *self.spark_max_handle,
                 if inverted { 1 } else { 0 }
             ))
         }
@@ -74,7 +76,7 @@ impl FeedbackSensor for SparkMaxAbsoluteEncoder {
         6
     }
 
-    fn is_handle(&self, handle: c_SparkMax_handle) -> bool {
-        self.spark_max_handle == handle
+    fn is_handle(&self, handle: &Handle) -> bool {
+        Arc::ptr_eq(&self.spark_max_handle.0, &handle.0)
     }
 }

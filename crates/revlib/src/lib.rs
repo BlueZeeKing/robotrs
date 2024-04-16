@@ -4,7 +4,11 @@ use robotrs::{
     control::ControlSafe,
     motor::{MotorController, SetIdleMode},
 };
-use std::{mem::MaybeUninit, ops::RangeInclusive};
+use std::{
+    mem::MaybeUninit,
+    ops::{Deref, RangeInclusive},
+    sync::Arc,
+};
 use tracing::{trace, warn};
 
 use crate::bindings::*;
@@ -16,7 +20,7 @@ pub mod encoder;
 pub mod error;
 
 pub struct SparkMax {
-    handle: c_SparkMax_handle,
+    handle: Handle,
 }
 
 #[derive(Clone, Copy)]
@@ -48,7 +52,9 @@ impl SparkMax {
             return Err(REVError::from(error_code));
         }
 
-        let res = Ok(SparkMax { handle });
+        let res = Ok(SparkMax {
+            handle: Handle(Arc::new(InnerHandle(handle))),
+        });
 
         let mut model_ptr = MaybeUninit::uninit();
         let error;
@@ -83,7 +89,7 @@ impl SparkMax {
     pub fn set(&mut self, speed: f32) -> Result<(), REVError> {
         let error_code = unsafe {
             c_SparkMax_SetpointCommand(
-                self.handle,
+                *self.handle,
                 speed,
                 c_SparkMax_ControlType_c_SparkMax_kDutyCycle,
                 0,
@@ -100,7 +106,7 @@ impl SparkMax {
     }
 
     fn set_idle_mode_rev(&mut self, idle_mode: IdleMode) -> Result<(), REVError> {
-        let error_code = unsafe { c_SparkMax_SetIdleMode(self.handle, idle_mode as u32) };
+        let error_code = unsafe { c_SparkMax_SetIdleMode(*self.handle, idle_mode as u32) };
 
         if error_code == 0 {
             Ok(())
@@ -110,7 +116,7 @@ impl SparkMax {
     }
 
     pub fn set_smart_current_limit(&mut self, limit: u8) -> Result<(), REVError> {
-        let error_code = unsafe { c_SparkMax_SetSmartCurrentLimit(self.handle, limit, 0, 20000) };
+        let error_code = unsafe { c_SparkMax_SetSmartCurrentLimit(*self.handle, limit, 0, 20000) };
 
         if error_code == 0 {
             Ok(())
@@ -120,10 +126,10 @@ impl SparkMax {
     }
 
     pub fn set_pid(&mut self, p: f32, d: f32, i: f32, feedforward: f32) -> Result<(), REVError> {
-        unsafe { handle_error!(c_SparkMax_SetP(self.handle, 0, p)) }?;
-        unsafe { handle_error!(c_SparkMax_SetD(self.handle, 0, d)) }?;
-        unsafe { handle_error!(c_SparkMax_SetI(self.handle, 0, i)) }?;
-        unsafe { handle_error!(c_SparkMax_SetFF(self.handle, 0, feedforward)) }?;
+        unsafe { handle_error!(c_SparkMax_SetP(*self.handle, 0, p)) }?;
+        unsafe { handle_error!(c_SparkMax_SetD(*self.handle, 0, d)) }?;
+        unsafe { handle_error!(c_SparkMax_SetI(*self.handle, 0, i)) }?;
+        unsafe { handle_error!(c_SparkMax_SetFF(*self.handle, 0, feedforward)) }?;
 
         Ok(())
     }
@@ -131,7 +137,7 @@ impl SparkMax {
     pub fn set_pid_range(&mut self, range: RangeInclusive<f32>) -> Result<(), REVError> {
         unsafe {
             handle_error!(c_SparkMax_SetOutputRange(
-                self.handle,
+                *self.handle,
                 0,
                 *range.start(),
                 *range.end()
@@ -144,13 +150,13 @@ impl SparkMax {
     pub fn set_wrapping(&mut self, wrapping: bool, max: f32, min: f32) -> Result<(), REVError> {
         unsafe {
             handle_error!(c_SparkMax_SetPositionPIDWrapEnable(
-                self.handle,
+                *self.handle,
                 if wrapping { 1 } else { 0 }
             ))
         }?;
 
-        unsafe { handle_error!(c_SparkMax_SetPositionPIDMinInput(self.handle, min)) }?;
-        unsafe { handle_error!(c_SparkMax_SetPositionPIDMaxInput(self.handle, max)) }?;
+        unsafe { handle_error!(c_SparkMax_SetPositionPIDMinInput(*self.handle, min)) }?;
+        unsafe { handle_error!(c_SparkMax_SetPositionPIDMaxInput(*self.handle, max)) }?;
 
         Ok(())
     }
@@ -158,42 +164,42 @@ impl SparkMax {
     pub fn get_absolute_encoder(&mut self) -> Result<SparkMaxAbsoluteEncoder, REVError> {
         unsafe {
             handle_error!(c_SparkMax_AttemptToSetDataPortConfig(
-                self.handle,
+                *self.handle,
                 c_SparkMax_DataPortConfig_c_SparkMax_kDataPortConfigLimitSwitchesAndAbsoluteEncoder
             ))
         }?;
 
-        Ok(SparkMaxAbsoluteEncoder::new(self.handle))
+        Ok(SparkMaxAbsoluteEncoder::new(self.handle.clone()))
     }
 
     pub fn set_pid_input<T: FeedbackSensor>(&mut self, sensor: &T) -> Result<(), REVError> {
-        if !sensor.is_handle(self.handle) {
+        if !sensor.is_handle(&self.handle) {
             return Err(REVError::General);
         }
 
-        unsafe { handle_error!(c_SparkMax_SetFeedbackDevice(self.handle, T::get_id())) }?;
+        unsafe { handle_error!(c_SparkMax_SetFeedbackDevice(*self.handle, T::get_id())) }?;
 
         Ok(())
     }
 
     pub fn reset_settings(&mut self) -> Result<(), REVError> {
-        unsafe { handle_error!(c_SparkMax_RestoreFactoryDefaults(self.handle, 0)) }
+        unsafe { handle_error!(c_SparkMax_RestoreFactoryDefaults(*self.handle, 0)) }
     }
 
     pub fn write_settings(&mut self) -> Result<(), REVError> {
-        unsafe { handle_error!(c_SparkMax_BurnFlash(self.handle)) }
+        unsafe { handle_error!(c_SparkMax_BurnFlash(*self.handle)) }
     }
 
     pub fn get_relative_encoder(&mut self) -> Result<SparkMaxRelativeEncoder, REVError> {
-        unsafe { handle_error!(c_SparkMax_SetSensorType(self.handle, 1)) }?;
+        unsafe { handle_error!(c_SparkMax_SetSensorType(*self.handle, 1)) }?;
 
-        Ok(SparkMaxRelativeEncoder::new(self.handle))
+        Ok(SparkMaxRelativeEncoder::new(self.handle.clone()))
     }
 
     pub fn set_reference(&mut self, value: f32, control_type: ControlType) -> Result<(), REVError> {
         unsafe {
             handle_error!(c_SparkMax_SetpointCommand(
-                self.handle,
+                *self.handle,
                 value,
                 control_type as u32,
                 0,
@@ -206,7 +212,7 @@ impl SparkMax {
     pub fn follow(&mut self, other: &SparkMax, invert: bool) -> Result<(), REVError> {
         let mut device_id = 0;
         unsafe {
-            handle_error!(c_SparkMax_GetDeviceId(other.handle, &mut device_id))?;
+            handle_error!(c_SparkMax_GetDeviceId(*other.handle, &mut device_id))?;
         }
 
         let id = 0x2051800 | device_id;
@@ -214,7 +220,7 @@ impl SparkMax {
 
         unsafe {
             handle_error!(c_SparkMax_SetFollow(
-                self.handle,
+                *self.handle,
                 id as u32,
                 (if invert { 1 } else { 0 } & 0x1) << 18 | (predefined & 0xFF) << 24
             ))?;
@@ -236,7 +242,7 @@ pub enum ControlType {
 
 pub trait FeedbackSensor {
     fn get_id() -> u32;
-    fn is_handle(&self, handle: c_SparkMax_handle) -> bool;
+    fn is_handle(&self, handle: &Handle) -> bool;
 }
 
 impl MotorController for SparkMax {
@@ -253,7 +259,7 @@ impl MotorController for SparkMax {
     fn set_inverted(&mut self, is_inverted: bool) -> Result<(), Self::Error> {
         unsafe {
             handle_error!(c_SparkMax_SetInverted(
-                self.handle,
+                *self.handle,
                 if is_inverted { 1 } else { 0 }
             ))?;
         }
@@ -277,8 +283,21 @@ impl ControlSafe for SparkMax {
     }
 }
 
-impl Drop for SparkMax {
+#[derive(Clone)]
+pub struct Handle(Arc<InnerHandle>);
+
+struct InnerHandle(c_SparkMax_handle);
+
+impl Drop for InnerHandle {
     fn drop(&mut self) {
-        unsafe { c_SparkMax_Destroy(self.handle) }
+        unsafe { c_SparkMax_Destroy(self.0) }
+    }
+}
+
+impl Deref for Handle {
+    type Target = c_SparkMax_handle;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0 .0
     }
 }
