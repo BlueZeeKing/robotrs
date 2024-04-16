@@ -136,7 +136,7 @@ pub type ctre_phoenix_motorcontrol_ControlMode = ::std::os::raw::c_int;
 #[doc = "!< Trapezoidal Commutation"]
 pub const ctre_phoenix_motorcontrol_MotorCommutation_Trapezoidal:
     ctre_phoenix_motorcontrol_MotorCommutation = 0;
-#[doc = " Choose the type of motor commutation.  This is for products that support selectable commutation strategies."]
+#[doc = " Choose the type of motor commutation.  This is for products that support selectable commutation strategies.\n\n @deprecated This device's Phoenix 5 API is deprecated for removal in the\n 2025 season. Users should update to Phoenix 6 firmware and migrate to the\n Phoenix 6 API. A migration guide is available at\n https://v6.docs.ctr-electronics.com/en/stable/docs/migration/migration-guide/index.html.\n\n If the Phoenix 5 API must be used for this device, the device must have 22.X\n firmware. This firmware is available in Tuner X after selecting Phoenix 5 in\n the firmware year dropdown."]
 pub type ctre_phoenix_motorcontrol_MotorCommutation = ::std::os::raw::c_int;
 #[doc = " Express the absolute position as an unsigned value.\n E.g. [0,+1) rotations or [0,360) deg."]
 pub const ctre_phoenix_sensors_AbsoluteSensorRange_Unsigned_0_to_360:
@@ -144,7 +144,7 @@ pub const ctre_phoenix_sensors_AbsoluteSensorRange_Unsigned_0_to_360:
 #[doc = " Express the absolute position as an signed value.\n E.g. [-0.5,+0.5) rotations or [-180,+180) deg."]
 pub const ctre_phoenix_sensors_AbsoluteSensorRange_Signed_PlusMinus180:
     ctre_phoenix_sensors_AbsoluteSensorRange = 1;
-#[doc = " Enum for how to range the absolute sensor position."]
+#[doc = " Enum for how to range the absolute sensor position.\n\n @deprecated This device's Phoenix 5 API is deprecated for removal in the\n 2025 season. Users should update to Phoenix 6 firmware and migrate to the\n Phoenix 6 API. A migration guide is available at\n https://v6.docs.ctr-electronics.com/en/stable/docs/migration/migration-guide/index.html.\n\n If the Phoenix 5 API must be used for this device, the device must have 22.X\n firmware. This firmware is available in Tuner X after selecting Phoenix 5 in\n the firmware year dropdown."]
 pub type ctre_phoenix_sensors_AbsoluteSensorRange = ::std::os::raw::c_uint;
 #[doc = " On boot up, set position to zero."]
 pub const ctre_phoenix_sensors_SensorInitializationStrategy_BootToZero:
@@ -152,7 +152,7 @@ pub const ctre_phoenix_sensors_SensorInitializationStrategy_BootToZero:
 #[doc = " On boot up, sync to the Absolute Position signal.  The Absolute position signal will be signed according to the selected Absolute Sensor Range."]
 pub const ctre_phoenix_sensors_SensorInitializationStrategy_BootToAbsolutePosition:
     ctre_phoenix_sensors_SensorInitializationStrategy = 1;
-#[doc = " Enum for how CANCoder should initialize its position register on boot."]
+#[doc = " Enum for how CANCoder should initialize its position register on boot.\n\n @deprecated This device's Phoenix 5 API is deprecated for removal in the\n 2025 season. Users should update to Phoenix 6 firmware and migrate to the\n Phoenix 6 API. A migration guide is available at\n https://v6.docs.ctr-electronics.com/en/stable/docs/migration/migration-guide/index.html.\n\n If the Phoenix 5 API must be used for this device, the device must have 22.X\n firmware. This firmware is available in Tuner X after selecting Phoenix 5 in\n the firmware year dropdown."]
 pub type ctre_phoenix_sensors_SensorInitializationStrategy = ::std::os::raw::c_uint;
 extern "C" {
     pub fn c_MotController_Create1(baseArbId: ::std::os::raw::c_int)

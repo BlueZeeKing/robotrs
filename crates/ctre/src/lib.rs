@@ -54,7 +54,9 @@ impl VictorSPX {
         std::mem::forget(can_bus);
 
         Self {
-            handle: unsafe { bindings::c_MotController_Create2(id, model_ptr, can_bus_ptr) },
+            handle: unsafe {
+                bindings::c_MotController_Create2(id, c"Victor SPX".as_ptr(), c"".as_ptr())
+            },
         }
     }
 
@@ -99,7 +101,7 @@ impl MotorController for VictorSPX {
     }
 
     fn set_voltage(&mut self, _value: f32) -> Result<(), Self::Error> {
-        todo!()
+        unimplemented!()
     }
 }
 
