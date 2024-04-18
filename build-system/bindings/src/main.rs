@@ -28,7 +28,7 @@ async fn main() {
             gen_bindings(
                 &rev::get_artifacts(),
                 rev::get_allow_list(),
-                rev::get_start_path(),
+                &rev::get_start_path(),
                 &args.out,
             )
             .await
@@ -37,7 +37,7 @@ async fn main() {
             gen_bindings(
                 &ctre::get_artifacts(),
                 ctre::get_allow_list(),
-                ctre::get_start_path(),
+                &ctre::get_start_path(),
                 &args.out,
             )
             .await
@@ -46,7 +46,7 @@ async fn main() {
             gen_bindings(
                 &hal::get_artifacts(),
                 hal::get_allow_list(),
-                hal::get_start_path(),
+                &hal::get_start_path(),
                 &args.out,
             )
             .await
@@ -55,7 +55,7 @@ async fn main() {
             gen_bindings(
                 &nt::get_artifacts(),
                 nt::get_allow_list(),
-                nt::get_start_path(),
+                &nt::get_start_path(),
                 &args.out,
             )
             .await

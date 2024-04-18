@@ -25,7 +25,7 @@ pub fn get_client() -> &'static Client {
 pub async fn gen_bindings(
     artifacts: &[Artifact],
     allow: &'static str,
-    path: &Path,
+    path: &[&Path],
     out_path: &Path,
 ) -> anyhow::Result<()> {
     let tempdir = TempDir::new()?;
@@ -41,13 +41,17 @@ pub async fn gen_bindings(
         env::set_var("TARGET", host);
     }
 
-    let result = bindgen::Builder::default()
-        .clang_args([
-            "-xc++",
-            "-std=c++20",
-            &format!("--include-directory={}", include_path.to_str().unwrap()),
-        ])
-        .header(include_path.join(path).to_str().unwrap())
+    let mut builder = bindgen::Builder::default().clang_args([
+        "-xc++",
+        "-std=c++20",
+        &format!("--include-directory={}", include_path.to_str().unwrap()),
+    ]);
+
+    for header in path {
+        builder = builder.header(include_path.join(header).to_str().unwrap());
+    }
+
+    let result = builder
         .allowlist_type(allow)
         .allowlist_function(allow)
         .allowlist_var(allow)

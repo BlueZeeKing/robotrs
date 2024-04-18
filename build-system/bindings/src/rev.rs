@@ -42,6 +42,6 @@ pub fn get_allow_list() -> &'static str {
     "c_(SparkMax|REVLib)_.*"
 }
 
-pub fn get_start_path() -> &'static Path {
-    Path::new("rev/CANSparkMaxDriver.h")
+pub fn get_start_path() -> [&'static Path; 1] {
+    [Path::new("rev/CANSparkMaxDriver.h")]
 }

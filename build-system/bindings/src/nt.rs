@@ -50,6 +50,6 @@ pub fn get_allow_list() -> &'static str {
     "NT_.*"
 }
 
-pub fn get_start_path() -> &'static Path {
-    Path::new("ntcore.h")
+pub fn get_start_path() -> [&'static Path; 1] {
+    [Path::new("ntcore.h")]
 }

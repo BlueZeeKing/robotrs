@@ -87,6 +87,6 @@ pub fn get_allow_list() -> &'static str {
     "(HAL|WPI)_.*"
 }
 
-pub fn get_start_path() -> &'static Path {
-    Path::new("hal/HAL.h")
+pub fn get_start_path() -> [&'static Path; 1] {
+    [Path::new("hal/HAL.h")]
 }

@@ -1267,3 +1267,1435 @@ extern "C" {
         timeoutMs: ::std::os::raw::c_int,
     ) -> ctre_phoenix_ErrorCode;
 }
+extern "C" {
+    pub fn c_ctre_phoenix6_requestConfigApply(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        timeoutSeconds: f64,
+        str_: *const ::std::os::raw::c_char,
+        strlen: u32,
+        forceApply: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlEmpty(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlDutyCycleOut(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        Output: f64,
+        EnableFOC: bool,
+        OverrideBrakeDurNeutral: bool,
+        LimitForwardMotion: bool,
+        LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlTorqueCurrentFOC(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        Output: f64,
+        MaxAbsDutyCycle: f64,
+        Deadband: f64,
+        OverrideCoastDurNeutral: bool,
+        LimitForwardMotion: bool,
+        LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlVoltageOut(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        Output: f64,
+        EnableFOC: bool,
+        OverrideBrakeDurNeutral: bool,
+        LimitForwardMotion: bool,
+        LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlPositionDutyCycle(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        Position: f64,
+        Velocity: f64,
+        EnableFOC: bool,
+        FeedForward: f64,
+        Slot: ::std::os::raw::c_int,
+        OverrideBrakeDurNeutral: bool,
+        LimitForwardMotion: bool,
+        LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlPositionVoltage(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        Position: f64,
+        Velocity: f64,
+        EnableFOC: bool,
+        FeedForward: f64,
+        Slot: ::std::os::raw::c_int,
+        OverrideBrakeDurNeutral: bool,
+        LimitForwardMotion: bool,
+        LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlPositionTorqueCurrentFOC(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        Position: f64,
+        Velocity: f64,
+        FeedForward: f64,
+        Slot: ::std::os::raw::c_int,
+        OverrideCoastDurNeutral: bool,
+        LimitForwardMotion: bool,
+        LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlVelocityDutyCycle(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        Velocity: f64,
+        Acceleration: f64,
+        EnableFOC: bool,
+        FeedForward: f64,
+        Slot: ::std::os::raw::c_int,
+        OverrideBrakeDurNeutral: bool,
+        LimitForwardMotion: bool,
+        LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlVelocityVoltage(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        Velocity: f64,
+        Acceleration: f64,
+        EnableFOC: bool,
+        FeedForward: f64,
+        Slot: ::std::os::raw::c_int,
+        OverrideBrakeDurNeutral: bool,
+        LimitForwardMotion: bool,
+        LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlVelocityTorqueCurrentFOC(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        Velocity: f64,
+        Acceleration: f64,
+        FeedForward: f64,
+        Slot: ::std::os::raw::c_int,
+        OverrideCoastDurNeutral: bool,
+        LimitForwardMotion: bool,
+        LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlMotionMagicDutyCycle(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        Position: f64,
+        EnableFOC: bool,
+        FeedForward: f64,
+        Slot: ::std::os::raw::c_int,
+        OverrideBrakeDurNeutral: bool,
+        LimitForwardMotion: bool,
+        LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlMotionMagicVoltage(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        Position: f64,
+        EnableFOC: bool,
+        FeedForward: f64,
+        Slot: ::std::os::raw::c_int,
+        OverrideBrakeDurNeutral: bool,
+        LimitForwardMotion: bool,
+        LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlMotionMagicTorqueCurrentFOC(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        Position: f64,
+        FeedForward: f64,
+        Slot: ::std::os::raw::c_int,
+        OverrideCoastDurNeutral: bool,
+        LimitForwardMotion: bool,
+        LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlDifferentialDutyCycle(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        TargetOutput: f64,
+        DifferentialPosition: f64,
+        EnableFOC: bool,
+        DifferentialSlot: ::std::os::raw::c_int,
+        OverrideBrakeDurNeutral: bool,
+        LimitForwardMotion: bool,
+        LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlDifferentialVoltage(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        TargetOutput: f64,
+        DifferentialPosition: f64,
+        EnableFOC: bool,
+        DifferentialSlot: ::std::os::raw::c_int,
+        OverrideBrakeDurNeutral: bool,
+        LimitForwardMotion: bool,
+        LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlDifferentialPositionDutyCycle(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        TargetPosition: f64,
+        DifferentialPosition: f64,
+        EnableFOC: bool,
+        TargetSlot: ::std::os::raw::c_int,
+        DifferentialSlot: ::std::os::raw::c_int,
+        OverrideBrakeDurNeutral: bool,
+        LimitForwardMotion: bool,
+        LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlDifferentialPositionVoltage(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        TargetPosition: f64,
+        DifferentialPosition: f64,
+        EnableFOC: bool,
+        TargetSlot: ::std::os::raw::c_int,
+        DifferentialSlot: ::std::os::raw::c_int,
+        OverrideBrakeDurNeutral: bool,
+        LimitForwardMotion: bool,
+        LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlDifferentialVelocityDutyCycle(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        TargetVelocity: f64,
+        DifferentialPosition: f64,
+        EnableFOC: bool,
+        TargetSlot: ::std::os::raw::c_int,
+        DifferentialSlot: ::std::os::raw::c_int,
+        OverrideBrakeDurNeutral: bool,
+        LimitForwardMotion: bool,
+        LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlDifferentialVelocityVoltage(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        TargetVelocity: f64,
+        DifferentialPosition: f64,
+        EnableFOC: bool,
+        TargetSlot: ::std::os::raw::c_int,
+        DifferentialSlot: ::std::os::raw::c_int,
+        OverrideBrakeDurNeutral: bool,
+        LimitForwardMotion: bool,
+        LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlDifferentialMotionMagicDutyCycle(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        TargetPosition: f64,
+        DifferentialPosition: f64,
+        EnableFOC: bool,
+        TargetSlot: ::std::os::raw::c_int,
+        DifferentialSlot: ::std::os::raw::c_int,
+        OverrideBrakeDurNeutral: bool,
+        LimitForwardMotion: bool,
+        LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlDifferentialMotionMagicVoltage(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        TargetPosition: f64,
+        DifferentialPosition: f64,
+        EnableFOC: bool,
+        TargetSlot: ::std::os::raw::c_int,
+        DifferentialSlot: ::std::os::raw::c_int,
+        OverrideBrakeDurNeutral: bool,
+        LimitForwardMotion: bool,
+        LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlFollower(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        MasterID: ::std::os::raw::c_int,
+        OpposeMasterDirection: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlStrictFollower(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        MasterID: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlDifferentialFollower(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        MasterID: ::std::os::raw::c_int,
+        OpposeMasterDirection: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlDifferentialStrictFollower(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        MasterID: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlNeutralOut(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlCoastOut(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlStaticBrake(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlBalanceBattery(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlBMSManualIsolator(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        Enable: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlBMSManualVboost(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        EnableClosedLoop: bool,
+        TargetVoltage: f64,
+        TargetDutyCycle: f64,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlBMSManualPwmJunction(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        JunctionSelect: ::std::os::raw::c_int,
+        JunctionDutyCycle: f64,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlBMSClearFault(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlMusicTone(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        AudioFrequency: f64,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlMotionMagicVelocityDutyCycle(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        Velocity: f64,
+        Acceleration: f64,
+        EnableFOC: bool,
+        FeedForward: f64,
+        Slot: ::std::os::raw::c_int,
+        OverrideBrakeDurNeutral: bool,
+        LimitForwardMotion: bool,
+        LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlMotionMagicVelocityTorqueCurrentFOC(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        Velocity: f64,
+        Acceleration: f64,
+        EnableFOC: bool,
+        FeedForward: f64,
+        Slot: ::std::os::raw::c_int,
+        OverrideCoastDurNeutral: bool,
+        LimitForwardMotion: bool,
+        LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlMotionMagicVelocityVoltage(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        Velocity: f64,
+        Acceleration: f64,
+        EnableFOC: bool,
+        FeedForward: f64,
+        Slot: ::std::os::raw::c_int,
+        OverrideBrakeDurNeutral: bool,
+        LimitForwardMotion: bool,
+        LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlMotionMagicExpoDutyCycle(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        Position: f64,
+        EnableFOC: bool,
+        FeedForward: f64,
+        Slot: ::std::os::raw::c_int,
+        OverrideBrakeDurNeutral: bool,
+        LimitForwardMotion: bool,
+        LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlMotionMagicExpoVoltage(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        Position: f64,
+        EnableFOC: bool,
+        FeedForward: f64,
+        Slot: ::std::os::raw::c_int,
+        OverrideBrakeDurNeutral: bool,
+        LimitForwardMotion: bool,
+        LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlMotionMagicExpoTorqueCurrentFOC(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        Position: f64,
+        FeedForward: f64,
+        Slot: ::std::os::raw::c_int,
+        OverrideCoastDurNeutral: bool,
+        LimitForwardMotion: bool,
+        LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlDynamicMotionMagicDutyCycle(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        Position: f64,
+        Velocity: f64,
+        Acceleration: f64,
+        Jerk: f64,
+        EnableFOC: bool,
+        FeedForward: f64,
+        Slot: ::std::os::raw::c_int,
+        OverrideBrakeDurNeutral: bool,
+        LimitForwardMotion: bool,
+        LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlDynamicMotionMagicVoltage(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        Position: f64,
+        Velocity: f64,
+        Acceleration: f64,
+        Jerk: f64,
+        EnableFOC: bool,
+        FeedForward: f64,
+        Slot: ::std::os::raw::c_int,
+        OverrideBrakeDurNeutral: bool,
+        LimitForwardMotion: bool,
+        LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlDynamicMotionMagicTorqueCurrentFOC(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        Position: f64,
+        Velocity: f64,
+        Acceleration: f64,
+        Jerk: f64,
+        FeedForward: f64,
+        Slot: ::std::os::raw::c_int,
+        OverrideCoastDurNeutral: bool,
+        LimitForwardMotion: bool,
+        LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlDiff_DutyCycleOut_Position(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        AverageRequest_Output: f64,
+        AverageRequest_EnableFOC: bool,
+        AverageRequest_OverrideBrakeDurNeutral: bool,
+        AverageRequest_LimitForwardMotion: bool,
+        AverageRequest_LimitReverseMotion: bool,
+        DifferentialRequest_Position: f64,
+        DifferentialRequest_Velocity: f64,
+        DifferentialRequest_EnableFOC: bool,
+        DifferentialRequest_FeedForward: f64,
+        DifferentialRequest_Slot: ::std::os::raw::c_int,
+        DifferentialRequest_OverrideBrakeDurNeutral: bool,
+        DifferentialRequest_LimitForwardMotion: bool,
+        DifferentialRequest_LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlDiff_PositionDutyCycle_Position(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        AverageRequest_Position: f64,
+        AverageRequest_Velocity: f64,
+        AverageRequest_EnableFOC: bool,
+        AverageRequest_FeedForward: f64,
+        AverageRequest_Slot: ::std::os::raw::c_int,
+        AverageRequest_OverrideBrakeDurNeutral: bool,
+        AverageRequest_LimitForwardMotion: bool,
+        AverageRequest_LimitReverseMotion: bool,
+        DifferentialRequest_Position: f64,
+        DifferentialRequest_Velocity: f64,
+        DifferentialRequest_EnableFOC: bool,
+        DifferentialRequest_FeedForward: f64,
+        DifferentialRequest_Slot: ::std::os::raw::c_int,
+        DifferentialRequest_OverrideBrakeDurNeutral: bool,
+        DifferentialRequest_LimitForwardMotion: bool,
+        DifferentialRequest_LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlDiff_VelocityDutyCycle_Position(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        AverageRequest_Velocity: f64,
+        AverageRequest_Acceleration: f64,
+        AverageRequest_EnableFOC: bool,
+        AverageRequest_FeedForward: f64,
+        AverageRequest_Slot: ::std::os::raw::c_int,
+        AverageRequest_OverrideBrakeDurNeutral: bool,
+        AverageRequest_LimitForwardMotion: bool,
+        AverageRequest_LimitReverseMotion: bool,
+        DifferentialRequest_Position: f64,
+        DifferentialRequest_Velocity: f64,
+        DifferentialRequest_EnableFOC: bool,
+        DifferentialRequest_FeedForward: f64,
+        DifferentialRequest_Slot: ::std::os::raw::c_int,
+        DifferentialRequest_OverrideBrakeDurNeutral: bool,
+        DifferentialRequest_LimitForwardMotion: bool,
+        DifferentialRequest_LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlDiff_MotionMagicDutyCycle_Position(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        AverageRequest_Position: f64,
+        AverageRequest_EnableFOC: bool,
+        AverageRequest_FeedForward: f64,
+        AverageRequest_Slot: ::std::os::raw::c_int,
+        AverageRequest_OverrideBrakeDurNeutral: bool,
+        AverageRequest_LimitForwardMotion: bool,
+        AverageRequest_LimitReverseMotion: bool,
+        DifferentialRequest_Position: f64,
+        DifferentialRequest_Velocity: f64,
+        DifferentialRequest_EnableFOC: bool,
+        DifferentialRequest_FeedForward: f64,
+        DifferentialRequest_Slot: ::std::os::raw::c_int,
+        DifferentialRequest_OverrideBrakeDurNeutral: bool,
+        DifferentialRequest_LimitForwardMotion: bool,
+        DifferentialRequest_LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlDiff_DutyCycleOut_Velocity(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        AverageRequest_Output: f64,
+        AverageRequest_EnableFOC: bool,
+        AverageRequest_OverrideBrakeDurNeutral: bool,
+        AverageRequest_LimitForwardMotion: bool,
+        AverageRequest_LimitReverseMotion: bool,
+        DifferentialRequest_Velocity: f64,
+        DifferentialRequest_Acceleration: f64,
+        DifferentialRequest_EnableFOC: bool,
+        DifferentialRequest_FeedForward: f64,
+        DifferentialRequest_Slot: ::std::os::raw::c_int,
+        DifferentialRequest_OverrideBrakeDurNeutral: bool,
+        DifferentialRequest_LimitForwardMotion: bool,
+        DifferentialRequest_LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlDiff_PositionDutyCycle_Velocity(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        AverageRequest_Position: f64,
+        AverageRequest_Velocity: f64,
+        AverageRequest_EnableFOC: bool,
+        AverageRequest_FeedForward: f64,
+        AverageRequest_Slot: ::std::os::raw::c_int,
+        AverageRequest_OverrideBrakeDurNeutral: bool,
+        AverageRequest_LimitForwardMotion: bool,
+        AverageRequest_LimitReverseMotion: bool,
+        DifferentialRequest_Velocity: f64,
+        DifferentialRequest_Acceleration: f64,
+        DifferentialRequest_EnableFOC: bool,
+        DifferentialRequest_FeedForward: f64,
+        DifferentialRequest_Slot: ::std::os::raw::c_int,
+        DifferentialRequest_OverrideBrakeDurNeutral: bool,
+        DifferentialRequest_LimitForwardMotion: bool,
+        DifferentialRequest_LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlDiff_VelocityDutyCycle_Velocity(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        AverageRequest_Velocity: f64,
+        AverageRequest_Acceleration: f64,
+        AverageRequest_EnableFOC: bool,
+        AverageRequest_FeedForward: f64,
+        AverageRequest_Slot: ::std::os::raw::c_int,
+        AverageRequest_OverrideBrakeDurNeutral: bool,
+        AverageRequest_LimitForwardMotion: bool,
+        AverageRequest_LimitReverseMotion: bool,
+        DifferentialRequest_Velocity: f64,
+        DifferentialRequest_Acceleration: f64,
+        DifferentialRequest_EnableFOC: bool,
+        DifferentialRequest_FeedForward: f64,
+        DifferentialRequest_Slot: ::std::os::raw::c_int,
+        DifferentialRequest_OverrideBrakeDurNeutral: bool,
+        DifferentialRequest_LimitForwardMotion: bool,
+        DifferentialRequest_LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlDiff_MotionMagicDutyCycle_Velocity(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        AverageRequest_Position: f64,
+        AverageRequest_EnableFOC: bool,
+        AverageRequest_FeedForward: f64,
+        AverageRequest_Slot: ::std::os::raw::c_int,
+        AverageRequest_OverrideBrakeDurNeutral: bool,
+        AverageRequest_LimitForwardMotion: bool,
+        AverageRequest_LimitReverseMotion: bool,
+        DifferentialRequest_Velocity: f64,
+        DifferentialRequest_Acceleration: f64,
+        DifferentialRequest_EnableFOC: bool,
+        DifferentialRequest_FeedForward: f64,
+        DifferentialRequest_Slot: ::std::os::raw::c_int,
+        DifferentialRequest_OverrideBrakeDurNeutral: bool,
+        DifferentialRequest_LimitForwardMotion: bool,
+        DifferentialRequest_LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlDiff_VoltageOut_Position(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        AverageRequest_Output: f64,
+        AverageRequest_EnableFOC: bool,
+        AverageRequest_OverrideBrakeDurNeutral: bool,
+        AverageRequest_LimitForwardMotion: bool,
+        AverageRequest_LimitReverseMotion: bool,
+        DifferentialRequest_Position: f64,
+        DifferentialRequest_Velocity: f64,
+        DifferentialRequest_EnableFOC: bool,
+        DifferentialRequest_FeedForward: f64,
+        DifferentialRequest_Slot: ::std::os::raw::c_int,
+        DifferentialRequest_OverrideBrakeDurNeutral: bool,
+        DifferentialRequest_LimitForwardMotion: bool,
+        DifferentialRequest_LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlDiff_PositionVoltage_Position(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        AverageRequest_Position: f64,
+        AverageRequest_Velocity: f64,
+        AverageRequest_EnableFOC: bool,
+        AverageRequest_FeedForward: f64,
+        AverageRequest_Slot: ::std::os::raw::c_int,
+        AverageRequest_OverrideBrakeDurNeutral: bool,
+        AverageRequest_LimitForwardMotion: bool,
+        AverageRequest_LimitReverseMotion: bool,
+        DifferentialRequest_Position: f64,
+        DifferentialRequest_Velocity: f64,
+        DifferentialRequest_EnableFOC: bool,
+        DifferentialRequest_FeedForward: f64,
+        DifferentialRequest_Slot: ::std::os::raw::c_int,
+        DifferentialRequest_OverrideBrakeDurNeutral: bool,
+        DifferentialRequest_LimitForwardMotion: bool,
+        DifferentialRequest_LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlDiff_VelocityVoltage_Position(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        AverageRequest_Velocity: f64,
+        AverageRequest_Acceleration: f64,
+        AverageRequest_EnableFOC: bool,
+        AverageRequest_FeedForward: f64,
+        AverageRequest_Slot: ::std::os::raw::c_int,
+        AverageRequest_OverrideBrakeDurNeutral: bool,
+        AverageRequest_LimitForwardMotion: bool,
+        AverageRequest_LimitReverseMotion: bool,
+        DifferentialRequest_Position: f64,
+        DifferentialRequest_Velocity: f64,
+        DifferentialRequest_EnableFOC: bool,
+        DifferentialRequest_FeedForward: f64,
+        DifferentialRequest_Slot: ::std::os::raw::c_int,
+        DifferentialRequest_OverrideBrakeDurNeutral: bool,
+        DifferentialRequest_LimitForwardMotion: bool,
+        DifferentialRequest_LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlDiff_MotionMagicVoltage_Position(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        AverageRequest_Position: f64,
+        AverageRequest_EnableFOC: bool,
+        AverageRequest_FeedForward: f64,
+        AverageRequest_Slot: ::std::os::raw::c_int,
+        AverageRequest_OverrideBrakeDurNeutral: bool,
+        AverageRequest_LimitForwardMotion: bool,
+        AverageRequest_LimitReverseMotion: bool,
+        DifferentialRequest_Position: f64,
+        DifferentialRequest_Velocity: f64,
+        DifferentialRequest_EnableFOC: bool,
+        DifferentialRequest_FeedForward: f64,
+        DifferentialRequest_Slot: ::std::os::raw::c_int,
+        DifferentialRequest_OverrideBrakeDurNeutral: bool,
+        DifferentialRequest_LimitForwardMotion: bool,
+        DifferentialRequest_LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlDiff_VoltageOut_Velocity(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        AverageRequest_Output: f64,
+        AverageRequest_EnableFOC: bool,
+        AverageRequest_OverrideBrakeDurNeutral: bool,
+        AverageRequest_LimitForwardMotion: bool,
+        AverageRequest_LimitReverseMotion: bool,
+        DifferentialRequest_Velocity: f64,
+        DifferentialRequest_Acceleration: f64,
+        DifferentialRequest_EnableFOC: bool,
+        DifferentialRequest_FeedForward: f64,
+        DifferentialRequest_Slot: ::std::os::raw::c_int,
+        DifferentialRequest_OverrideBrakeDurNeutral: bool,
+        DifferentialRequest_LimitForwardMotion: bool,
+        DifferentialRequest_LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlDiff_PositionVoltage_Velocity(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        AverageRequest_Position: f64,
+        AverageRequest_Velocity: f64,
+        AverageRequest_EnableFOC: bool,
+        AverageRequest_FeedForward: f64,
+        AverageRequest_Slot: ::std::os::raw::c_int,
+        AverageRequest_OverrideBrakeDurNeutral: bool,
+        AverageRequest_LimitForwardMotion: bool,
+        AverageRequest_LimitReverseMotion: bool,
+        DifferentialRequest_Velocity: f64,
+        DifferentialRequest_Acceleration: f64,
+        DifferentialRequest_EnableFOC: bool,
+        DifferentialRequest_FeedForward: f64,
+        DifferentialRequest_Slot: ::std::os::raw::c_int,
+        DifferentialRequest_OverrideBrakeDurNeutral: bool,
+        DifferentialRequest_LimitForwardMotion: bool,
+        DifferentialRequest_LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlDiff_VelocityVoltage_Velocity(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        AverageRequest_Velocity: f64,
+        AverageRequest_Acceleration: f64,
+        AverageRequest_EnableFOC: bool,
+        AverageRequest_FeedForward: f64,
+        AverageRequest_Slot: ::std::os::raw::c_int,
+        AverageRequest_OverrideBrakeDurNeutral: bool,
+        AverageRequest_LimitForwardMotion: bool,
+        AverageRequest_LimitReverseMotion: bool,
+        DifferentialRequest_Velocity: f64,
+        DifferentialRequest_Acceleration: f64,
+        DifferentialRequest_EnableFOC: bool,
+        DifferentialRequest_FeedForward: f64,
+        DifferentialRequest_Slot: ::std::os::raw::c_int,
+        DifferentialRequest_OverrideBrakeDurNeutral: bool,
+        DifferentialRequest_LimitForwardMotion: bool,
+        DifferentialRequest_LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlDiff_MotionMagicVoltage_Velocity(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        AverageRequest_Position: f64,
+        AverageRequest_EnableFOC: bool,
+        AverageRequest_FeedForward: f64,
+        AverageRequest_Slot: ::std::os::raw::c_int,
+        AverageRequest_OverrideBrakeDurNeutral: bool,
+        AverageRequest_LimitForwardMotion: bool,
+        AverageRequest_LimitReverseMotion: bool,
+        DifferentialRequest_Velocity: f64,
+        DifferentialRequest_Acceleration: f64,
+        DifferentialRequest_EnableFOC: bool,
+        DifferentialRequest_FeedForward: f64,
+        DifferentialRequest_Slot: ::std::os::raw::c_int,
+        DifferentialRequest_OverrideBrakeDurNeutral: bool,
+        DifferentialRequest_LimitForwardMotion: bool,
+        DifferentialRequest_LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlDiff_TorqueCurrentFOC_Position(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        AverageRequest_Output: f64,
+        AverageRequest_MaxAbsDutyCycle: f64,
+        AverageRequest_Deadband: f64,
+        AverageRequest_OverrideCoastDurNeutral: bool,
+        AverageRequest_LimitForwardMotion: bool,
+        AverageRequest_LimitReverseMotion: bool,
+        DifferentialRequest_Position: f64,
+        DifferentialRequest_Velocity: f64,
+        DifferentialRequest_FeedForward: f64,
+        DifferentialRequest_Slot: ::std::os::raw::c_int,
+        DifferentialRequest_OverrideCoastDurNeutral: bool,
+        DifferentialRequest_LimitForwardMotion: bool,
+        DifferentialRequest_LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlDiff_PositionTorqueCurrentFOC_Position(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        AverageRequest_Position: f64,
+        AverageRequest_Velocity: f64,
+        AverageRequest_FeedForward: f64,
+        AverageRequest_Slot: ::std::os::raw::c_int,
+        AverageRequest_OverrideCoastDurNeutral: bool,
+        AverageRequest_LimitForwardMotion: bool,
+        AverageRequest_LimitReverseMotion: bool,
+        DifferentialRequest_Position: f64,
+        DifferentialRequest_Velocity: f64,
+        DifferentialRequest_FeedForward: f64,
+        DifferentialRequest_Slot: ::std::os::raw::c_int,
+        DifferentialRequest_OverrideCoastDurNeutral: bool,
+        DifferentialRequest_LimitForwardMotion: bool,
+        DifferentialRequest_LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlDiff_VelocityTorqueCurrentFOC_Position(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        AverageRequest_Velocity: f64,
+        AverageRequest_Acceleration: f64,
+        AverageRequest_FeedForward: f64,
+        AverageRequest_Slot: ::std::os::raw::c_int,
+        AverageRequest_OverrideCoastDurNeutral: bool,
+        AverageRequest_LimitForwardMotion: bool,
+        AverageRequest_LimitReverseMotion: bool,
+        DifferentialRequest_Position: f64,
+        DifferentialRequest_Velocity: f64,
+        DifferentialRequest_FeedForward: f64,
+        DifferentialRequest_Slot: ::std::os::raw::c_int,
+        DifferentialRequest_OverrideCoastDurNeutral: bool,
+        DifferentialRequest_LimitForwardMotion: bool,
+        DifferentialRequest_LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlDiff_MotionMagicTorqueCurrentFOC_Position(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        AverageRequest_Position: f64,
+        AverageRequest_FeedForward: f64,
+        AverageRequest_Slot: ::std::os::raw::c_int,
+        AverageRequest_OverrideCoastDurNeutral: bool,
+        AverageRequest_LimitForwardMotion: bool,
+        AverageRequest_LimitReverseMotion: bool,
+        DifferentialRequest_Position: f64,
+        DifferentialRequest_Velocity: f64,
+        DifferentialRequest_FeedForward: f64,
+        DifferentialRequest_Slot: ::std::os::raw::c_int,
+        DifferentialRequest_OverrideCoastDurNeutral: bool,
+        DifferentialRequest_LimitForwardMotion: bool,
+        DifferentialRequest_LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlDiff_TorqueCurrentFOC_Velocity(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        AverageRequest_Output: f64,
+        AverageRequest_MaxAbsDutyCycle: f64,
+        AverageRequest_Deadband: f64,
+        AverageRequest_OverrideCoastDurNeutral: bool,
+        AverageRequest_LimitForwardMotion: bool,
+        AverageRequest_LimitReverseMotion: bool,
+        DifferentialRequest_Velocity: f64,
+        DifferentialRequest_Acceleration: f64,
+        DifferentialRequest_FeedForward: f64,
+        DifferentialRequest_Slot: ::std::os::raw::c_int,
+        DifferentialRequest_OverrideCoastDurNeutral: bool,
+        DifferentialRequest_LimitForwardMotion: bool,
+        DifferentialRequest_LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlDiff_PositionTorqueCurrentFOC_Velocity(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        AverageRequest_Position: f64,
+        AverageRequest_Velocity: f64,
+        AverageRequest_FeedForward: f64,
+        AverageRequest_Slot: ::std::os::raw::c_int,
+        AverageRequest_OverrideCoastDurNeutral: bool,
+        AverageRequest_LimitForwardMotion: bool,
+        AverageRequest_LimitReverseMotion: bool,
+        DifferentialRequest_Velocity: f64,
+        DifferentialRequest_Acceleration: f64,
+        DifferentialRequest_FeedForward: f64,
+        DifferentialRequest_Slot: ::std::os::raw::c_int,
+        DifferentialRequest_OverrideCoastDurNeutral: bool,
+        DifferentialRequest_LimitForwardMotion: bool,
+        DifferentialRequest_LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlDiff_VelocityTorqueCurrentFOC_Velocity(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        AverageRequest_Velocity: f64,
+        AverageRequest_Acceleration: f64,
+        AverageRequest_FeedForward: f64,
+        AverageRequest_Slot: ::std::os::raw::c_int,
+        AverageRequest_OverrideCoastDurNeutral: bool,
+        AverageRequest_LimitForwardMotion: bool,
+        AverageRequest_LimitReverseMotion: bool,
+        DifferentialRequest_Velocity: f64,
+        DifferentialRequest_Acceleration: f64,
+        DifferentialRequest_FeedForward: f64,
+        DifferentialRequest_Slot: ::std::os::raw::c_int,
+        DifferentialRequest_OverrideCoastDurNeutral: bool,
+        DifferentialRequest_LimitForwardMotion: bool,
+        DifferentialRequest_LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_RequestControlDiff_MotionMagicTorqueCurrentFOC_Velocity(
+        canbus: *const ::std::os::raw::c_char,
+        ecuEncoding: u32,
+        updateTime: f64,
+        cancelOtherRequests: bool,
+        AverageRequest_Position: f64,
+        AverageRequest_FeedForward: f64,
+        AverageRequest_Slot: ::std::os::raw::c_int,
+        AverageRequest_OverrideCoastDurNeutral: bool,
+        AverageRequest_LimitForwardMotion: bool,
+        AverageRequest_LimitReverseMotion: bool,
+        DifferentialRequest_Velocity: f64,
+        DifferentialRequest_Acceleration: f64,
+        DifferentialRequest_FeedForward: f64,
+        DifferentialRequest_Slot: ::std::os::raw::c_int,
+        DifferentialRequest_OverrideCoastDurNeutral: bool,
+        DifferentialRequest_LimitForwardMotion: bool,
+        DifferentialRequest_LimitReverseMotion: bool,
+    ) -> ::std::os::raw::c_int;
+}
+pub const _Context_ContextAPI: _Context = 0;
+pub const _Context_ContextDiagServer: _Context = 1;
+pub type _Context = ::std::os::raw::c_uint;
+pub use self::_Context as Context;
+extern "C" {
+    pub fn c_ctre_phoenix6_encode_device(
+        deviceId: ::std::os::raw::c_int,
+        model: *const ::std::os::raw::c_char,
+        canbus: *const ::std::os::raw::c_char,
+        deviceEncoding: *mut u32,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_set_configs(
+        context: ::std::os::raw::c_int,
+        network: *const ::std::os::raw::c_char,
+        deviceHash: ::std::os::raw::c_int,
+        timeoutSeconds: f64,
+        values: *const ::std::os::raw::c_char,
+        value_len: u32,
+        futureProofConfigs: bool,
+        overrideIfDuplicate: bool,
+        useDid: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_get_configs(
+        context: ::std::os::raw::c_int,
+        network: *const ::std::os::raw::c_char,
+        deviceHash: ::std::os::raw::c_int,
+        timeoutSeconds: f64,
+        str_: *mut *mut ::std::os::raw::c_char,
+        useDid: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_get_configs_no_malloc(
+        context: Context,
+        network: *const ::std::os::raw::c_char,
+        deviceHash: ::std::os::raw::c_int,
+        timeoutSeconds: f64,
+        str_: *mut ::std::os::raw::c_char,
+        str_len: u32,
+        useDid: bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_serialize_double(
+        spn: ::std::os::raw::c_int,
+        value: f64,
+        str_: *mut *mut ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_serialize_double_no_malloc(
+        spn: ::std::os::raw::c_int,
+        value: f64,
+        str_: *mut ::std::os::raw::c_char,
+        max_len: u32,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_serialize_int(
+        spn: ::std::os::raw::c_int,
+        value: ::std::os::raw::c_int,
+        str_: *mut *mut ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_serialize_int_no_malloc(
+        spn: ::std::os::raw::c_int,
+        value: ::std::os::raw::c_int,
+        str_: *mut ::std::os::raw::c_char,
+        max_len: u32,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_serialize_bool(
+        spn: ::std::os::raw::c_int,
+        value: bool,
+        str_: *mut *mut ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_serialize_bool_no_malloc(
+        spn: ::std::os::raw::c_int,
+        value: bool,
+        str_: *mut ::std::os::raw::c_char,
+        max_len: u32,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_serialize_pgn(
+        spn: ::std::os::raw::c_int,
+        frame_index: u16,
+        framePeriodMs: u16,
+        str_: *mut *mut ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_serialize_pgn_no_malloc(
+        spn: ::std::os::raw::c_int,
+        frame_index: u16,
+        framePeriodMs: u16,
+        str_: *mut ::std::os::raw::c_char,
+        max_len: u32,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_deserialize_double(
+        spn: ::std::os::raw::c_int,
+        str_: *const ::std::os::raw::c_char,
+        strlen: u32,
+        val: *mut f64,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_deserialize_int(
+        spn: ::std::os::raw::c_int,
+        str_: *const ::std::os::raw::c_char,
+        strlen: u32,
+        val: *mut ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_deserialize_bool(
+        spn: ::std::os::raw::c_int,
+        str_: *const ::std::os::raw::c_char,
+        strlen: u32,
+        val: *mut bool,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_deserialize_pgn(
+        spn: ::std::os::raw::c_int,
+        str_: *const ::std::os::raw::c_char,
+        strlen: u32,
+        frame_index: *mut u16,
+        framePeriodMs: *mut u16,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_free_memory(str_: *mut *mut ::std::os::raw::c_char);
+}
+extern "C" {
+    pub fn c_ctre_phoenix_report_error(
+        isError: ::std::os::raw::c_int,
+        errorCode: i32,
+        isLVCode: ::std::os::raw::c_int,
+        details: *const ::std::os::raw::c_char,
+        location: *const ::std::os::raw::c_char,
+        callStack: *const ::std::os::raw::c_char,
+    );
+}
+extern "C" {
+    pub fn c_ctre_phoenix_get_status_string(
+        statusCode: ::std::os::raw::c_int,
+        toFill: *mut ::std::os::raw::c_char,
+        toFillLength: u32,
+    );
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _signal_values_t {
+    pub deviceHash: u32,
+    pub spn: u32,
+}
+#[test]
+fn bindgen_test_layout__signal_values_t() {
+    const UNINIT: ::std::mem::MaybeUninit<_signal_values_t> = ::std::mem::MaybeUninit::uninit();
+    let ptr = UNINIT.as_ptr();
+    assert_eq!(
+        ::std::mem::size_of::<_signal_values_t>(),
+        8usize,
+        concat!("Size of: ", stringify!(_signal_values_t))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<_signal_values_t>(),
+        4usize,
+        concat!("Alignment of ", stringify!(_signal_values_t))
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).deviceHash) as usize - ptr as usize },
+        0usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(_signal_values_t),
+            "::",
+            stringify!(deviceHash)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).spn) as usize - ptr as usize },
+        4usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(_signal_values_t),
+            "::",
+            stringify!(spn)
+        )
+    );
+}
+pub type signal_values_t = _signal_values_t;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _network_signal_t {
+    pub network: *const ::std::os::raw::c_char,
+    pub signal: signal_values_t,
+}
+#[test]
+fn bindgen_test_layout__network_signal_t() {
+    const UNINIT: ::std::mem::MaybeUninit<_network_signal_t> = ::std::mem::MaybeUninit::uninit();
+    let ptr = UNINIT.as_ptr();
+    assert_eq!(
+        ::std::mem::size_of::<_network_signal_t>(),
+        16usize,
+        concat!("Size of: ", stringify!(_network_signal_t))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<_network_signal_t>(),
+        8usize,
+        concat!("Alignment of ", stringify!(_network_signal_t))
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).network) as usize - ptr as usize },
+        0usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(_network_signal_t),
+            "::",
+            stringify!(network)
+        )
+    );
+    assert_eq!(
+        unsafe { ::std::ptr::addr_of!((*ptr).signal) as usize - ptr as usize },
+        8usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(_network_signal_t),
+            "::",
+            stringify!(signal)
+        )
+    );
+}
+pub type network_signal_t = _network_signal_t;
+extern "C" {
+    pub fn c_ctre_phoenix6_SetUpdateFrequency(
+        context: Context,
+        network: *const ::std::os::raw::c_char,
+        deviceHash: u32,
+        spn: u16,
+        frequencyHz: f64,
+        timeoutSeconds: f64,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_SetUpdateFrequencyForAll(
+        context: Context,
+        signals_list: *const network_signal_t,
+        num_signals: usize,
+        frequencyHz: f64,
+        timeoutSeconds: f64,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_GetUpdateFrequency(
+        network: *const ::std::os::raw::c_char,
+        deviceHash: u32,
+        spn: u16,
+    ) -> f64;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_OptimizeUpdateFrequencies(
+        context: Context,
+        network: *const ::std::os::raw::c_char,
+        deviceHash: u32,
+        timeoutSeconds: f64,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_ResendUpdateFrequencies(
+        context: Context,
+        network: *const ::std::os::raw::c_char,
+        deviceHash: u32,
+        timeoutSeconds: f64,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_get_signal_simplified(
+        network: *const ::std::os::raw::c_char,
+        bWaitForUpdate: ::std::os::raw::c_int,
+        timeoutSeconds: f64,
+        num_signals: u32,
+        device_hashes: *const u32,
+        spns: *const u32,
+        values: *mut f64,
+        hwTimestampSeconds: *mut f64,
+        swTimestampSeconds: *mut f64,
+        ecuTimestampSeconds: *mut f64,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn c_ctre_phoenix6_get_signal_unit(
+        spn: u16,
+        unit_c_string: *mut ::std::os::raw::c_char,
+        max_size: u16,
+    ) -> ::std::os::raw::c_int;
+}

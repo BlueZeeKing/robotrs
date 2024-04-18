@@ -47,9 +47,12 @@ pub fn get_artifacts() -> Vec<Artifact> {
 }
 
 pub fn get_allow_list() -> &'static str {
-    "c_MotController_.*"
+    "c_(MotController|ctre)_.*"
 }
 
-pub fn get_start_path() -> &'static Path {
-    Path::new("ctre/phoenix/cci/MotController_CCI.h")
+pub fn get_start_path() -> [&'static Path; 2] {
+    [
+        Path::new("ctre/phoenix/cci/MotController_CCI.h"),
+        Path::new("ctre/phoenix6/cci_includes.h"),
+    ]
 }
