@@ -31,7 +31,7 @@ impl Intake {
     }
 
     #[subsystem_task]
-    pub async fn release_cube(&mut self) -> Result<()> {
+    pub async fn release_cube(#[subsystem] &mut self) -> Result<()> {
         self.motor.set(-1.0)?;
 
         delay(Duration::from_secs(1)).await;
@@ -42,7 +42,7 @@ impl Intake {
     }
 
     #[subsystem_task(wait)]
-    pub fn intake_cube(&mut self) -> Result<()> {
+    pub fn intake_cube(#[subsystem] &mut self) -> Result<()> {
         self.motor.set(0.66)?;
 
         self.last_item = Some(GamePiece::Cube);
@@ -51,7 +51,7 @@ impl Intake {
     }
 
     #[subsystem_task(wait)]
-    pub fn intake_cone(&mut self) -> Result<()> {
+    pub fn intake_cone(#[subsystem] &mut self) -> Result<()> {
         self.motor.set(-1.0)?;
 
         self.last_item = Some(GamePiece::Cone);
@@ -60,7 +60,7 @@ impl Intake {
     }
 
     #[subsystem_task(wait)]
-    pub fn start_release(&mut self) -> Result<()> {
+    pub fn start_release(#[subsystem] &mut self) -> Result<()> {
         if let Some(item) = &self.last_item {
             self.motor.set(match item {
                 GamePiece::Cube => -1.0,

@@ -2,7 +2,7 @@ use darling::{ast::NestedMeta, FromMeta};
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::quote;
-use syn::{parse_macro_input, parse_quote, FnArg, Ident, ItemFn, Token};
+use syn::{parse_macro_input, parse_quote, Attribute, FnArg, Ident, ItemFn, Meta, Token, Type};
 
 #[derive(FromMeta)]
 struct Args {
@@ -11,9 +11,11 @@ struct Args {
     #[darling(default)]
     function_name: Option<Ident>,
     #[darling(default)]
-    subsystem_name: Option<Ident>,
-    #[darling(default)]
     wait: Option<bool>,
+}
+
+fn attr_matches(attr: &Attribute) -> bool {
+    matches!(&attr.meta, Meta::Path(path) if path.is_ident(&Ident::new("subsystem", Span::call_site())))
 }
 
 #[proc_macro_attribute]
@@ -32,8 +34,13 @@ pub fn subsystem_task(args: TokenStream, input: TokenStream) -> TokenStream {
         }
     };
 
-    let input2: proc_macro2::TokenStream = input.clone().into();
     let parsed_input = parse_macro_input!(input as ItemFn);
+    let mut original = parsed_input.clone();
+
+    original.sig.inputs.iter_mut().for_each(|val| match val {
+        FnArg::Receiver(val) => val.attrs.retain(|attr| !attr_matches(attr)),
+        FnArg::Typed(val) => val.attrs.retain(|attr| !attr_matches(attr)),
+    });
 
     let mut new_fn = parsed_input.clone();
 
@@ -45,46 +52,85 @@ pub fn subsystem_task(args: TokenStream, input: TokenStream) -> TokenStream {
     });
     new_fn.sig.asyncness = Some(Token![async](Span::call_site()));
 
-    let subsystem_name = args
-        .subsystem_name
-        .unwrap_or_else(|| Ident::new("subsystem", Span::call_site()));
+    let mut subsystems = Vec::new();
 
-    let first = new_fn
-        .sig
-        .inputs
-        .first_mut()
-        .expect("The function must have an argument");
+    new_fn.sig.inputs.iter_mut().for_each(|arg| {
+        if let FnArg::Typed(arg) = arg {
+            if !arg.attrs.iter().any(|attr| attr_matches(attr)) {
+                return;
+            }
 
-    *first = parse_quote!(#subsystem_name: &::utils::subsystem::Subsystem<Self>);
+            arg.attrs.retain(|attr| !attr_matches(attr));
+
+            subsystems.push(*arg.pat.clone());
+
+            let old_ty = arg.ty.clone();
+
+            let Type::Reference(old_ty) = *old_ty else {
+                return;
+            };
+
+            if old_ty.mutability.is_none() {
+                return;
+            }
+
+            let old_ty = old_ty.elem;
+
+            arg.ty = Box::new(parse_quote! {
+                &::utils::subsystem::Subsystem<#old_ty>
+            });
+
+            return;
+        }
+
+        if let FnArg::Receiver(arg) = arg {
+            if !arg.attrs.iter().any(|attr| attr_matches(attr)) {
+                return;
+            }
+        }
+
+        subsystems.push(parse_quote! { subsystem });
+
+        *arg = parse_quote! {
+            subsystem: &::utils::subsystem::Subsystem<Self>
+        };
+    });
 
     let priority_name = args
         .priority_name
         .unwrap_or_else(|| Ident::new("priority", Span::call_site()));
 
     new_fn.sig.inputs.push(parse_quote! {
-        #priority_name: u32
+        #priority_name: impl ::utils::subsystem::AsPriority + Clone
     });
 
     let name = parsed_input.sig.ident;
 
-    let func_args = parsed_input
-        .sig
-        .inputs
-        .into_iter()
-        .skip(1)
-        .filter_map(|arg| match arg {
-            FnArg::Receiver(_) => None,
-            FnArg::Typed(val) => Some(val),
-        })
-        .map(|val| val.pat);
+    let func_args = parsed_input.sig.inputs.into_iter().map(|arg| match arg {
+        FnArg::Receiver(val) => {
+            if val.attrs.iter().any(attr_matches) {
+                parse_quote!(&mut subsystem)
+            } else {
+                parse_quote!(self)
+            }
+        }
+        FnArg::Typed(val) => {
+            if val.attrs.iter().any(attr_matches) {
+                let val = val.pat;
+                parse_quote!(&mut #val)
+            } else {
+                *val.pat
+            }
+        }
+    });
 
     let run = if parsed_input.sig.asyncness.is_none() {
         quote! {
-            #subsystem_name.#name(#(#func_args),*)
+            Self::#name(#(#func_args),*)
         }
     } else {
         quote! {
-            #subsystem_name.#name(#(#func_args),*).await
+            Self::#name(#(#func_args),*).await
         }
     };
 
@@ -94,7 +140,7 @@ pub fn subsystem_task(args: TokenStream, input: TokenStream) -> TokenStream {
 
             ::futures::future::pending::<()>().await;
 
-            drop(#subsystem_name);
+            #(drop(#subsystems);)*
 
             res
         }
@@ -104,14 +150,14 @@ pub fn subsystem_task(args: TokenStream, input: TokenStream) -> TokenStream {
 
     new_fn.block = parse_quote! {
         {
-            let mut #subsystem_name = #subsystem_name.lock(#priority_name).await;
+            let (#(mut #subsystems,)*) = futures::join!(#(#subsystems.lock(#priority_name.clone())),*);
 
             #wait
         }
     };
 
     quote! {
-        #input2
+        #original
 
         #new_fn
 

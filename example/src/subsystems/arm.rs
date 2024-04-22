@@ -26,14 +26,14 @@ impl Arm {
     }
 
     #[subsystem_task(wait)]
-    pub fn start_raise(&mut self) -> Result<()> {
+    pub fn start_raise(#[subsystem] &mut self) -> Result<()> {
         self.motor.set(-ARM_SPEED)?;
 
         Ok(())
     }
 
     #[subsystem_task(wait)]
-    pub fn start_lower(&mut self) -> Result<()> {
+    pub fn start_lower(#[subsystem] &mut self) -> Result<()> {
         self.motor.set(ARM_SPEED)?;
 
         Ok(())
