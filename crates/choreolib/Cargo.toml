@@ -1,0 +1,12 @@
+[package]
+name = "choreolib"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = { version = "1.0.197", features = ["derive"] }
+serde_json = "1.0.116"
+robotrs = { path = "../robotrs" }
+math = { path = "../math" }
+choreo-macros = { path = "./choreo-macros" }
+nalgebra = "0.32.5"

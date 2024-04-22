@@ -1,0 +1,14 @@
+[package]
+name = "choreo-macros"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2 = { version = "1.0.81", features = ["span-locations"] }
+quote = "1.0.36"
+serde = { version = "1.0.198", features = ["derive"] }
+serde_json = "1.0.116"
+syn = { version = "2.0.60", features = ["full"] }

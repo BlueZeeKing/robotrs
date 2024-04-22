@@ -14,5 +14,8 @@ members = [
   "crates/utils",
   "crates/navx",
   "crates/math",
-  "build-system/bindings", "crates/macros",
+  "build-system/bindings",
+  "crates/macros",
+  "crates/choreolib",
+  "crates/choreolib/choreo-macros",
 ]
