@@ -82,7 +82,7 @@ impl<const K: Gain> Default for I<K> {
     }
 }
 
-type D<const K: Gain> = Derive<P<K>>;
+pub type D<const K: Gain> = Derive<P<K>>;
 
 pub type PID<const KP: Gain, const KI: Gain, const KD: Gain> = (P<KP>, I<KP>, D<KP>);
 
