@@ -1,13 +1,17 @@
 use std::time::Duration;
 
+use defer_lite::defer;
 use nalgebra::Vector3;
 use robotrs::{
+    control::ControlSafe,
     math::{Controller, State},
+    scheduler::guard,
     time::get_time,
     yield_now,
 };
 
 pub use choreo_macros::choreo;
+use utils::subsystem::{AsPriority, Subsystem};
 
 /// This represents an entire path
 #[derive(Debug)]
@@ -90,14 +94,19 @@ fn interpolate_point(a: &TrajectoryPoint, b: &TrajectoryPoint, time: Duration) -
 /// )
 /// .await
 ///```
-pub async fn follow_path<O, E>(path: &Path<'_>, mut consumer: O) -> Result<(), E>
+pub async fn follow_path<O, E>(
+    path: &Path<'_>,
+    mut consumer: O,
+    start_time: Option<Duration>,
+) -> Result<(), E>
 where
     O: FnMut(&TrajectoryPoint) -> Result<(), E>,
 {
     let mut current_idx = 0;
+    let start_time = start_time.unwrap_or_else(|| get_time());
 
     loop {
-        let time = get_time();
+        let time = get_time() - start_time;
 
         if time == path.samples[current_idx].timestamp {
             consumer(&path.samples[current_idx])?;
@@ -120,6 +129,46 @@ where
             time,
         ))?;
         yield_now().await;
+    }
+}
+
+pub async fn follow_path_subsystem<T, O, E>(
+    path: &Path<'_>,
+    mut consumer: O,
+    subsystem: &Subsystem<T>,
+    priority: impl AsPriority + Clone,
+) -> Result<(), E>
+where
+    O: FnMut(&mut T, &TrajectoryPoint) -> Result<(), E>,
+    T: ControlSafe,
+{
+    let mut elapsed = Duration::new(0, 0);
+
+    loop {
+        let guard_result = guard(async {
+            let mut subsystem = subsystem.lock(priority.clone()).await;
+
+            let start_time = get_time();
+            let ajusted_start_time = Some(start_time - elapsed);
+
+            defer! {
+                elapsed += get_time() - start_time;
+            }
+
+            follow_path(
+                path,
+                |point| consumer(&mut subsystem, point),
+                ajusted_start_time,
+            )
+            .await?;
+
+            Ok(())
+        })
+        .await;
+
+        if let Ok(result) = guard_result {
+            break result;
+        }
     }
 }
 
