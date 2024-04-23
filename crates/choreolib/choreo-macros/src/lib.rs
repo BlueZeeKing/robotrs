@@ -38,12 +38,37 @@ struct PartialPathEntry {
     values: Vec<(u32, Path)>,
 }
 
+fn to_camel_case(val: &str) -> String {
+    let mut out = String::with_capacity(val.len());
+    let mut should_break = false;
+
+    for letter in val.chars() {
+        if letter.is_whitespace() || letter == '_' {
+            if should_break {
+                out.push('_');
+            }
+            should_break = false;
+        } else if letter.is_uppercase() {
+            if should_break {
+                out.push('_');
+            }
+            out.push(letter.to_ascii_lowercase());
+            should_break = true;
+        } else {
+            out.push(letter);
+            should_break = true;
+        }
+    }
+
+    out
+}
+
 /// This macros searches a directory (`deploy/choreo` by default) for `.traj` files and serializes
 /// them into `Path`s. The macros creates a public `paths` module. Each submodule within that
 /// corresponds to one path. There is a `const` called `PATH` within each submodule correspoinding
 /// to the entire path. There are is also `PATH1`, `PATH2`, and so one, which correspond with the
-/// different segments of the path. This does mean that trajectory names must be valid Rust
-/// identifiers.
+/// different segments of the path. The path names are converted to camel case before the modules
+/// are created.
 ///
 /// # Example
 ///
@@ -76,10 +101,10 @@ pub fn choreo(item: TokenStream) -> TokenStream {
         let name = name.to_str().unwrap().trim_end_matches(".traj");
         let mut parts = name.split('.');
 
-        let name = parts.next().unwrap();
+        let name = to_camel_case(parts.next().unwrap());
         let num = parts.next().map(|val| val.parse::<u32>().unwrap());
 
-        if !trajectories.contains_key(name) {
+        if !trajectories.contains_key(&name) {
             trajectories.insert(
                 name.to_owned(),
                 PartialPathEntry {
@@ -98,9 +123,13 @@ pub fn choreo(item: TokenStream) -> TokenStream {
         let path: Path = from_str(&val).expect("Could not parse trajectory file");
 
         if let Some(num) = num {
-            trajectories.get_mut(name).unwrap().values.push((num, path));
+            trajectories
+                .get_mut(&name)
+                .unwrap()
+                .values
+                .push((num, path));
         } else {
-            trajectories.get_mut(name).unwrap().root = Some(path);
+            trajectories.get_mut(&name).unwrap().root = Some(path);
         }
     }
 
