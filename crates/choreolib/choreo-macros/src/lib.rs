@@ -1,3 +1,5 @@
+#![feature(proc_macro_tracked_env, track_path)]
+
 use std::{
     collections::HashMap,
     fs::{self, File},
@@ -6,7 +8,7 @@ use std::{
     time::Duration,
 };
 
-use proc_macro::TokenStream;
+use proc_macro::{tracked_path, TokenStream};
 use proc_macro2::{Ident, Span};
 use quote::quote;
 use serde::Deserialize;
@@ -60,6 +62,8 @@ pub fn choreo(item: TokenStream) -> TokenStream {
         .unwrap_or_else(|| {
             PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap()).join("deploy/choreo")
         });
+
+    tracked_path::path(path.to_str().unwrap());
 
     let paths = fs::read_dir(path).expect("Could not read trajectory directory");
 
