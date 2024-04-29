@@ -2,7 +2,11 @@ use darling::{ast::NestedMeta, FromMeta};
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::quote;
-use syn::{parse_macro_input, parse_quote, Attribute, FnArg, Ident, ItemFn, Meta, Token, Type};
+use syn::{
+    parse_macro_input, parse_quote,
+    visit_mut::{visit_item_fn_mut, VisitMut},
+    Attribute, FnArg, Ident, ItemFn, LitInt, Meta, Token, Type,
+};
 
 #[derive(FromMeta)]
 struct Args {
@@ -161,6 +165,71 @@ pub fn subsystem_task(args: TokenStream, input: TokenStream) -> TokenStream {
 
         #new_fn
 
+    }
+    .into()
+}
+
+struct LogVisitor {}
+
+impl VisitMut for LogVisitor {
+    fn visit_expr_try_mut(&mut self, i: &mut syn::ExprTry) {
+        let old = i.expr.clone();
+        i.expr = parse_quote! {
+            {
+                let val = #old;
+
+                if let Err(err) = &val {
+                    ::tracing::error!(?err);
+                }
+
+                val
+            }
+        };
+    }
+
+    fn visit_expr_return_mut(&mut self, i: &mut syn::ExprReturn) {
+        i.expr = i.expr.take().map(|expr| {
+            parse_quote! {
+                {
+                    let val = #expr;
+
+                    if let Err(err) = &val {
+                        ::tracing::error!(?err);
+                    }
+
+                    val
+                }
+            }
+        });
+    }
+
+    fn visit_expr_closure_mut(&mut self, _i: &mut syn::ExprClosure) {}
+    fn visit_expr_async_mut(&mut self, _i: &mut syn::ExprAsync) {}
+}
+
+// TODO: Make the tracing line numbers correct
+#[proc_macro_attribute]
+pub fn log(_: TokenStream, input: TokenStream) -> TokenStream {
+    let mut parsed_input = parse_macro_input!(input as ItemFn);
+
+    visit_item_fn_mut(&mut LogVisitor {}, &mut parsed_input);
+
+    if let Some(syn::Stmt::Expr(expr, None)) = parsed_input.block.stmts.last_mut() {
+        *expr = parse_quote! {
+            {
+                let val = #expr;
+
+                if let Err(err) = &val {
+                    ::tracing::error!(?err);
+                }
+
+                val
+            }
+        };
+    }
+
+    quote! {
+        #parsed_input
     }
     .into()
 }
