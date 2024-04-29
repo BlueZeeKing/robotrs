@@ -4,11 +4,11 @@ use futures::Future;
 use robotrs::time::delay;
 
 /// Retry a function a given number of times, using exponential backoff.
-pub async fn retry<Func, Fut, E, O>(func: Func, retries: u32) -> Result<O, E>
+pub async fn retry<Func, Fut, E, O>(mut func: Func, retries: u32) -> Result<O, E>
 where
-    Func: Fn() -> Fut,
+    Func: FnMut() -> Fut,
     Fut: Future<Output = Result<O, E>>,
-    E: Error,
+    E: Debug,
 {
     let mut failures = 0;
     loop {
@@ -18,14 +18,14 @@ where
                 failures += 1;
                 if failures > retries {
                     tracing::error!(
-                        "Error occured on {}/{} try, max retries reached: {}",
+                        "Error occured on {}/{} try, max retries reached: {:?}",
                         failures,
                         retries,
                         err
                     );
                     break Err(err);
                 }
-                tracing::error!("Error occured on {}/{} try: {}", failures, retries, err);
+                tracing::warn!("Error occured on {}/{} try: {:?}", failures, retries, err);
 
                 delay(Duration::from_millis(50) * 2u32.pow(failures - 1)).await;
             }
