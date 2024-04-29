@@ -228,6 +228,50 @@ impl SparkMax {
 
         Ok(())
     }
+
+    /// Sets and enables the limit if a value is passed, disables the limit if not value is passed
+    pub fn set_soft_limit(
+        &mut self,
+        direction: SoftLimitDirection,
+        value: Option<f32>,
+    ) -> Result<(), REVError> {
+        let enable = if value.is_some() { 1 } else { 0 };
+
+        if let Some(value) = value {
+            unsafe {
+                handle_error!(c_SparkMax_SetSoftLimit(
+                    *self.handle,
+                    direction.into(),
+                    value
+                ))
+            }?;
+        }
+
+        unsafe {
+            handle_error!(c_SparkMax_EnableSoftLimit(
+                *self.handle,
+                direction.into(),
+                enable
+            ))
+        }?;
+
+        Ok(())
+    }
+}
+
+#[derive(Clone, Copy)]
+enum SoftLimitDirection {
+    Forward,
+    Backward,
+}
+
+impl Into<c_SparkMax_LimitDirection> for SoftLimitDirection {
+    fn into(self) -> c_SparkMax_LimitDirection {
+        match self {
+            SoftLimitDirection::Forward => c_SparkMax_LimitDirection_c_SparkMax_kForward,
+            SoftLimitDirection::Backward => c_SparkMax_LimitDirection_c_SparkMax_kReverse,
+        }
+    }
 }
 
 pub enum ControlType {
