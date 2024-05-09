@@ -21,12 +21,13 @@ pub mod control;
 pub mod ds;
 pub mod error;
 pub mod hid;
-pub mod math;
 pub mod motor;
 pub mod robot;
 pub mod scheduler;
 pub mod time;
 pub(crate) mod waker;
+
+pub use math;
 
 #[distributed_slice]
 pub static PERIODIC_CHECKS: [fn()] = [..];
@@ -43,43 +44,6 @@ fn poll() {
 
 pub(crate) fn queue_waker(waker: Waker) {
     WAKERS.lock().push(waker);
-}
-
-struct DsTracingWriter {}
-
-impl<'a> MakeWriter<'a> for DsTracingWriter {
-    type Writer = DsTracingWriter;
-
-    fn make_writer(&'a self) -> Self::Writer {
-        Self {}
-    }
-
-    fn make_writer_for(&'a self, _meta: &tracing::Metadata<'_>) -> Self::Writer {
-        Self {}
-    }
-}
-
-impl Write for DsTracingWriter {
-    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        let mut data = buf.to_vec();
-
-        data.push(0);
-
-        let error_code = unsafe { HAL_SendConsoleLine(data[..].as_ptr() as *const c_char) };
-
-        if error_code == 0 {
-            Ok(buf.len())
-        } else {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                crate::error::Error::HalError(error::HalError(error_code)),
-            ))
-        }
-    }
-
-    fn flush(&mut self) -> std::io::Result<()> {
-        todo!()
-    }
 }
 
 pub fn yield_now() -> Yield {

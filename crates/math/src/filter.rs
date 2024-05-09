@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use crate::time::get_time;
+use crate::get_time;
 
 pub trait Filter {
     fn apply_with_time(&mut self, value: f32, time: Duration) -> f32;
