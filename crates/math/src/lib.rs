@@ -1,13 +1,7 @@
 #![allow(async_fn_in_trait, incomplete_features)]
 #![feature(adt_const_params, const_float_bits_conv)]
 
-use std::{
-    marker::ConstParamTy,
-    ops::Add,
-    sync::OnceLock,
-    time::{Duration, Instant},
-    u32,
-};
+use std::{marker::ConstParamTy, ops::Add, time::Duration, u32};
 
 use impl_trait_for_tuples::impl_for_tuples;
 
@@ -22,14 +16,24 @@ pub mod odometry;
 
 #[cfg(feature = "std")]
 fn get_time() -> Duration {
+    use std::{sync::OnceLock, time::Instant};
+
     static START: OnceLock<Instant> = OnceLock::new();
 
     START.get_or_init(|| Instant::now()).elapsed()
 }
 
 #[cfg(feature = "frc")]
-fn get_time() -> Duration {
-    robotrs::time::get_time()
+pub fn get_time() -> Duration {
+    let mut status = 0;
+
+    let time = unsafe { hal_sys::HAL_GetFPGATime(&mut status) };
+
+    if status != 0 {
+        panic!("Could not get time");
+    }
+
+    Duration::from_micros(time)
 }
 
 /// Constrain an angle to 0 and 2 pi. All angles are in radians

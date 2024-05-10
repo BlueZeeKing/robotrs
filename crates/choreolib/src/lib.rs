@@ -2,16 +2,8 @@ use std::time::Duration;
 
 use defer_lite::defer;
 use nalgebra::Vector3;
-use robotrs::{
-    control::ControlSafe,
-    math::{Controller, State},
-    scheduler::guard,
-    time::get_time,
-    yield_now,
-};
 
 pub use choreo_macros::choreo;
-use utils::subsystem::{AsPriority, Subsystem};
 
 /// This represents an entire path
 #[derive(Debug)]
@@ -132,16 +124,25 @@ where
     }
 }
 
+#[cfg(feature = "frc")]
 pub async fn follow_path_subsystem<T, O, E>(
     path: &Path<'_>,
     mut consumer: O,
-    subsystem: &Subsystem<T>,
-    priority: impl AsPriority + Clone,
+    subsystem: &utils::subsystem::Subsystem<T>,
+    priority: impl utils::subsystem::AsPriority + Clone,
 ) -> Result<(), E>
 where
     O: FnMut(&mut T, &TrajectoryPoint) -> Result<(), E>,
     T: ControlSafe,
 {
+    use robotrs::{
+        control::ControlSafe,
+        math::{Controller, State},
+        scheduler::guard,
+        time::get_time,
+        yield_now,
+    };
+
     let mut elapsed = Duration::new(0, 0);
 
     loop {
