@@ -38,11 +38,7 @@ pub fn get_time() -> Duration {
 
 #[cfg(not(all(feature = "std", feature = "frc")))]
 fn get_time() -> Duration {
-    use std::{sync::OnceLock, time::Instant};
-
-    static START: OnceLock<Instant> = OnceLock::new();
-
-    START.get_or_init(|| Instant::now()).elapsed()
+    unimplemented!("Please enable std or frc time drivers")
 }
 
 /// Constrain an angle to 0 and 2 pi. All angles are in radians
