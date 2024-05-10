@@ -23,7 +23,8 @@ the downloading of these libs can be found in the `build-utils` crate and the
 1. First, install
    [cargo-generate](https://github.com/cargo-generate/cargo-generate) using
    `cargo install cargo-generate`. Then, generate from the template using
-   `cargo generate https://github.com/BlueZeeKing/robotrs.git`
+   `cargo generate https://github.com/BlueZeeKing/robotrs.git` Remember to
+   change the project name in `Cargo.toml`
 2. Deploy your code by first installing the deployment tool:
 ```
 cargo install cargo-deploy --git https://github.com/BlueZeeKing/robotrs.git
