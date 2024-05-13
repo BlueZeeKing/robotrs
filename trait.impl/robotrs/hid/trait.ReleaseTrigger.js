@@ -1,0 +1,4 @@
+(function() {var implementors = {
+"robotrs":[],
+"utils":[["impl&lt;T1: <a class=\"trait\" href=\"robotrs/hid/trait.ReleaseTrigger.html\" title=\"trait robotrs::hid::ReleaseTrigger\">ReleaseTrigger</a>, T2: <a class=\"trait\" href=\"robotrs/hid/trait.ReleaseTrigger.html\" title=\"trait robotrs::hid::ReleaseTrigger\">ReleaseTrigger</a>&gt; <a class=\"trait\" href=\"robotrs/hid/trait.ReleaseTrigger.html\" title=\"trait robotrs::hid::ReleaseTrigger\">ReleaseTrigger</a> for <a class=\"enum\" href=\"utils/trigger/enum.EitherTriggerReleased.html\" title=\"enum utils::trigger::EitherTriggerReleased\">EitherTriggerReleased</a>&lt;T1, T2&gt;"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

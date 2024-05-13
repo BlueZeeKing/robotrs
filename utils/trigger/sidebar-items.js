@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["EitherTriggerReleased"],"struct":["EitherTriggerPressed"],"trait":["TriggerExt"]};

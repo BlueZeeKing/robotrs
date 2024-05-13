@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["axis","button","controller","joystick","pov"],"trait":["DoubleClick","PressTrigger","ReleaseTrigger"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["yield_now"],"macro":["define_axes","define_buttons","define_povs","status_to_result"],"mod":["command","control","ds","error","hid","motor","robot","scheduler","time"],"static":["PERIODIC_CHECKS"],"struct":["ErrorFutureWrapper","Yield"],"trait":["Deadzone","FailableDefault"]};

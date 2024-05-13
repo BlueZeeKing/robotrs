@@ -1,0 +1,4 @@
+(function() {var implementors = {
+"robotrs":[],
+"utils":[["impl&lt;T1: <a class=\"trait\" href=\"robotrs/hid/trait.PressTrigger.html\" title=\"trait robotrs::hid::PressTrigger\">PressTrigger</a>, T2: <a class=\"trait\" href=\"robotrs/hid/trait.PressTrigger.html\" title=\"trait robotrs::hid::PressTrigger\">PressTrigger</a>&gt; <a class=\"trait\" href=\"robotrs/hid/trait.PressTrigger.html\" title=\"trait robotrs::hid::PressTrigger\">PressTrigger</a> for <a class=\"struct\" href=\"utils/trigger/struct.EitherTriggerPressed.html\" title=\"struct utils::trigger::EitherTriggerPressed\">EitherTriggerPressed</a>&lt;T1, T2&gt;"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

@@ -1,0 +1,1 @@
+searchState.loadedDescShard("defer_lite", 0, "A Rust implementation of Go’s <code>defer</code> statement as the …\nExecutes a block of code when the surrounding scope ends.")
