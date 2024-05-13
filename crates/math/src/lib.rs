@@ -36,7 +36,7 @@ pub fn get_time() -> Duration {
     Duration::from_micros(time)
 }
 
-#[cfg(not(all(feature = "std", feature = "frc")))]
+#[cfg(not(any(feature = "std", feature = "frc")))]
 fn get_time() -> Duration {
     unimplemented!("Please enable std or frc time drivers")
 }
