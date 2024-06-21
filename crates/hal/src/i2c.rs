@@ -13,9 +13,9 @@ pub enum Port {
     Onboard,
 }
 
-impl Into<HAL_I2CPort> for Port {
-    fn into(self) -> HAL_I2CPort {
-        match self {
+impl From<Port> for HAL_I2CPort {
+    fn from(value: Port) -> Self {
+        match value {
             Port::MXP => hal_sys::HAL_I2CPort_HAL_I2C_kMXP,
             Port::Onboard => hal_sys::HAL_I2CPort_HAL_I2C_kOnboard,
         }

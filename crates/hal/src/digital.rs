@@ -119,7 +119,7 @@ impl InputPin for RioPin<Input> {
         if error != 0 {
             Err(HalError::from_raw(error).into())
         } else {
-            Ok(if is_high == 1 { true } else { false })
+            Ok(is_high == 1)
         }
     }
 

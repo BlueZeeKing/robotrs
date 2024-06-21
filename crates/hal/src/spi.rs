@@ -1,5 +1,3 @@
-use std::u32;
-
 use embedded_hal::{
     delay::DelayNs,
     spi::{Error, ErrorKind, ErrorType, SpiDevice, MODE_0, MODE_1, MODE_2, MODE_3},
@@ -25,9 +23,9 @@ pub enum Port {
     Onboard(u8),
 }
 
-impl Into<HAL_SPIPort> for Port {
-    fn into(self) -> HAL_SPIPort {
-        match self {
+impl From<Port> for HAL_SPIPort {
+    fn from(value: Port) -> Self {
+        match value {
             Port::MXP => hal_sys::HAL_SPIPort_HAL_SPI_kMXP,
             Port::Onboard(n) => match n {
                 0 => hal_sys::HAL_SPIPort_HAL_SPI_kOnboardCS0,
