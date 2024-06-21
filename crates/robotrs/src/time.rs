@@ -1,8 +1,8 @@
 use std::time::Duration;
 
 use hal_sys::{
-    HAL_CleanNotifier, HAL_GetFPGATime, HAL_InitializeNotifier, HAL_UpdateNotifierAlarm,
-    HAL_WaitForNotifierAlarm,
+    HAL_CleanNotifier, HAL_GetFPGATime, HAL_InitializeNotifier, HAL_SetNotifierThreadPriority,
+    HAL_UpdateNotifierAlarm, HAL_WaitForNotifierAlarm,
 };
 
 use crate::{
@@ -19,7 +19,9 @@ pub use periodic::Periodic;
 
 pub fn get_time() -> Duration {
     // Possibly use a custom instant implementation?
-    Duration::from_micros(unsafe { status_to_result!(HAL_GetFPGATime()) }.unwrap())
+    Duration::from_micros(
+        unsafe { status_to_result!(HAL_GetFPGATime()) }.expect("Could not get FPGA time"),
+    )
 }
 
 pub fn delay(duration: Duration) -> Alarm {
@@ -60,6 +62,12 @@ impl RawNotifier {
         } else {
             Ok(self)
         }
+    }
+
+    pub fn set_thread_priority() -> Result<()> {
+        unsafe { status_to_result!(HAL_SetNotifierThreadPriority(1, 40)) }?;
+
+        Ok(())
     }
 }
 
