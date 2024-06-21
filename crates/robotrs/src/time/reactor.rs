@@ -1,4 +1,4 @@
-use std::{task::Waker, time::Duration};
+use std::{collections::BinaryHeap, task::Waker, time::Duration};
 
 use linkme::distributed_slice;
 use parking_lot::Mutex;
@@ -7,25 +7,28 @@ use crate::PERIODIC_CHECKS;
 
 use super::get_time;
 
-static QUEUE: Mutex<Vec<(Waker, Duration)>> = Mutex::new(Vec::new());
+/// The Ord implementation is reversed, which is needed for the heap
+struct TimeItem {
+    time: Duration,
+    waker: Waker,
+}
 
-pub fn add_time(end_time: Duration, waker: Waker) {
-    let mut queue = QUEUE.lock();
+impl PartialOrd for TimeItem {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        other.time.partial_cmp(&self.time)
+    }
+}
 
-    let index = {
-        let mut final_index = 0;
+impl Ord for TimeItem {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        other.time.cmp(&self.time)
+    }
+}
 
-        for (index, (_, item_duration)) in queue.iter().enumerate() {
-            if item_duration < &end_time {
-                final_index = index;
-                break;
-            }
-        }
+static QUEUE: Mutex<BinaryHeap<TimeItem>> = Mutex::new(BinaryHeap::new());
 
-        final_index
-    };
-
-    queue.insert(index, (waker, end_time))
+pub fn add_time(time: Duration, waker: Waker) {
+    QUEUE.lock().push(TimeItem { time, waker });
 }
 
 #[distributed_slice(PERIODIC_CHECKS)]
@@ -34,11 +37,11 @@ fn poll() {
 
     let time = get_time();
 
-    while let Some(item) = queue.last() {
-        if item.1 > time {
+    while let Some(item) = queue.peek() {
+        if item.time > time {
             break;
         }
 
-        queue.pop().unwrap_or_else(|| unreachable!()).0.wake();
+        queue.pop().unwrap_or_else(|| unreachable!()).waker.wake();
     }
 }
