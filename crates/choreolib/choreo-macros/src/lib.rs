@@ -167,7 +167,7 @@ pub fn choreo(item: TokenStream) -> TokenStream {
     });
 
     quote! {
-        #[allow(warnings)]
+        #[allow(warnings, clippy::approx_constant)]
         pub mod paths {
             #(#paths)*
         }
