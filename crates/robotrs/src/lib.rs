@@ -2,19 +2,15 @@
 #![feature(adt_const_params, const_float_bits_conv)]
 
 use std::{
-    ffi::c_char,
-    io::Write,
     ops::DerefMut,
     pin::Pin,
     task::{Poll, Waker},
 };
 
 use futures::Future;
-use hal_sys::HAL_SendConsoleLine;
 use linkme::distributed_slice;
 use parking_lot::Mutex;
 use pin_project::pin_project;
-use tracing_subscriber::fmt::MakeWriter;
 
 pub mod command;
 pub mod control;
