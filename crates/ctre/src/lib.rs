@@ -1,4 +1,4 @@
-use std::ffi::{c_void, CString};
+use std::ffi::c_void;
 
 use robotrs::{
     control::ControlSafe,
@@ -44,15 +44,6 @@ pub enum IdleMode {
 
 impl VictorSPX {
     pub fn new(id: i32) -> Self {
-        let model = CString::new("Victor SPX").unwrap();
-        let can_bus = CString::new("").unwrap();
-
-        let model_ptr = model.as_ptr();
-        let can_bus_ptr = can_bus.as_ptr();
-
-        std::mem::forget(model);
-        std::mem::forget(can_bus);
-
         Self {
             handle: unsafe {
                 bindings::c_MotController_Create2(id, c"Victor SPX".as_ptr(), c"".as_ptr())
