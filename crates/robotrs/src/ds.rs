@@ -143,3 +143,27 @@ impl Alliance {
         !self.is_blue()
     }
 }
+
+pub async fn wait_for_enabled() {
+    if get_state() != State::Disabled {
+        return;
+    }
+
+    loop {
+        if wait_for_state_change().await != State::Disabled {
+            return;
+        }
+    }
+}
+
+pub async fn wait_for_disabled() {
+    if get_state() == State::Disabled {
+        return;
+    }
+
+    loop {
+        if wait_for_state_change().await == State::Disabled {
+            return;
+        }
+    }
+}
