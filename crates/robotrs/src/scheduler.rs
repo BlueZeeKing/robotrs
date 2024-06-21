@@ -1,11 +1,5 @@
 use core::panic;
-use std::{
-    cell::OnceCell,
-    fs::File,
-    io::Write,
-    thread,
-    time::{Duration, Instant},
-};
+use std::{cell::OnceCell, fs::File, io::Write, thread, time::Duration};
 
 use anyhow::anyhow;
 use async_task::{Runnable, Task};
@@ -14,7 +8,7 @@ use futures::{Future, FutureExt, TryFutureExt};
 use tracing::{debug, error, info, warn};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
-use crate::{ds, robot::AsyncRobot, status_to_result, PERIODIC_CHECKS};
+use crate::{ds, robot::AsyncRobot, status_to_result, time::RawNotifier, PERIODIC_CHECKS};
 
 use hal_sys::{
     HAL_HasMain, HAL_Initialize, HAL_ObserveUserProgramAutonomous, HAL_ObserveUserProgramDisabled,
@@ -258,8 +252,12 @@ impl<R: AsyncRobot> RobotScheduler<R> {
             .configure_bindings(&scheduler)
             .expect("An error occurred configuring bindings");
 
-        // let mut time = get_time().unwrap() + PERIOD;
+        RawNotifier::set_thread_priority().unwrap();
+
+        // let mut time = get_time() + PERIOD;
         // let mut notifier = RawNotifier::new(time).unwrap();
+
+        RawNotifier::set_thread_priority().unwrap();
 
         unsafe { HAL_ObserveUserProgramStarting() };
 
@@ -269,25 +267,18 @@ impl<R: AsyncRobot> RobotScheduler<R> {
         );
 
         loop {
-            let start = Instant::now();
-
             scheduler.tick();
 
-            if start.elapsed() > PERIOD {
-                warn!(
-                    "Loop over run by {} milliseconds",
-                    (start.elapsed() - PERIOD).as_millis()
-                );
-            } else {
-                thread::sleep(PERIOD - start.elapsed());
-            }
+            thread::sleep(PERIOD);
 
-            // notifier = notifier.block_until_alarm().unwrap(); // add error handling
+            // notifier = notifier
+            //     .block_until_alarm()
+            //     .expect("Stopping because periodic notifier failed"); // add error handling
             // time += PERIOD;
-            // if time < get_time().unwrap() {
+            // if time < get_time() {
             //     warn!(
             //         "Loop over run by {} milliseconds",
-            //         (get_time().unwrap() - time).as_millis()
+            //         (get_time() - time).as_millis()
             //     );
             // }
             // notifier.set_time(time).unwrap();
