@@ -260,14 +260,14 @@ impl SparkMax {
 }
 
 #[derive(Clone, Copy)]
-enum SoftLimitDirection {
+pub enum SoftLimitDirection {
     Forward,
     Backward,
 }
 
-impl Into<c_SparkMax_LimitDirection> for SoftLimitDirection {
-    fn into(self) -> c_SparkMax_LimitDirection {
-        match self {
+impl From<SoftLimitDirection> for c_SparkMax_LimitDirection {
+    fn from(value: SoftLimitDirection) -> Self {
+        match value {
             SoftLimitDirection::Forward => c_SparkMax_LimitDirection_c_SparkMax_kForward,
             SoftLimitDirection::Backward => c_SparkMax_LimitDirection_c_SparkMax_kReverse,
         }
