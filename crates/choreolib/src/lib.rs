@@ -1,6 +1,7 @@
-use std::time::Duration;
+use std::{future::Future, time::Duration};
 
 use defer_lite::defer;
+use math::{get_time, Controller, State};
 use nalgebra::Vector3;
 
 pub use choreo_macros::choreo;
@@ -86,23 +87,26 @@ fn interpolate_point(a: &TrajectoryPoint, b: &TrajectoryPoint, time: Duration) -
 /// )
 /// .await
 ///```
-pub async fn follow_path<O, E>(
+pub async fn follow_path<O, E, Func, Fut>(
     path: &Path<'_>,
     mut consumer: O,
     start_time: Option<Duration>,
+    mut wait: Func,
 ) -> Result<(), E>
 where
     O: FnMut(&TrajectoryPoint) -> Result<(), E>,
+    Func: FnMut() -> Fut,
+    Fut: Future,
 {
     let mut current_idx = 0;
-    let start_time = start_time.unwrap_or_else(|| get_time());
+    let start_time = start_time.unwrap_or_else(get_time);
 
     loop {
         let time = get_time() - start_time;
 
         if time == path.samples[current_idx].timestamp {
             consumer(&path.samples[current_idx])?;
-            yield_now().await;
+            wait().await;
             continue;
         }
 
@@ -120,7 +124,7 @@ where
             &path.samples[current_idx + 1],
             time,
         ))?;
-        yield_now().await;
+        wait().await;
     }
 }
 
@@ -133,15 +137,9 @@ pub async fn follow_path_subsystem<T, O, E>(
 ) -> Result<(), E>
 where
     O: FnMut(&mut T, &TrajectoryPoint) -> Result<(), E>,
-    T: ControlSafe,
+    T: robotrs::control::ControlSafe,
 {
-    use robotrs::{
-        control::ControlSafe,
-        math::{Controller, State},
-        scheduler::guard,
-        time::get_time,
-        yield_now,
-    };
+    use robotrs::{scheduler::guard, yield_now};
 
     let mut elapsed = Duration::new(0, 0);
 
@@ -160,6 +158,7 @@ where
                 path,
                 |point| consumer(&mut subsystem, point),
                 ajusted_start_time,
+                yield_now,
             )
             .await?;
 
@@ -189,7 +188,7 @@ fn deriver(mut initial: Option<f32>) -> impl FnMut(f32) -> f32 {
         last_time = curr_time;
         initial = Some(value);
 
-        return res;
+        res
     }
 }
 
