@@ -1,7 +1,7 @@
 #![allow(async_fn_in_trait, incomplete_features)]
 #![feature(adt_const_params, const_float_bits_conv)]
 
-use std::{marker::ConstParamTy, ops::Add, time::Duration, u32};
+use std::{marker::ConstParamTy, ops::Add, time::Duration};
 
 use impl_trait_for_tuples::impl_for_tuples;
 

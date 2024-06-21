@@ -1,4 +1,4 @@
-use std::f32::{consts::PI, EPSILON};
+use std::f32::consts::PI;
 
 use nalgebra::{matrix, Dim, SMatrix, Vector2, Vector3, VectorView2, U1, U2};
 
@@ -23,7 +23,7 @@ pub trait Kinematics {
 pub struct SwerveKinematics {
     pub inverse_matrix: SMatrix<f32, 8, 3>,
     pub forward_matrix: SMatrix<f32, 3, 8>,
-    pub positons: [Vector2<f32>; 4],
+    pub positions: [Vector2<f32>; 4],
 }
 
 /// Calculates the positions of the modules on the robot given the track width and wheel base.
@@ -51,8 +51,6 @@ impl SwerveKinematics {
     ///
     /// See [module_positions_from_dimensions] for an easy way to get these positions.
     pub fn new(positions: [Vector2<f32>; 4]) -> Self {
-        let positions2 = positions.clone();
-
         let inverse_matrix = nalgebra::matrix![
             1.0, 0.0, -positions[0].y;
             0.0, 1.0, positions[0].x;
@@ -65,19 +63,19 @@ impl SwerveKinematics {
         ];
 
         let forward_matrix = inverse_matrix
-            .pseudo_inverse(EPSILON)
+            .pseudo_inverse(f32::EPSILON)
             .expect("Could not calculate swerve forward kinematics matrix");
 
         Self {
             inverse_matrix,
             forward_matrix,
-            positons: positions2,
+            positions,
         }
     }
 
     /// ALign the wheels in an X to prevent the robot from moving.
     pub fn brake(&self) -> [SwerveState; 4] {
-        let mut states = self.positons.iter().map(|position| {
+        let mut states = self.positions.iter().map(|position| {
             let mut state = SwerveState::from(position.as_view::<_, _, U1, U2>());
             state.stop();
             state
