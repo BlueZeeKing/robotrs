@@ -1,4 +1,4 @@
-use std::{fmt::Formatter, sync::Arc, thread, time::Duration, usize};
+use std::{fmt::Formatter, sync::Arc, thread, time::Duration};
 
 use bitflags::bitflags;
 use io::IO;
@@ -8,8 +8,8 @@ use thiserror::Error;
 use tracing::warn;
 
 pub mod io;
-pub mod protocol;
-pub mod registers;
+mod protocol;
+mod registers;
 
 pub const DELAY_OVERHEAD_SECONDS: f64 = 0.004;
 
@@ -82,13 +82,12 @@ impl NavX {
                 }
             }
 
-            if board_state_update.update_rate_hz != update_rate {
-                if io
+            if board_state_update.update_rate_hz != update_rate
+                && io
                     .write(registers::NAVX_REG_UPDATE_RATE_HZ as u8, update_rate)
                     .is_err()
-                {
-                    warn!("Error setting navx refresh rate");
-                }
+            {
+                warn!("Error setting navx refresh rate");
             }
 
             has_displacement = board_state_update
@@ -170,7 +169,7 @@ impl<I: IO> std::fmt::Debug for Error<I> {
 }
 
 fn get_configuration<I: IO>(io: &mut I) -> Result<Config, Error<I>> {
-    let mut buffer = [0; registers::NAVX_REG_SENSOR_STATUS_H as usize + 1];
+    let mut buffer = [0; registers::NAVX_REG_SENSOR_STATUS_H + 1];
 
     io.read(registers::NAVX_REG_WHOAMI as u8, &mut buffer)
         .map_err(|err| Error::Io(err))?;
@@ -179,28 +178,27 @@ fn get_configuration<I: IO>(io: &mut I) -> Result<Config, Error<I>> {
         return Err(Error::InvalidWhoAmI);
     }
 
-    let mut board_id = BoardID::default();
+    let board_id = BoardID {
+        hw_rev: buffer[registers::NAVX_REG_HW_REV],
+        fw_ver_major: buffer[registers::NAVX_REG_FW_VER_MAJOR],
+        fw_ver_minor: buffer[registers::NAVX_REG_FW_VER_MINOR],
+        ty: buffer[registers::NAVX_REG_WHOAMI],
+        ..Default::default()
+    };
 
-    board_id.hw_rev = buffer[registers::NAVX_REG_HW_REV as usize];
-    board_id.fw_ver_major = buffer[registers::NAVX_REG_FW_VER_MAJOR as usize];
-    board_id.fw_ver_minor = buffer[registers::NAVX_REG_FW_VER_MINOR as usize];
-    board_id.ty = buffer[registers::NAVX_REG_WHOAMI as usize];
-
-    let mut board_state = BoardState::default();
-
-    board_state.cal_status = buffer[registers::NAVX_REG_CAL_STATUS as usize];
-    board_state.op_status = buffer[registers::NAVX_REG_OP_STATUS as usize];
-    board_state.selftest_status = buffer[registers::NAVX_REG_SELFTEST_STATUS as usize];
-    board_state.sensor_status =
-        protocol::decode_u16(&buffer, registers::NAVX_REG_SENSOR_STATUS_L as usize);
-    board_state.gyro_fsr_dps =
-        protocol::decode_u16(&buffer, registers::NAVX_REG_GYRO_FSR_DPS_L as usize);
-    board_state.accel_fsr_g = buffer[registers::NAVX_REG_ACCEL_FSR_G as usize] as u16;
-    board_state.update_rate_hz = buffer[registers::NAVX_REG_UPDATE_RATE_HZ as usize];
-    board_state.capability_flags = Capabilities::from_bits_truncate(protocol::decode_u16(
-        &buffer,
-        registers::NAVX_REG_CAPABILITY_FLAGS_L as usize,
-    ));
+    let board_state = BoardState {
+        cal_status: buffer[registers::NAVX_REG_CAL_STATUS],
+        op_status: buffer[registers::NAVX_REG_OP_STATUS],
+        selftest_status: buffer[registers::NAVX_REG_SELFTEST_STATUS],
+        sensor_status: protocol::decode_u16(&buffer, registers::NAVX_REG_SENSOR_STATUS_L),
+        gyro_fsr_dps: protocol::decode_u16(&buffer, registers::NAVX_REG_GYRO_FSR_DPS_L),
+        accel_fsr_g: buffer[registers::NAVX_REG_ACCEL_FSR_G] as u16,
+        update_rate_hz: buffer[registers::NAVX_REG_UPDATE_RATE_HZ],
+        capability_flags: Capabilities::from_bits_truncate(protocol::decode_u16(
+            &buffer,
+            registers::NAVX_REG_CAPABILITY_FLAGS_L,
+        )),
+    };
 
     Ok(Config {
         id: board_id,

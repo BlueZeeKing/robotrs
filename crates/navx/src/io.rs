@@ -66,10 +66,10 @@ impl IO for RioSPI {
     }
 }
 
-pub fn get_crc(buffer: &[u8]) -> u8 {
+pub(crate) fn get_crc(buffer: &[u8]) -> u8 {
     let mut crc = 0;
     for val in buffer {
-        crc ^= 0x00ff & val;
+        crc ^= val;
         for _ in 0..8 {
             if crc & 0x0001 != 0 {
                 crc ^= 0x0091;
