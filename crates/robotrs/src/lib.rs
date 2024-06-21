@@ -1,5 +1,5 @@
 #![allow(async_fn_in_trait, incomplete_features)]
-#![feature(adt_const_params, const_float_bits_conv)]
+#![feature(adt_const_params, const_float_bits_conv, try_blocks)]
 
 use std::{
     ops::DerefMut,

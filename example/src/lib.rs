@@ -1,16 +1,20 @@
+#![feature(try_blocks)]
+
 use std::time::Duration;
 
+use anyhow::anyhow;
 use robotrs::{
     control::ControlSafe,
-    hid::{axis::AxisTarget, controller::XboxController},
+    hid::{
+        any::AnyTriggerTarget, axis::AxisTarget, controller::XboxController, ext::ReleaseTriggerExt,
+    },
     motor::IdleMode,
     robot::AsyncRobot,
-    scheduler::guard,
     time::delay,
     yield_now, Deadzone,
 };
 use subsystems::{Arm, Drivetrain, Intake};
-use utils::{subsystem::Subsystem, trigger::TriggerExt};
+use utils::{periodic, subsystem::Subsystem, tracing::error};
 
 pub mod subsystems;
 
@@ -59,41 +63,35 @@ impl AsyncRobot for Robot {
     }
 
     async fn get_teleop_future(&'static self) -> anyhow::Result<()> {
-        // The periodic runs every 20ms because thats how fast the executor ticks
-        loop {
-            guard(async {
-                let mut drivetrain = self.drivetrain.lock(0).await;
-
-                loop {
-                    if self.controller.b().value()? {
-                        drivetrain.set_idle_mode(IdleMode::Brake)?;
-                    } else {
-                        drivetrain.set_idle_mode(IdleMode::Coast)?;
-                    }
-
-                    drivetrain.arcade_drive(
-                        self.controller.left_y().unwrap().deadzone(0.1),
-                        self.controller.right_x().unwrap().deadzone(0.1),
-                    )?;
-
-                    yield_now().await;
+        periodic!(drivetrain = &self.drivetrain => 0, async {
+            let err: anyhow::Result<()> = try {
+                if self.controller.b().value().ok_or(anyhow!("Could not get b button"))? {
+                    drivetrain.set_idle_mode(IdleMode::Brake)?;
+                } else {
+                    drivetrain.set_idle_mode(IdleMode::Coast)?;
                 }
 
-                #[allow(unreachable_code)]
-                anyhow::Ok(())
-            })
-            .await
-            .unwrap_err();
-        }
+                drivetrain.arcade_drive(
+                    self.controller.left_y().ok_or(anyhow!("Could not get left y"))?.deadzone(0.1),
+                    self.controller.right_x().ok_or(anyhow!("Could not get left x"))?.deadzone(0.1),
+                )?;
+            };
+
+            if let Err(err) = err {
+                error!("controller error: {:?}", err);
+            }
+        });
     }
 
     fn configure_bindings(
         &'static self,
         _scheduler: &robotrs::scheduler::RobotScheduler<Self>,
     ) -> anyhow::Result<()> {
-        self.controller
-            .wait_left_trigger(AxisTarget::Away(0.1))
-            .or(self.controller.wait_right_trigger(AxisTarget::Away(0.1)))
+        (
+            self.controller.wait_left_trigger(AxisTarget::Away(0.1)),
+            self.controller.wait_right_trigger(AxisTarget::Away(0.1)),
+        )
+            .any()
             .while_pressed(|| async {
                 let mut drivetrain = self.drivetrain.lock(1).await;
 
@@ -128,9 +126,11 @@ impl AsyncRobot for Robot {
             .wait_right_y(AxisTarget::Down(0.65))
             .while_pressed(|| Intake::intake_cone_subsystem(&self.intake, 1));
 
-        self.controller
-            .left_bumper()
-            .or(self.controller.right_bumper())
+        (
+            self.controller.left_bumper(),
+            self.controller.right_bumper(),
+        )
+            .any()
             .while_pressed(|| Intake::start_release_subsystem(&self.intake, 1));
 
         Ok(())
@@ -143,7 +143,7 @@ impl Robot {
             drivetrain: Subsystem::new(Drivetrain::new()?),
             arm: Subsystem::new(Arm::new()?),
             intake: Subsystem::new(Intake::new()?),
-            controller: XboxController::new(0)?,
+            controller: XboxController::new(0),
         })
     }
 }

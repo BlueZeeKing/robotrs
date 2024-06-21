@@ -1,156 +1,90 @@
-use std::{marker::PhantomData, pin::Pin, task::Poll};
-
-use futures::Future;
 use hal_sys::HAL_JoystickPOVs;
 
-use crate::{error::Result, queue_waker};
-
 use super::{
-    button::{Pressed, Released},
     joystick::Joystick,
-    reactor::add_pov,
+    reactor::{add_trigger, remove_trigger, wait_for_released, wait_for_triggered},
+    ReleaseTrigger, Trigger,
 };
 
-pub(super) fn get_pov(povs: &HAL_JoystickPOVs, index: u32) -> Result<i16> {
+pub(super) fn get_pov(povs: &HAL_JoystickPOVs, index: u32) -> Option<i16> {
     if index as i16 >= povs.count {
-        return Err(crate::error::Error::PovIndexOutOfRange(index));
+        None
+    } else {
+        Some(povs.povs[index as usize])
     }
-
-    Ok(povs.povs[index as usize])
 }
 
-#[derive(Clone)]
-pub struct PovFuture<T: Clone> {
+/// This defines when a [Pov] trigger activates
+#[derive(Copy, Clone, Debug)]
+pub enum PovTarget {
+    Raw(i16),
+}
+
+impl PovTarget {
+    pub(super) fn is_active(&self, value: i16) -> bool {
+        match self {
+            Self::Raw(desired) => value == *desired,
+        }
+    }
+}
+
+/// A trigger for a joystick pov. This the the d-pad
+pub struct Pov {
     joystick: Joystick,
     pov_index: u32,
-    phantom: PhantomData<T>,
-    direction: i16,
-    run: bool,
+    target: PovTarget,
+    reactor_idx: usize,
 }
 
-impl PovFuture<Pressed> {
-    pub fn released(&self) -> PovFuture<Released> {
-        PovFuture {
+impl Clone for Pov {
+    fn clone(&self) -> Self {
+        Self {
             joystick: self.joystick,
             pov_index: self.pov_index,
-            phantom: PhantomData,
-            direction: self.direction,
-            run: false,
+            target: self.target,
+            reactor_idx: add_trigger(&self.joystick, self.pov_index, self.target.into()),
         }
     }
 }
 
-impl PovFuture<Released> {
-    pub fn pressed(&self) -> PovFuture<Pressed> {
-        PovFuture {
-            joystick: self.joystick,
-            pov_index: self.pov_index,
-            phantom: PhantomData,
-            direction: self.direction,
-            run: false,
-        }
+impl Drop for Pov {
+    fn drop(&mut self) {
+        remove_trigger(self.reactor_idx);
     }
 }
 
-impl<T: Clone> PovFuture<T> {
-    pub(super) fn new(joystick: Joystick, pov_index: u32, direction: i16) -> Self {
-        PovFuture {
+impl Pov {
+    pub(super) fn new(joystick: Joystick, pov_index: u32, target: PovTarget) -> Self {
+        Pov {
+            reactor_idx: add_trigger(&joystick, pov_index, target.into()),
             joystick,
             pov_index,
-            direction,
-            phantom: PhantomData,
-            run: false,
+            target,
         }
     }
 
-    pub fn value(&self) -> Result<i16> {
-        get_pov(&self.joystick.get_pov_data()?, self.pov_index)
+    /// Get the current value of the pov. This is an angle in degrees
+    pub fn value(&self) -> Option<i16> {
+        get_pov(&self.joystick.get_pov_data(), self.pov_index)
     }
 
-    fn poll(&mut self) -> Result<bool> {
-        let value = get_pov(&self.joystick.get_pov_data()?, self.pov_index)?;
-
-        Ok(value == self.direction)
-    }
-}
-
-impl super::PressTrigger for PovFuture<Pressed> {
-    type Release = PovFuture<Released>;
-}
-impl super::ReleaseTrigger for PovFuture<Released> {}
-
-impl Future for PovFuture<Pressed> {
-    type Output = Result<PovFuture<Released>>;
-
-    fn poll(
-        self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Self::Output> {
-        let data = Pin::into_inner(self);
-
-        let button_val = match data.poll() {
-            Ok(val) => val,
-            Err(err) => {
-                return if data.run {
-                    Poll::Ready(Err(err))
-                } else {
-                    queue_waker(cx.waker().clone());
-                    Poll::Pending
-                };
-            }
-        };
-
-        data.run = true;
-
-        if button_val {
-            Poll::Ready(Ok(data.released()))
-        } else {
-            add_pov(
-                &data.joystick,
-                data.pov_index,
-                data.direction,
-                true,
-                cx.waker().clone(),
-            );
-            Poll::Pending
-        }
+    /// Set the target of the trigger
+    pub fn set_target(&mut self, target: PovTarget) {
+        self.target = target;
     }
 }
 
-impl Future for PovFuture<Released> {
-    type Output = Result<()>;
+impl Trigger for Pov {
+    type Error = ();
+    type Output = ();
 
-    fn poll(
-        self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Self::Output> {
-        let data = Pin::into_inner(self);
+    async fn wait_for_trigger(&mut self) -> Result<(), ()> {
+        wait_for_triggered(self.reactor_idx).await
+    }
+}
 
-        let button_val = match data.poll() {
-            Ok(val) => val,
-            Err(err) => {
-                return if data.run {
-                    Poll::Ready(Err(err))
-                } else {
-                    queue_waker(cx.waker().clone());
-                    Poll::Pending
-                };
-            }
-        };
-
-        data.run = true;
-
-        if !button_val {
-            Poll::Ready(Ok(()))
-        } else {
-            add_pov(
-                &data.joystick,
-                data.pov_index,
-                data.direction,
-                false,
-                cx.waker().clone(),
-            );
-            Poll::Pending
-        }
+impl ReleaseTrigger for Pov {
+    async fn wait_for_release(&mut self) -> Result<(), ()> {
+        wait_for_released(self.reactor_idx).await
     }
 }

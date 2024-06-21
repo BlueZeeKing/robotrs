@@ -1,4 +1,6 @@
-use std::{future::Future, pin::Pin, task::Poll, time::Duration};
+use std::{convert::Infallible, future::Future, pin::Pin, task::Poll, time::Duration};
+
+use crate::hid::Trigger;
 
 use super::get_time;
 
@@ -48,5 +50,16 @@ impl Future for Alarm {
         } else {
             Poll::Ready(())
         }
+    }
+}
+
+impl Trigger for Alarm {
+    type Output = ();
+    type Error = Infallible;
+
+    async fn wait_for_trigger(&mut self) -> Result<Self::Output, Self::Error> {
+        self.await;
+
+        Ok(())
     }
 }

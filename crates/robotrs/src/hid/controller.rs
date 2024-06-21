@@ -1,20 +1,22 @@
 use super::{
-    axis::{get_axis, AxisFuture, AxisTarget, Initial},
-    button::{ButtonFuture, Pressed},
+    axis::{get_axis, Axis, AxisTarget},
+    button::{Button, ButtonTarget},
     joystick::Joystick,
-    pov::PovFuture,
+    pov::{Pov, PovTarget},
 };
-use crate::error::Result;
 
 #[macro_export]
 macro_rules! define_buttons {
     ($class:ident, $($name:ident = $index:expr),+) => {
         impl $class {
             $(
-                pub fn $name (&self) -> ButtonFuture<Pressed> {
-                    ButtonFuture::<Pressed>::new(
+                /// Get a trigger for the button. This trigger activates when the button is prssed,
+                /// but this can be changed through [Button::set_target]
+                pub fn $name (&self) -> Button {
+                    Button::new(
                         self.joystick.clone(),
                         $index,
+                        ButtonTarget::Pressed,
                     )
                 }
             )+
@@ -27,11 +29,12 @@ macro_rules! define_povs {
     ($class:ident, $($name:ident = $index:expr => $dir:expr),+) => {
         impl $class {
             $(
-                pub fn $name (&self) -> PovFuture<Pressed> {
-                    PovFuture::<Pressed>::new(
+                /// Get a trigger for the pov.
+                pub fn $name (&self) -> Pov {
+                    Pov::new(
                         self.joystick.clone(),
                         $index,
-                        $dir
+                        PovTarget::Raw($dir)
                     )
                 }
             )+
@@ -44,32 +47,39 @@ macro_rules! define_axes {
     ($class:ident, $($future_name:ident/$name:ident = $index:expr),+) => {
         impl $class {
             $(
-                pub fn $future_name (&self, target: AxisTarget) -> AxisFuture<Initial> {
-                    AxisFuture::new(
-                        self.joystick.get_num(),
+                /// Get a trigger for the axis. See [AxisTarget] for possible ways this trigger
+                /// will activate
+                pub fn $future_name (&self, target: AxisTarget) -> Axis {
+                    Axis::new(
+                        self.joystick.clone(),
                         $index,
                         target
                     )
                 }
 
-                pub fn $name (&self) -> Result<f32> {
-                    get_axis(&self.joystick.get_axes_data()?, $index)
+                /// Get the raw value of the joystick, returning [None] if the axis does not exist
+                pub fn $name (&self) -> Option<f32> {
+                    get_axis(&self.joystick.get_axes_data(), $index)
                 }
             )+
         }
     };
 }
 
+/// An Xbox controller
 #[derive(Clone, Copy)]
 pub struct XboxController {
     joystick: Joystick,
 }
 
 impl XboxController {
-    pub fn new(num: u32) -> Result<Self> {
-        Ok(Self {
-            joystick: Joystick::new(num)?,
-        })
+    /// Create a new Xbox controller.
+    ///
+    /// Panics if `num` >= 6
+    pub fn new(num: u32) -> Self {
+        Self {
+            joystick: Joystick::new(num),
+        }
     }
 }
 
@@ -109,16 +119,20 @@ define_povs!(
     up_left = 0 => 315
 );
 
+/// A PS4 controller
 #[derive(Clone, Copy)]
 pub struct PS4Controller {
     joystick: Joystick,
 }
 
 impl PS4Controller {
-    pub fn new(num: u32) -> Result<Self> {
-        Ok(Self {
-            joystick: Joystick::new(num)?,
-        })
+    /// Create a new PS4 controller.
+    ///
+    /// Panics if `num` >= 6
+    pub fn new(num: u32) -> Self {
+        Self {
+            joystick: Joystick::new(num),
+        }
     }
 }
 

@@ -1,146 +1,95 @@
-use std::{marker::PhantomData, pin::Pin, task::Poll};
-
-use futures::Future;
 use hal_sys::HAL_JoystickButtons;
-use tracing::error;
 
-use crate::{error::Result, queue_waker};
+use super::{
+    joystick::Joystick,
+    reactor::{add_trigger, remove_trigger, set_target, wait_for_released, wait_for_triggered},
+    ReleaseTrigger, Trigger,
+};
 
-use super::{joystick::Joystick, reactor::add_button};
-
-pub(super) fn get_button(buttons: &HAL_JoystickButtons, index: u32) -> Result<bool> {
+pub(super) fn get_button(buttons: &HAL_JoystickButtons, index: u32) -> Option<bool> {
     if index >= buttons.count.into() {
-        return Err(crate::error::Error::ButtonIndexOutOfRange(index));
+        None
+    } else {
+        Some(buttons.buttons & (1 << index) > 0)
     }
-
-    Ok(buttons.buttons & (1 << index) > 0)
 }
 
-#[derive(Clone)]
-pub struct Pressed;
-#[derive(Clone)]
-pub struct Released;
+/// A target for the button trigger
+#[derive(Copy, Clone, Debug)]
+pub enum ButtonTarget {
+    /// Activate the trigger when pressed
+    Pressed,
+    /// Activate the trigger when released
+    Released,
+}
 
-#[derive(Clone)]
-pub struct ButtonFuture<T: Clone> {
+impl ButtonTarget {
+    pub(super) fn is_active(&self, value: bool) -> bool {
+        match self {
+            ButtonTarget::Pressed => value,
+            ButtonTarget::Released => !value,
+        }
+    }
+}
+
+/// A button trigger
+pub struct Button {
     joystick: Joystick,
     button_index: u32,
-    phantom: PhantomData<T>,
-    run: bool,
+    target: ButtonTarget,
+    reactor_idx: usize,
 }
 
-impl ButtonFuture<Pressed> {
-    pub fn released(&self) -> ButtonFuture<Released> {
-        ButtonFuture {
+impl Clone for Button {
+    fn clone(&self) -> Self {
+        Self {
             joystick: self.joystick,
             button_index: self.button_index,
-            phantom: PhantomData,
-            run: false,
+            target: self.target,
+            reactor_idx: add_trigger(&self.joystick, self.button_index, self.target.into()),
         }
     }
 }
 
-impl ButtonFuture<Released> {
-    pub fn pressed(&self) -> ButtonFuture<Pressed> {
-        ButtonFuture {
-            joystick: self.joystick,
-            button_index: self.button_index,
-            phantom: PhantomData,
-            run: false,
-        }
+impl Drop for Button {
+    fn drop(&mut self) {
+        remove_trigger(self.reactor_idx);
     }
 }
 
-impl<T: Clone> ButtonFuture<T> {
-    pub(super) fn new(joystick: Joystick, button_index: u32) -> Self {
-        ButtonFuture {
+impl Button {
+    pub(super) fn new(joystick: Joystick, button_index: u32, target: ButtonTarget) -> Self {
+        Self {
+            reactor_idx: add_trigger(&joystick, button_index, target.into()),
             joystick,
             button_index,
-            phantom: PhantomData,
-            run: false,
+            target,
         }
     }
 
-    pub fn value(&self) -> Result<bool> {
-        get_button(&self.joystick.get_button_data()?, self.button_index)
+    /// Change the target of the trigger
+    pub fn set_target(&mut self, target: ButtonTarget) {
+        set_target(self.reactor_idx, target.into());
+        self.target = target;
     }
 
-    fn poll(&mut self) -> Result<bool> {
-        let value = get_button(&self.joystick.get_button_data()?, self.button_index)?;
-
-        Ok(value)
-    }
-}
-
-impl super::PressTrigger for ButtonFuture<Pressed> {
-    type Release = ButtonFuture<Released>;
-}
-impl super::ReleaseTrigger for ButtonFuture<Released> {}
-
-impl Future for ButtonFuture<Pressed> {
-    type Output = Result<ButtonFuture<Released>>;
-
-    fn poll(
-        self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Self::Output> {
-        let data = Pin::into_inner(self);
-
-        let button_val = match data.poll() {
-            Ok(val) => val,
-            Err(err) => {
-                return if data.run {
-                    error!("Rerun");
-                    Poll::Ready(Err(err))
-                } else {
-                    error!("Error");
-                    queue_waker(cx.waker().clone());
-                    Poll::Pending
-                }
-            }
-        };
-
-        data.run = true;
-
-        if button_val {
-            Poll::Ready(Ok(data.released()))
-        } else {
-            add_button(&data.joystick, data.button_index, true, cx.waker().clone());
-            Poll::Pending
-        }
+    /// Get the value of the button. Returns [None] if the button does not exist.
+    pub fn value(&self) -> Option<bool> {
+        get_button(&self.joystick.get_button_data(), self.button_index)
     }
 }
 
-impl Future for ButtonFuture<Released> {
-    type Output = Result<()>;
+impl Trigger for Button {
+    type Error = ();
+    type Output = ();
 
-    fn poll(
-        self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Self::Output> {
-        let data = Pin::into_inner(self);
+    async fn wait_for_trigger(&mut self) -> Result<(), ()> {
+        wait_for_triggered(self.reactor_idx).await
+    }
+}
 
-        let button_val = match data.poll() {
-            Ok(val) => val,
-            Err(err) => {
-                return if data.run {
-                    error!("Rerun");
-                    Poll::Ready(Err(err))
-                } else {
-                    error!("Error");
-                    queue_waker(cx.waker().clone());
-                    Poll::Pending
-                }
-            }
-        };
-
-        data.run = true;
-
-        if !button_val {
-            Poll::Ready(Ok(()))
-        } else {
-            add_button(&data.joystick, data.button_index, false, cx.waker().clone());
-            Poll::Pending
-        }
+impl ReleaseTrigger for Button {
+    async fn wait_for_release(&mut self) -> Result<(), ()> {
+        wait_for_released(self.reactor_idx).await
     }
 }

@@ -1,72 +1,175 @@
-use std::{ops::DerefMut, task::Waker};
+use std::{
+    mem::MaybeUninit,
+    ops::DerefMut,
+    pin::Pin,
+    task::{Poll, Waker},
+};
 
+use futures::Future;
+use hal_sys::{HAL_GetAllJoystickData, HAL_JoystickAxes, HAL_JoystickButtons, HAL_JoystickPOVs};
 use linkme::distributed_slice;
 use parking_lot::Mutex;
+use slab::Slab;
 
 use super::{
     axis::{get_axis, AxisTarget},
-    button::get_button,
+    button::{get_button, ButtonTarget},
     joystick::Joystick,
-    pov::get_pov,
+    pov::{get_pov, PovTarget},
 };
 use crate::PERIODIC_CHECKS;
 
-#[derive(Debug)]
+pub enum Target {
+    Button(ButtonTarget),
+    Axis(AxisTarget),
+    Pov(PovTarget),
+}
+
+impl From<ButtonTarget> for Target {
+    fn from(value: ButtonTarget) -> Self {
+        Self::Button(value)
+    }
+}
+
+impl From<AxisTarget> for Target {
+    fn from(value: AxisTarget) -> Self {
+        Self::Axis(value)
+    }
+}
+
+impl From<PovTarget> for Target {
+    fn from(value: PovTarget) -> Self {
+        Self::Pov(value)
+    }
+}
+
+#[derive(Clone, Copy, PartialEq)]
+enum State {
+    Triggered,
+    Release,
+    OutOfRange,
+    Unknown,
+}
+
 struct JoystickQueueItem {
-    pub joystick: Joystick,
-    /// Button index, initial/on press
-    pub buttons: Vec<(u32, bool, Waker)>,
-    /// Axis index, initial/on press, target
-    pub axis: Vec<(u32, bool, AxisTarget, Waker)>,
-    /// Pov index, direction, initial/on press
-    pub povs: Vec<(u32, i16, bool, Waker)>,
+    joystick: Joystick,
+    idx: u32,
+    target: Target,
+    waker: Option<Waker>,
+    state: State,
+    triggered: bool,
+    released: bool,
 }
 
-static QUEUE: Mutex<[Option<JoystickQueueItem>; 6]> =
-    Mutex::new([None, None, None, None, None, None]);
+static QUEUE: Mutex<Slab<JoystickQueueItem>> = Mutex::new(Slab::new());
 
-pub fn add_pov(joystick: &Joystick, index: u32, direction: i16, pressed: bool, waker: Waker) {
-    let mut queue = QUEUE.lock();
+pub fn add_trigger(joystick: &Joystick, index: u32, target: Target) -> usize {
+    QUEUE.lock().insert(JoystickQueueItem {
+        joystick: *joystick,
+        idx: index,
+        target,
+        waker: None,
+        state: State::Unknown,
+        triggered: false,
+        released: false,
+    })
+}
 
-    if let Some(item) = &mut queue[joystick.get_num() as usize] {
-        item.povs.push((index, direction, pressed, waker));
-    } else {
-        queue[joystick.get_num() as usize] = Some(JoystickQueueItem {
-            joystick: *joystick,
-            buttons: vec![],
-            axis: vec![],
-            povs: vec![(index, direction, pressed, waker)],
-        });
+pub fn remove_trigger(idx: usize) {
+    QUEUE.lock().remove(idx);
+}
+
+pub fn set_target(idx: usize, target: Target) {
+    let mut lock = QUEUE.lock();
+    let item = lock.get_mut(idx).unwrap();
+    item.target = target;
+    item.state = State::Unknown;
+}
+
+fn register_waker(idx: usize, waker: Waker) {
+    QUEUE.lock().get_mut(idx).unwrap().waker = Some(waker);
+}
+
+pub async fn wait_for_triggered(idx: usize) -> Result<(), ()> {
+    ReactorFuture {
+        idx,
+        first_run: true,
+        on_release: false,
+    }
+    .await
+}
+
+pub async fn wait_for_released(idx: usize) -> Result<(), ()> {
+    ReactorFuture {
+        idx,
+        first_run: true,
+        on_release: true,
+    }
+    .await
+}
+
+struct ReactorFuture {
+    idx: usize,
+    first_run: bool,
+    on_release: bool,
+}
+
+impl Future for ReactorFuture {
+    type Output = Result<(), ()>;
+
+    fn poll(
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Self::Output> {
+        let inner = Pin::into_inner(self);
+
+        let first_run = inner.first_run;
+        inner.first_run = false;
+
+        let mut lock = QUEUE.lock();
+        let item = lock.get_mut(inner.idx).unwrap();
+
+        if !item.triggered && item.state == State::Triggered && !inner.on_release {
+            item.triggered = true;
+            Poll::Ready(Ok(()))
+        } else if !item.released && item.state == State::Release && inner.on_release {
+            item.released = true;
+            Poll::Ready(Ok(()))
+        } else if item.state == State::OutOfRange && first_run {
+            crate::queue_waker(cx.waker().clone());
+            Poll::Pending
+        } else if item.state == State::OutOfRange {
+            Poll::Ready(Err(()))
+        } else {
+            register_waker(inner.idx, cx.waker().clone());
+            Poll::Pending
+        }
     }
 }
 
-pub fn add_button(joystick: &Joystick, index: u32, pressed: bool, waker: Waker) {
-    let mut queue = QUEUE.lock();
+fn get_all_joystick_data() -> (
+    [HAL_JoystickAxes; 6],
+    [HAL_JoystickPOVs; 6],
+    [HAL_JoystickButtons; 6],
+) {
+    let mut axis: MaybeUninit<[HAL_JoystickAxes; 6]> = MaybeUninit::uninit();
+    let mut povs: MaybeUninit<[HAL_JoystickPOVs; 6]> = MaybeUninit::uninit();
+    let mut buttons: MaybeUninit<[HAL_JoystickButtons; 6]> = MaybeUninit::uninit();
 
-    if let Some(item) = &mut queue[joystick.get_num() as usize] {
-        item.buttons.push((index, pressed, waker));
-    } else {
-        queue[joystick.get_num() as usize] = Some(JoystickQueueItem {
-            joystick: *joystick,
-            buttons: vec![(index, pressed, waker)],
-            axis: vec![],
-            povs: vec![],
-        });
+    unsafe {
+        HAL_GetAllJoystickData(
+            axis.as_mut_ptr() as *mut HAL_JoystickAxes,
+            povs.as_mut_ptr() as *mut HAL_JoystickPOVs,
+            buttons.as_mut_ptr() as *mut HAL_JoystickButtons,
+        )
     }
-}
 
-pub fn add_axis(joystick: &Joystick, index: u32, initial: bool, target: AxisTarget, waker: Waker) {
-    let mut queue = QUEUE.lock();
-
-    if let Some(item) = &mut queue[joystick.get_num() as usize] {
-        item.axis.push((index, initial, target, waker));
-    } else {
-        queue[joystick.get_num() as usize] = Some(JoystickQueueItem {
-            joystick: *joystick,
-            buttons: vec![],
-            axis: vec![(index, initial, target, waker)],
-            povs: vec![],
-        });
+    unsafe {
+        (
+            axis.assume_init(),
+            povs.assume_init(),
+            buttons.assume_init(),
+        )
     }
 }
 
@@ -74,64 +177,59 @@ pub fn add_axis(joystick: &Joystick, index: u32, initial: bool, target: AxisTarg
 fn poll() {
     let mut queue = QUEUE.lock();
 
-    for item in queue.deref_mut().iter_mut().filter_map(|val| val.as_mut()) {
-        if let Ok(data) = item.joystick.get_button_data() {
-            item.buttons.retain(|(index, pressed, waker)| {
-                let Ok(button_val) = get_button(&data, *index) else {
-                    waker.wake_by_ref();
-                    return false;
-                };
+    let data = get_all_joystick_data();
 
-                if (button_val && *pressed) || (!button_val && !*pressed) {
-                    waker.wake_by_ref();
-                    false
+    for (_, item) in queue.deref_mut() {
+        let new_state = match item.target {
+            Target::Button(target) => {
+                let buttons = &data.2[item.joystick.get_num() as usize];
+                if let Some(value) = get_button(buttons, item.idx) {
+                    if target.is_active(value) {
+                        State::Triggered
+                    } else {
+                        State::Release
+                    }
                 } else {
-                    true
+                    State::OutOfRange
                 }
-            });
-        } else {
-            let wakers = std::mem::take(&mut item.buttons);
-            wakers.into_iter().for_each(|(_, _, waker)| waker.wake());
-        }
-
-        if let Ok(data) = item.joystick.get_axes_data() {
-            item.axis.retain(|(index, initial, target, waker)| {
-                let Ok(value) = get_axis(&data, *index) else {
-                    waker.wake_by_ref();
-                    return false;
-                };
-
-                let active = target.is_active(value);
-
-                if (active && *initial) || (!active && !*initial) {
-                    waker.wake_by_ref();
-                    false
+            }
+            Target::Axis(target) => {
+                let axis = &data.0[item.joystick.get_num() as usize];
+                if let Some(value) = get_axis(axis, item.idx) {
+                    if target.is_active(value) {
+                        State::Triggered
+                    } else {
+                        State::Release
+                    }
                 } else {
-                    true
+                    State::OutOfRange
                 }
-            });
-        } else {
-            let wakers = std::mem::take(&mut item.axis);
-            wakers.into_iter().for_each(|(_, _, _, waker)| waker.wake());
-        }
-
-        if let Ok(data) = item.joystick.get_pov_data() {
-            item.povs.retain(|(index, direction, pressed, waker)| {
-                let Ok(value) = get_pov(&data, *index) else {
-                    waker.wake_by_ref();
-                    return false;
-                };
-
-                if (value == *direction && *pressed) || (value != *direction && !*pressed) {
-                    waker.wake_by_ref();
-                    false
+            }
+            Target::Pov(target) => {
+                let povs = &data.1[item.joystick.get_num() as usize];
+                if let Some(value) = get_pov(povs, item.idx) {
+                    if target.is_active(value) {
+                        State::Triggered
+                    } else {
+                        State::Release
+                    }
                 } else {
-                    true
+                    State::OutOfRange
                 }
-            });
-        } else {
-            let wakers = std::mem::take(&mut item.povs);
-            wakers.into_iter().for_each(|(_, _, _, waker)| waker.wake());
+            }
+        };
+
+        if new_state != item.state {
+            item.state = new_state;
+            if let Some(waker) = item.waker.take() {
+                waker.wake();
+            }
+            if item.state != State::Triggered {
+                item.triggered = false;
+            }
+            if item.state != State::Release {
+                item.released = false;
+            }
         }
     }
 }

@@ -3,7 +3,6 @@
 pub mod error;
 pub mod mechanism;
 pub mod subsystem;
-pub mod trigger;
 
 pub use tracing;
 pub mod control;

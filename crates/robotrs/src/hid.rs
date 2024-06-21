@@ -1,48 +1,26 @@
-use std::time::Duration;
+use std::future::Future;
 
-use crate::time::delay;
-use futures::{select, Future, FutureExt};
-
+// FIXME: Doesn't work if a trigger is released while held
+// pub mod all;
+pub mod any;
 pub mod axis;
 pub mod button;
 pub mod controller;
+pub mod ext;
 pub mod joystick;
 pub mod pov;
 mod reactor;
 
-pub trait PressTrigger: Future<Output = Result<Self::Release, crate::error::Error>> {
-    type Release: ReleaseTrigger;
-}
-pub trait ReleaseTrigger: Future<Output = Result<(), crate::error::Error>> {}
+/// A generic async trigger
+pub trait Trigger {
+    type Error;
+    type Output;
 
-pub trait DoubleClick<T>: Sized {
-    async fn double_click_with_duration(self, duration: Duration) -> T;
-
-    async fn double_click(self) -> T {
-        self.double_click_with_duration(Duration::from_millis(500))
-            .await
-    }
+    /// Wait for the rising edge of the trigger. This returns early if an error occurs
+    fn wait_for_trigger(&mut self) -> impl Future<Output = Result<Self::Output, Self::Error>>;
 }
 
-impl<Rt, T> DoubleClick<Result<Rt, crate::error::Error>> for T
-where
-    Rt: ReleaseTrigger,
-    T: PressTrigger<Release = Rt> + Clone,
-{
-    async fn double_click_with_duration(
-        self,
-        duration: Duration,
-    ) -> Result<Rt, crate::error::Error> {
-        loop {
-            let release = self.clone().await?;
-            release.await?;
-
-            select! {
-                button = self.clone().fuse() => {
-                    return button;
-                }
-                _ = delay(duration).fuse() => {}
-            }
-        }
-    }
+pub trait ReleaseTrigger: Trigger {
+    /// Wait for the falling edge of the trigger. This returns early if an error occurs
+    fn wait_for_release(&mut self) -> impl Future<Output = Result<Self::Output, Self::Error>>;
 }

@@ -1,27 +1,29 @@
-use std::{marker::PhantomData, pin::Pin, task::Poll};
-
-use futures::Future;
 use hal_sys::HAL_JoystickAxes;
 
-use crate::{
-    error::{Error, Result},
-    queue_waker,
+use super::{
+    joystick::Joystick,
+    reactor::{add_trigger, remove_trigger, set_target, wait_for_released, wait_for_triggered},
+    ReleaseTrigger, Trigger,
 };
 
-use super::{joystick::Joystick, reactor::add_axis};
-
-pub(super) fn get_axis(data: &HAL_JoystickAxes, index: u32) -> Result<f32> {
+pub(super) fn get_axis(data: &HAL_JoystickAxes, index: u32) -> Option<f32> {
     if index >= data.count as u32 {
-        return Err(Error::AxisIndexOutOfRange(index));
+        None
+    } else {
+        Some(data.axes[index as usize])
     }
-
-    Ok(data.axes[index as usize])
 }
 
+/// A target that defines when an [Axis] should trigger
 #[derive(Copy, Clone, Debug)]
 pub enum AxisTarget {
+    /// Activates when the axis moves farther than the given value. Direction doesn't matter
     Away(f32),
+    /// Activates when the axis moves closer than the given value. Direction doesn't matter
+    Within(f32),
+    /// Activates when the axis moves higher than the given value
     Up(f32),
+    /// Activates when the axis moves lower than the given value
     Down(f32),
 }
 
@@ -29,149 +31,71 @@ impl AxisTarget {
     pub(super) fn is_active(&self, value: f32) -> bool {
         match self {
             AxisTarget::Away(dist) => value.abs() > *dist,
+            AxisTarget::Within(dist) => value.abs() < *dist,
             AxisTarget::Down(target) => value < *target,
             AxisTarget::Up(target) => value > *target,
         }
     }
 }
 
-#[derive(Clone)]
-pub struct Initial;
-#[derive(Clone)]
-pub struct Release;
-
-#[derive(Clone)]
-pub struct AxisFuture<T> {
-    joystick_index: u32,
+/// A trigger a given axis
+pub struct Axis {
+    joystick: Joystick,
     axis_index: u32,
     target: AxisTarget,
-    phantom: PhantomData<T>,
-    run: bool,
+    reactor_idx: usize,
 }
 
-impl AxisFuture<Initial> {
-    pub fn release(&self) -> AxisFuture<Release> {
-        AxisFuture {
-            joystick_index: self.joystick_index,
-            axis_index: self.axis_index,
-            target: self.target,
-            phantom: PhantomData,
-            run: false,
-        }
-    }
-}
-
-impl AxisFuture<Release> {
-    pub fn initial(&self) -> AxisFuture<Initial> {
-        AxisFuture {
-            joystick_index: self.joystick_index,
-            axis_index: self.axis_index,
-            target: self.target,
-            phantom: PhantomData,
-            run: false,
-        }
-    }
-}
-
-impl<T> AxisFuture<T> {
-    pub fn new(joystick_index: u32, axis_index: u32, target: AxisTarget) -> Self {
+impl Clone for Axis {
+    fn clone(&self) -> Self {
         Self {
-            joystick_index,
+            joystick: self.joystick,
+            axis_index: self.axis_index,
+            target: self.target,
+            reactor_idx: add_trigger(&self.joystick, self.axis_index, self.target.into()),
+        }
+    }
+}
+
+impl Drop for Axis {
+    fn drop(&mut self) {
+        remove_trigger(self.reactor_idx);
+    }
+}
+
+impl Axis {
+    pub(super) fn new(joystick: Joystick, axis_index: u32, target: AxisTarget) -> Self {
+        Self {
+            reactor_idx: add_trigger(&joystick, axis_index, target.into()),
+            joystick,
             axis_index,
             target,
-            phantom: PhantomData,
-            run: false,
         }
     }
 
-    fn poll(&mut self) -> Result<(Joystick, bool)> {
-        let joystick = Joystick::new(self.joystick_index)?;
+    /// Get the value of the axis. Returns [None] if the axis does not exist
+    pub fn value(&self) -> Option<f32> {
+        get_axis(&self.joystick.get_axes_data(), self.axis_index)
+    }
 
-        let value = self
-            .target
-            .is_active(get_axis(&joystick.get_axes_data()?, self.axis_index)?);
-
-        Ok((joystick, value))
+    /// Change the target of the trigger
+    pub fn set_target(&mut self, target: AxisTarget) {
+        set_target(self.reactor_idx, target.into());
+        self.target = target;
     }
 }
 
-impl super::PressTrigger for AxisFuture<Initial> {
-    type Release = AxisFuture<Release>;
-}
-impl super::ReleaseTrigger for AxisFuture<Release> {}
+impl Trigger for Axis {
+    type Error = ();
+    type Output = ();
 
-impl Future for AxisFuture<Initial> {
-    type Output = Result<AxisFuture<Release>>;
-
-    fn poll(
-        self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Self::Output> {
-        let data = Pin::into_inner(self);
-
-        let (joystick, val) = match data.poll() {
-            Ok(val) => val,
-            Err(err) => {
-                return if data.run {
-                    Poll::Ready(Err(err))
-                } else {
-                    queue_waker(cx.waker().clone());
-                    Poll::Pending
-                };
-            }
-        };
-
-        data.run = true;
-
-        if val {
-            Poll::Ready(Ok(data.release()))
-        } else {
-            add_axis(
-                &joystick,
-                data.axis_index,
-                true,
-                data.target,
-                cx.waker().clone(),
-            );
-            Poll::Pending
-        }
+    async fn wait_for_trigger(&mut self) -> Result<(), ()> {
+        wait_for_triggered(self.reactor_idx).await
     }
 }
 
-impl Future for AxisFuture<Release> {
-    type Output = Result<()>;
-
-    fn poll(
-        self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Self::Output> {
-        let data = Pin::into_inner(self);
-
-        let (joystick, val) = match data.poll() {
-            Ok(val) => val,
-            Err(err) => {
-                return if data.run {
-                    Poll::Ready(Err(err))
-                } else {
-                    queue_waker(cx.waker().clone());
-                    Poll::Pending
-                };
-            }
-        };
-
-        data.run = true;
-
-        if !val {
-            Poll::Ready(Ok(()))
-        } else {
-            add_axis(
-                &joystick,
-                data.axis_index,
-                false,
-                data.target,
-                cx.waker().clone(),
-            );
-            Poll::Pending
-        }
+impl ReleaseTrigger for Axis {
+    async fn wait_for_release(&mut self) -> Result<(), ()> {
+        wait_for_released(self.reactor_idx).await
     }
 }
