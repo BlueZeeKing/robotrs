@@ -5,7 +5,7 @@ use quote::quote;
 use syn::{
     parse_macro_input, parse_quote,
     visit_mut::{visit_item_fn_mut, VisitMut},
-    Attribute, FnArg, Ident, ItemFn, LitInt, Meta, Token, Type,
+    Attribute, FnArg, Ident, ItemFn, Meta, Token, Type,
 };
 
 #[derive(FromMeta)]
@@ -60,7 +60,7 @@ pub fn subsystem_task(args: TokenStream, input: TokenStream) -> TokenStream {
 
     new_fn.sig.inputs.iter_mut().for_each(|arg| {
         if let FnArg::Typed(arg) = arg {
-            if !arg.attrs.iter().any(|attr| attr_matches(attr)) {
+            if !arg.attrs.iter().any(attr_matches) {
                 return;
             }
 
@@ -88,7 +88,7 @@ pub fn subsystem_task(args: TokenStream, input: TokenStream) -> TokenStream {
         }
 
         if let FnArg::Receiver(arg) = arg {
-            if !arg.attrs.iter().any(|attr| attr_matches(attr)) {
+            if !arg.attrs.iter().any(attr_matches) {
                 return;
             }
         }
