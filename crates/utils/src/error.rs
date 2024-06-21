@@ -1,4 +1,4 @@
-use std::{error::Error, fmt::Debug, time::Duration};
+use std::{fmt::Debug, time::Duration};
 
 use futures::Future;
 use robotrs::time::delay;

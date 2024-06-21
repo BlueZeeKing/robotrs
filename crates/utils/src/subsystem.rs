@@ -83,7 +83,7 @@ impl<T: ControlSafe> Subsystem<T> {
     pub fn lock<P: AsPriority>(&self, priority: P) -> LockFuture<'_, T> {
         let waker = Rc::new(Cell::new(None));
 
-        let priority = priority.as_priority();
+        let priority = priority.to_priority();
 
         self.tasks.borrow_mut().push(LockRequest {
             priority,
@@ -105,7 +105,7 @@ pub struct LockFuture<'a, T: ControlSafe> {
     priority: Priority,
 }
 
-fn peek<'a>(val: &mut RefMut<'a, BinaryHeap<LockRequest>>) -> Option<Rc<Cell<Option<Waker>>>> {
+fn peek(val: &mut RefMut<BinaryHeap<LockRequest>>) -> Option<Rc<Cell<Option<Waker>>>> {
     while let Some(next) = val.peek() {
         if let Some(waker) = next.waker.upgrade() {
             return Some(waker);
@@ -211,17 +211,17 @@ impl Priority {
 }
 
 pub trait AsPriority {
-    fn as_priority(self) -> Priority;
+    fn to_priority(self) -> Priority;
 }
 
 impl AsPriority for Priority {
-    fn as_priority(self) -> Priority {
+    fn to_priority(self) -> Priority {
         self
     }
 }
 
 impl AsPriority for u32 {
-    fn as_priority(self) -> Priority {
+    fn to_priority(self) -> Priority {
         Priority {
             value: self,
             should_cancel: false,

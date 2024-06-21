@@ -122,11 +122,11 @@ impl<I: 'static, E: Debug + 'static> Mechanism<I, E> {
                 state,
                 response: response_sender,
             })
-            .expect(&format!("Could not send request in {}", self.name));
+            .unwrap_or_else(|_| panic!("Could not send request in {}", self.name));
 
         response_receiver
             .await
-            .expect(&format!("Failed waiting to hit setpoint in {}", self.name));
+            .unwrap_or_else(|_| panic!("Failed waiting to hit setpoint in {}", self.name));
     }
 
     pub async fn errors(&self) -> &Receiver<E> {
@@ -138,7 +138,7 @@ impl<I: 'static, E: Debug + 'static> ControlSafe for Mechanism<I, E> {
     fn stop(&mut self) {
         self.stop
             .try_send(())
-            .expect(&format!("Failed stopping {}", self.name));
+            .unwrap_or_else(|_| panic!("Failed stopping {}", self.name));
     }
 }
 
