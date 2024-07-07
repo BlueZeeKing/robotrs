@@ -2,8 +2,10 @@ use std::mem::MaybeUninit;
 
 use hal_sys::{
     HAL_GetJoystickAxes, HAL_GetJoystickButtons, HAL_GetJoystickPOVs, HAL_JoystickAxes,
-    HAL_JoystickButtons, HAL_JoystickPOVs,
+    HAL_JoystickButtons, HAL_JoystickPOVs, HAL_SetJoystickOutputs,
 };
+
+use crate::error::HalError;
 
 use super::{
     axis::{get_axis, Axis, AxisTarget},
@@ -89,5 +91,27 @@ impl Joystick {
     /// Get a trigger for the pov at the given index (zero indexed).
     pub fn get_pov(&self, idx: u32, target: PovTarget) -> Pov {
         Pov::new(*self, idx, target)
+    }
+
+    pub fn rumble(
+        &self,
+        outputs: i64,
+        left: f32,
+        right: f32,
+    ) -> Result<(), crate::error::HalError> {
+        let status = unsafe {
+            HAL_SetJoystickOutputs(
+                self.num as i32,
+                outputs,
+                (left.clamp(0.0, 1.0) * 65535.0) as i32,
+                (right.clamp(0.0, 1.0) * 65535.0) as i32,
+            )
+        };
+
+        if status == 0 {
+            Ok(())
+        } else {
+            Err(HalError::from_raw(status))
+        }
     }
 }

@@ -81,6 +81,12 @@ impl XboxController {
             joystick: Joystick::new(num),
         }
     }
+
+    /// You can likely ignore this error. It won't actually cause a problem and there isn't much
+    /// you can do
+    pub fn rumble(&self, left: f32, right: f32) -> Result<(), crate::error::HalError> {
+        self.joystick.rumble(1, left, right)
+    }
 }
 
 define_buttons!(
@@ -133,6 +139,12 @@ impl PS4Controller {
         Self {
             joystick: Joystick::new(num),
         }
+    }
+
+    /// You can likely ignore this error. It won't actually cause a problem and there isn't much
+    /// you can do
+    pub fn rumble(&self, left: f32, right: f32) -> Result<(), crate::error::HalError> {
+        self.joystick.rumble(1, left, right)
     }
 }
 
