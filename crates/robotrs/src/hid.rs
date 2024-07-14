@@ -1,7 +1,6 @@
 use std::future::Future;
 
-// FIXME: Doesn't work if a trigger is released while held
-// pub mod all;
+pub mod all;
 pub mod any;
 pub mod axis;
 pub mod button;

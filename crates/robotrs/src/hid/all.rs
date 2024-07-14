@@ -17,7 +17,7 @@ impl<T: AllTriggerTarget> Trigger for AllTrigger<T> {
     }
 }
 
-impl<T: AllReleaseTriggerTarget> ReleaseTrigger for AllTrigger<T> {
+impl<T: AllTriggerTarget> ReleaseTrigger for AllTrigger<T> {
     async fn wait_for_release(&mut self) -> Result<Self::Output, Self::Error> {
         self.inner.wait_for_release().await
     }
@@ -32,49 +32,64 @@ pub trait AllTriggerTarget: Sized {
     #[doc(hidden)]
     fn wait_for_trigger(&mut self) -> impl Future<Output = Result<Self::Output, Self::Error>>;
 
+    #[doc(hidden)]
+    fn wait_for_release(&mut self) -> impl Future<Output = Result<Self::Output, Self::Error>>;
+
     /// Create a trigger that activates when all triggers are active
     fn all(self) -> AllTrigger<Self> {
         AllTrigger { inner: self }
     }
 }
 
-/// An extension trait that is implemented on tuples of release triggers that have between 2 and 8 items.
-/// All output and error types must be the same for all triggers.
-pub trait AllReleaseTriggerTarget: AllTriggerTarget {
-    #[doc(hidden)]
-    fn wait_for_release(&mut self) -> impl Future<Output = Result<Self::Output, Self::Error>>;
-}
-
 macro_rules! impl_all {
     ($($idx:tt, $name:ident),+) => {
         impl<E, $($name),+> AllTriggerTarget for ($($name),+)
         where
-            $($name: Trigger<Error = E>,)+
+            $($name: ReleaseTrigger<Error = E>,)+
         {
             type Error = E;
-            type Output = ($($name::Output),+);
+            type Output = ();
 
             async fn wait_for_trigger(
                 &mut self,
             ) -> Result<Self::Output, Self::Error> {
-                let res = (
-                    $(self.$idx.wait_for_trigger()),+
-                ).join().await;
+                let mut held = ($({
+                    $idx;
+                    false
+                }),+);
 
-                Ok(($(res.$idx?),+))
+                loop {
+                    (
+                        $(async {
+                            if !held.$idx {
+                                self.$idx.wait_for_trigger().await?;
+
+                                held.$idx = true;
+                            } else {
+                                self.$idx.wait_for_release().await?;
+
+                                held.$idx = false;
+                            }
+
+                            Ok(())
+                        }),+
+                    ).race().await?;
+
+                    if $(held.$idx)&&+ {
+                        return Ok(());
+                    }
+                }
             }
-        }
 
-        impl<O, E, $($name),+> AllReleaseTriggerTarget for ($($name),+)
-        where
-            $($name: ReleaseTrigger<Output = O, Error = E>,)+
-        {
             async fn wait_for_release(&mut self) -> Result<Self::Output, Self::Error> {
-                let res = (
-                    $(self.$idx.wait_for_trigger()),+
-                ).join().await;
-
-                Ok(($(res.$idx?),+))
+                (
+                    $(async {
+                        self.$idx.wait_for_release().await?;
+                        Ok(())
+                    }),+
+                )
+                    .race()
+                    .await
             }
         }
     };
@@ -83,8 +98,8 @@ macro_rules! impl_all {
 #[allow(non_snake_case, non_camel_case_types)]
 #[rustfmt::skip]
 mod all_impls {
-    use super::{Trigger, ReleaseTrigger, AllReleaseTriggerTarget, AllTriggerTarget};
-    use futures_concurrency::future::Join;
+    use super::{ReleaseTrigger, AllTriggerTarget};
+    use futures_concurrency::future::Race;
 
     impl_all!(0, T0, 1, T1);
     impl_all!(0, T0, 1, T1, 2, T2);
