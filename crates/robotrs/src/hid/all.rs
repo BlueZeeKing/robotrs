@@ -2,8 +2,16 @@ use futures::Future;
 
 use super::{ReleaseTrigger, Trigger};
 
-/// A trigger that activates if all the inner triggers are activated. Releases when all the inner
+/// A trigger that activates if all the inner triggers are activated. Releases when any the inner
 /// triggers are released
+///
+/// # Example
+///
+/// ```rust
+/// (xbox_controller.left_bumper(), xbox_controller.right_bumper()).all().on_pressed(|| async {
+///     println!("hello, world!");
+/// });
+/// ```
 pub struct AllTrigger<T> {
     inner: T,
 }
@@ -24,7 +32,7 @@ impl<T: AllTriggerTarget> ReleaseTrigger for AllTrigger<T> {
 }
 
 /// An extension trait that is implemented on tuples of triggers that have between 2 and 8 items.
-/// All output and error types must be the same for all triggers.
+/// All error types must be the same for all triggers.
 pub trait AllTriggerTarget: Sized {
     type Error;
     type Output;
