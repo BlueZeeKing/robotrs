@@ -23,7 +23,7 @@ impl Eq for TimeItem {}
 
 impl PartialOrd for TimeItem {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        other.time.partial_cmp(&self.time)
+        Some(self.cmp(other))
     }
 }
 
