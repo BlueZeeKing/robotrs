@@ -13,6 +13,14 @@ struct TimeItem {
     waker: Waker,
 }
 
+impl PartialEq for TimeItem {
+    fn eq(&self, other: &Self) -> bool {
+        other.time.eq(&self.time)
+    }
+}
+
+impl Eq for TimeItem {}
+
 impl PartialOrd for TimeItem {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         other.time.partial_cmp(&self.time)
