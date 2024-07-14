@@ -26,7 +26,7 @@ thread_local! {
 }
 
 /// Panics if not called after the robot is scheduled or during the robot create closure
-pub fn spawn<O, F: Future<Output = O> + 'static>(fut: F) -> Task<Result<O, ()>> {
+pub fn spawn<O, F: Future<Output = O> + 'static>(fut: F) -> Task<Option<O>> {
     spawn_inner(guard(fut))
 }
 
@@ -88,10 +88,10 @@ impl<R: AsyncRobot> RobotScheduler<R> {
         spawn(async move {
             loop {
                 match guard(func()).await {
-                    Ok(Err(err)) => {
+                    Some(Err(err)) => {
                         error!("An error occurred in a binding: {}", err);
                     }
-                    Err(_) => {
+                    None => {
                         warn!("Binding was canceled");
                     }
                     _ => {}
@@ -125,8 +125,8 @@ impl<R: AsyncRobot> RobotScheduler<R> {
                     self.auto_task = Some(spawn_inner(
                         guard(self.robot.get_auto_future())
                             .map(|val| match val {
-                                Ok(val) => val,
-                                Err(_) => Err(anyhow!("Task cancelled")),
+                                Some(val) => val,
+                                None => Err(anyhow!("Task cancelled")),
                             })
                             .inspect_err(|err| {
                                 error!("An error occurred in the autonomous task: {}", err)
@@ -141,8 +141,8 @@ impl<R: AsyncRobot> RobotScheduler<R> {
                     self.teleop_task = Some(spawn_inner(
                         guard(self.robot.get_teleop_future())
                             .map(|val| match val {
-                                Ok(val) => val,
-                                Err(_) => Err(anyhow!("Task cancelled")),
+                                Some(val) => val,
+                                None => Err(anyhow!("Task cancelled")),
                             })
                             .inspect_err(|err| {
                                 error!("An error occurred in the teleop task: {}", err)
@@ -168,8 +168,8 @@ impl<R: AsyncRobot> RobotScheduler<R> {
                 self.enabled_task = Some(spawn_inner(
                     guard(self.robot.get_enabled_future())
                         .map(|val| match val {
-                            Ok(val) => val,
-                            Err(_) => Err(anyhow!("Task cancelled")),
+                            Some(val) => val,
+                            None => Err(anyhow!("Task cancelled")),
                         })
                         .inspect_err(|err| {
                             error!("An error occurred in the enabled task: {}", err)

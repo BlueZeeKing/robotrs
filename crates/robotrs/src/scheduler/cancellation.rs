@@ -105,7 +105,7 @@ pub struct CancellationFuture<F: Future> {
 }
 
 impl<F: Future> Future for CancellationFuture<F> {
-    type Output = Result<F::Output, ()>;
+    type Output = Option<F::Output>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let inner = self.project();
@@ -113,9 +113,9 @@ impl<F: Future> Future for CancellationFuture<F> {
         let task = set_task(inner.handle.clone());
 
         let res = if let Poll::Ready(val) = inner.future.poll(cx) {
-            Poll::Ready(Ok(val))
+            Poll::Ready(Some(val))
         } else if inner.handle.is_canceled() {
-            Poll::Ready(Err(()))
+            Poll::Ready(None)
         } else {
             inner.handle.register_waker(cx.waker());
             Poll::Pending
