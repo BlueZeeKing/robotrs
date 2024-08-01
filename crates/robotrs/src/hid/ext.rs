@@ -6,7 +6,7 @@ use futures_concurrency::future::Race;
 
 use crate::{
     ds::{wait_for_disabled, wait_for_enabled},
-    scheduler::{guard, spawn, spawn_inner},
+    scheduler::{guard, spawn},
     time::delay,
 };
 
@@ -103,7 +103,7 @@ where
         Func: FnMut() -> Fut + 'static,
         Fut: Future + 'static,
     {
-        spawn_inner(
+        spawn(
             async move {
                 loop {
                     wait_for_enabled().await;
