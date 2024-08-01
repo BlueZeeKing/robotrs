@@ -130,7 +130,6 @@ pub type std__If = u8;
 pub type std_conditional_type<_If> = _If;
 pub type std_conditional_t = u8;
 pub type std_iter_difference_t = std_conditional_t;
-pub type std_iter_value_t = std_conditional_t;
 pub type std_iter_reference_t = u8;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -233,6 +232,10 @@ pub struct std_iterator_traits {
     pub _address: u8,
 }
 pub type std_iterator_traits___primary_template = std_iterator_traits;
+pub type std_iter_value_t = std_conditional_t;
+pub type std_string = std_basic_string;
+pub type std_streamoff = ::std::os::raw::c_longlong;
+pub type std_streampos = std_fpos<__mbstate_t>;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct std_iterator {
@@ -257,70 +260,6 @@ pub type std_reverse_iterator_iterator_concept = std__If;
 pub type std_reverse_iterator_value_type = std_iter_value_t;
 pub type std_reverse_iterator_difference_type = std_iter_difference_t;
 pub type std_reverse_iterator_reference = std_iter_reference_t;
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct std___wrap_iter<_Iter> {
-    pub __i_: std___wrap_iter_iterator_type<_Iter>,
-    pub _phantom_0: ::std::marker::PhantomData<::std::cell::UnsafeCell<_Iter>>,
-}
-pub type std___wrap_iter_iterator_type<_Iter> = _Iter;
-pub type std___wrap_iter_value_type = std_iterator_traits;
-pub type std___wrap_iter_difference_type = std_iterator_traits;
-pub type std___wrap_iter_pointer = std_iterator_traits;
-pub type std___wrap_iter_reference = std_iterator_traits;
-pub type std___wrap_iter_iterator_category = std_iterator_traits;
-pub type std___wrap_iter_iterator_concept = std_contiguous_iterator_tag;
-pub type std___allocator_traits_rebind_type = [u8; 0usize];
-pub type std___allocator_traits_rebind_t = u8;
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct std_allocator_traits {
-    pub _address: u8,
-}
-pub type std_allocator_traits_allocator_type<_Alloc> = _Alloc;
-pub type std_allocator_traits_value_type = [u8; 0usize];
-pub type std_allocator_traits_pointer = [u8; 0usize];
-pub type std_allocator_traits_const_pointer = [u8; 0usize];
-pub type std_allocator_traits_void_pointer = [u8; 0usize];
-pub type std_allocator_traits_const_void_pointer = [u8; 0usize];
-pub type std_allocator_traits_difference_type = [u8; 0usize];
-pub type std_allocator_traits_size_type = [u8; 0usize];
-pub type std_allocator_traits_propagate_on_container_copy_assignment = u8;
-pub type std_allocator_traits_propagate_on_container_move_assignment = u8;
-pub type std_allocator_traits_propagate_on_container_swap = u8;
-pub type std_allocator_traits_is_always_equal = u8;
-pub type std_allocator_traits_rebind_alloc = std___allocator_traits_rebind_t;
-pub type std_allocator_traits_rebind_traits = std_allocator_traits;
-pub type std_string = std_basic_string;
-pub type std_streampos = std_fpos<__mbstate_t>;
-pub type std_streamoff = ::std::os::raw::c_longlong;
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct std_allocator {
-    pub _address: u8,
-}
-pub type std_allocator_size_type = ::std::os::raw::c_ulong;
-pub type std_allocator_difference_type = ::std::os::raw::c_long;
-pub type std_allocator_value_type<_Tp> = _Tp;
-pub type std_allocator_propagate_on_container_move_assignment = std_true_type;
-pub type std_allocator_is_always_equal = std_true_type;
-pub type std___compressed_pair_elem__ParamT<_Tp> = _Tp;
-pub type std___compressed_pair_elem_reference<_Tp> = *mut _Tp;
-pub type std___compressed_pair_elem_const_reference<_Tp> = *const _Tp;
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct std___compressed_pair {
-    pub _address: u8,
-}
-pub type std___compressed_pair__Base1 = u8;
-pub type std___compressed_pair__Base2 = u8;
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct std_fpos<_StateT> {
-    pub __st_: _StateT,
-    pub __off_: std_streamoff,
-    pub _phantom_0: ::std::marker::PhantomData<::std::cell::UnsafeCell<_StateT>>,
-}
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct std_char_traits {
@@ -352,6 +291,67 @@ pub type std_basic_string_view_reverse_iterator<_CharT> =
     std_basic_string_view_const_reverse_iterator<_CharT>;
 pub type std_basic_string_view_size_type = ::std::os::raw::c_ulong;
 pub type std_basic_string_view_difference_type = ::std::os::raw::c_long;
+pub type std___allocator_traits_rebind_type = [u8; 0usize];
+pub type std___allocator_traits_rebind_t = u8;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct std_allocator_traits {
+    pub _address: u8,
+}
+pub type std_allocator_traits_allocator_type<_Alloc> = _Alloc;
+pub type std_allocator_traits_value_type = [u8; 0usize];
+pub type std_allocator_traits_pointer = [u8; 0usize];
+pub type std_allocator_traits_const_pointer = [u8; 0usize];
+pub type std_allocator_traits_void_pointer = [u8; 0usize];
+pub type std_allocator_traits_const_void_pointer = [u8; 0usize];
+pub type std_allocator_traits_difference_type = [u8; 0usize];
+pub type std_allocator_traits_size_type = [u8; 0usize];
+pub type std_allocator_traits_propagate_on_container_copy_assignment = u8;
+pub type std_allocator_traits_propagate_on_container_move_assignment = u8;
+pub type std_allocator_traits_propagate_on_container_swap = u8;
+pub type std_allocator_traits_is_always_equal = u8;
+pub type std_allocator_traits_rebind_alloc = std___allocator_traits_rebind_t;
+pub type std_allocator_traits_rebind_traits = std_allocator_traits;
+pub type std___compressed_pair_elem__ParamT<_Tp> = _Tp;
+pub type std___compressed_pair_elem_reference<_Tp> = *mut _Tp;
+pub type std___compressed_pair_elem_const_reference<_Tp> = *const _Tp;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct std___compressed_pair {
+    pub _address: u8,
+}
+pub type std___compressed_pair__Base1 = u8;
+pub type std___compressed_pair__Base2 = u8;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct std_allocator {
+    pub _address: u8,
+}
+pub type std_allocator_size_type = ::std::os::raw::c_ulong;
+pub type std_allocator_difference_type = ::std::os::raw::c_long;
+pub type std_allocator_value_type<_Tp> = _Tp;
+pub type std_allocator_propagate_on_container_move_assignment = std_true_type;
+pub type std_allocator_is_always_equal = std_true_type;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct std___wrap_iter<_Iter> {
+    pub __i_: std___wrap_iter_iterator_type<_Iter>,
+    pub _phantom_0: ::std::marker::PhantomData<::std::cell::UnsafeCell<_Iter>>,
+}
+pub type std___wrap_iter_iterator_type<_Iter> = _Iter;
+pub type std___wrap_iter_value_type = std_iterator_traits;
+pub type std___wrap_iter_difference_type = std_iterator_traits;
+pub type std___wrap_iter_pointer = std_iterator_traits;
+pub type std___wrap_iter_reference = std_iterator_traits;
+pub type std___wrap_iter_iterator_category = std_iterator_traits;
+pub type std___wrap_iter_iterator_concept = std_contiguous_iterator_tag;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct std_fpos<_StateT> {
+    pub __st_: _StateT,
+    pub __off_: std_streamoff,
+    pub _phantom_0: ::std::marker::PhantomData<::std::cell::UnsafeCell<_StateT>>,
+}
 #[repr(C)]
 pub struct std_basic_string {
     pub __r_: std___compressed_pair,
