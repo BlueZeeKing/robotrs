@@ -5,6 +5,24 @@ use super::{
     pov::{Pov, PovTarget},
 };
 
+impl Joystick {
+    pub fn button(&self, idx: u32, target: ButtonTarget) -> Button {
+        Button::new(*self, idx, target)
+    }
+
+    pub fn wait_for_axis(&self, idx: u32, target: AxisTarget) -> Axis {
+        Axis::new(*self, idx, target)
+    }
+
+    pub fn axis_value(&self, idx: u32) -> Option<f32> {
+        get_axis(&self.get_axes_data(), idx)
+    }
+
+    pub fn pov(&self, idx: u32, target: PovTarget) -> Pov {
+        Pov::new(*self, idx, target)
+    }
+}
+
 #[macro_export]
 macro_rules! define_buttons {
     ($class:ident, $($name:ident = $index:expr),+) => {
@@ -13,11 +31,7 @@ macro_rules! define_buttons {
                 /// Get a trigger for the button. This trigger activates when the button is prssed,
                 /// but this can be changed through [Button::set_target]
                 pub fn $name (&self) -> Button {
-                    Button::new(
-                        self.joystick.clone(),
-                        $index,
-                        ButtonTarget::Pressed,
-                    )
+                    self.joystick.button($index, ButtonTarget::Pressed)
                 }
             )+
         }
@@ -31,8 +45,7 @@ macro_rules! define_povs {
             $(
                 /// Get a trigger for the pov.
                 pub fn $name (&self) -> Pov {
-                    Pov::new(
-                        self.joystick.clone(),
+                    self.joystick.pov(
                         $index,
                         PovTarget::Raw($dir)
                     )
@@ -50,8 +63,7 @@ macro_rules! define_axes {
                 /// Get a trigger for the axis. See [AxisTarget] for possible ways this trigger
                 /// will activate
                 pub fn $future_name (&self, target: AxisTarget) -> Axis {
-                    Axis::new(
-                        self.joystick.clone(),
+                    self.joystick.wait_for_axis(
                         $index,
                         target
                     )
@@ -59,7 +71,7 @@ macro_rules! define_axes {
 
                 /// Get the raw value of the joystick, returning [None] if the axis does not exist
                 pub fn $name (&self) -> Option<f32> {
-                    get_axis(&self.joystick.get_axes_data(), $index)
+                    self.joystick.axis_value($index)
                 }
             )+
         }
