@@ -1,4 +1,5 @@
 use futures::Future;
+use tracing::instrument;
 
 use super::{ReleaseTrigger, Trigger};
 
@@ -20,12 +21,14 @@ impl<T: AllTriggerTarget> Trigger for AllTrigger<T> {
     type Output = T::Output;
     type Error = T::Error;
 
+    #[instrument(skip_all, name = "all trigger wait for trigger")]
     async fn wait_for_trigger(&mut self) -> Result<Self::Output, Self::Error> {
         self.inner.wait_for_trigger().await
     }
 }
 
 impl<T: AllTriggerTarget> ReleaseTrigger for AllTrigger<T> {
+    #[instrument(skip_all, name = "all trigger wait for release")]
     async fn wait_for_release(&mut self) -> Result<Self::Output, Self::Error> {
         self.inner.wait_for_release().await
     }
@@ -72,9 +75,13 @@ macro_rules! impl_all {
                             if !held.$idx {
                                 self.$idx.wait_for_trigger().await?;
 
+                                trace!(idx = $idx, "triggered");
+
                                 held.$idx = true;
                             } else {
                                 self.$idx.wait_for_release().await?;
+
+                                trace!(idx = $idx, "released");
 
                                 held.$idx = false;
                             }
@@ -84,6 +91,7 @@ macro_rules! impl_all {
                     ).race().await?;
 
                     if $(held.$idx)&&+ {
+                        trace!("all held");
                         return Ok(());
                     }
                 }
@@ -93,6 +101,7 @@ macro_rules! impl_all {
                 (
                     $(async {
                         self.$idx.wait_for_release().await?;
+                        trace!(idx = $idx, "released");
                         Ok(())
                     }),+
                 )
@@ -103,11 +112,12 @@ macro_rules! impl_all {
     };
 }
 
-#[allow(non_snake_case, non_camel_case_types)]
+#[allow(non_snake_case, non_camel_case_types, clippy::no_effect)]
 #[rustfmt::skip]
 mod all_impls {
     use super::{ReleaseTrigger, AllTriggerTarget};
     use futures_concurrency::future::Race;
+    use tracing::trace;
 
     impl_all!(0, T0, 1, T1);
     impl_all!(0, T0, 1, T1, 2, T2);

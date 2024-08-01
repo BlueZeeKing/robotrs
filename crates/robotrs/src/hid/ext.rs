@@ -1,46 +1,47 @@
 use futures_lite::future::pending;
 use std::{fmt::Debug, future::Future, time::Duration};
-use tracing::error;
+use tracing::{error, instrument, span, trace, Instrument, Level};
 
 use futures_concurrency::future::Race;
 
 use crate::{
     ds::{wait_for_disabled, wait_for_enabled},
-    scheduler::{guard, spawn},
+    scheduler::{guard, spawn, spawn_inner},
     time::delay,
 };
 
 use super::{ReleaseTrigger, Trigger};
 
-enum ClickResult<T> {
-    Clicked(T),
-    Other,
-}
-
 /// A double click extension trait that is auto implemented for sized [Trigger]s
 pub trait DoubleClickTarget: Trigger + Sized {
     #[doc(hidden)]
+    #[instrument(skip(self))]
     async fn wait_for_double_click_with_duration(
         &mut self,
         duration: Duration,
     ) -> Result<Self::Output, Self::Error> {
         loop {
             self.wait_for_trigger().await?;
+            trace!("Initial trigger");
 
-            let ClickResult::Clicked(value) = (
-                async { ClickResult::Clicked(self.wait_for_trigger().await) },
+            let result = (
                 async {
-                    delay(duration);
-                    ClickResult::Other
+                    let res = self.wait_for_trigger().await;
+                    trace!("Triggered again");
+                    Some(res)
+                },
+                async {
+                    delay(duration).await;
+                    trace!("Time expired");
+                    None
                 },
             )
                 .race()
-                .await
-            else {
-                continue;
-            };
+                .await;
 
-            return value;
+            if let Some(click_result) = result {
+                break click_result;
+            }
         }
     }
 
@@ -102,26 +103,39 @@ where
         Func: FnMut() -> Fut + 'static,
         Fut: Future + 'static,
     {
-        spawn(async move {
-            loop {
-                wait_for_enabled().await;
+        spawn_inner(
+            async move {
+                loop {
+                    wait_for_enabled().await;
 
-                (
-                    async {
-                        loop {
-                            if let Err(err) = self.wait_for_trigger().await {
-                                error!("Trigger error: {:?}", err);
+                    trace!("Robot enabled");
+
+                    (
+                        async {
+                            loop {
+                                if let Err(err) = self.wait_for_trigger().await {
+                                    error!("Trigger error: {:?}", err);
+                                } else {
+                                    trace!("Triggering callback");
+                                    if guard(func()).await.is_some() {
+                                        trace!("Callback complete");
+                                    } else {
+                                        trace!("Callback cancelled");
+                                    }
+                                }
                             }
-
-                            let _ = guard(func()).await;
-                        }
-                    },
-                    wait_for_disabled(),
-                )
-                    .race()
-                    .await;
+                        },
+                        async {
+                            wait_for_disabled().await;
+                            trace!("Robot disabled");
+                        },
+                    )
+                        .race()
+                        .await;
+                }
             }
-        })
+            .instrument(span!(Level::TRACE, "on pressed")),
+        )
         .detach();
     }
 }
@@ -149,38 +163,55 @@ where
         Func: FnMut() -> Fut + 'static,
         Fut: Future + 'static,
     {
-        spawn(async move {
-            loop {
-                wait_for_enabled().await;
+        spawn(
+            async move {
+                loop {
+                    wait_for_enabled().await;
 
-                (
-                    async {
-                        if let Err(err) = self.wait_for_trigger().await {
-                            error!("button failed in trigger: {:?}", err);
-                            return;
-                        }
+                    trace!("Robot enabled");
 
-                        let res = (
-                            async {
-                                let _ = guard(func()).await;
-                                pending::<()>().await;
-                                unreachable!()
-                            },
-                            self.wait_for_release(),
-                        )
-                            .race()
-                            .await;
+                    (
+                        async {
+                            if let Err(err) = self.wait_for_trigger().await {
+                                error!("Trigger error: {:?}", err);
+                                return;
+                            }
 
-                        if let Err(err) = res {
-                            error!("button failed in trigger: {:?}", err);
-                        }
-                    },
-                    wait_for_disabled(),
-                )
-                    .race()
-                    .await;
+                            let res = (
+                                async {
+                                    if guard(func()).await.is_some() {
+                                        trace!("Callback complete");
+                                    } else {
+                                        trace!("Callback cancelled");
+                                    }
+                                    pending::<()>().await;
+                                    unreachable!()
+                                },
+                                async {
+                                    let res = self.wait_for_release().await;
+                                    trace!("Trigger released");
+
+                                    res
+                                },
+                            )
+                                .race()
+                                .await;
+
+                            if let Err(err) = res {
+                                error!("Trigger failed: {:?}", err);
+                            }
+                        },
+                        async {
+                            wait_for_disabled().await;
+                            trace!("Robot disabled");
+                        },
+                    )
+                        .race()
+                        .await;
+                }
             }
-        })
+            .instrument(span!(Level::TRACE, "while pressed")),
+        )
         .detach();
     }
 }

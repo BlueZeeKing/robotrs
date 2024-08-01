@@ -14,7 +14,7 @@ use robotrs::{
     ds::{self, get_state},
     scheduler::{spawn, CancellationHandle},
 };
-use tracing::warn;
+use tracing::{instrument::Instrumented, span, trace, warn, Instrument, Level};
 
 /// A subsystem that allows for priority-based locking.
 pub struct Subsystem<T: ControlSafe> {
@@ -56,16 +56,19 @@ impl<T: ControlSafe> Subsystem<T> {
             Rc::new(RefCell::new(None));
         let current_cancellation2 = current_cancellation.clone();
 
-        spawn(async move {
-            loop {
-                ds::wait_for_state_change().await;
-                if get_state().disabled() {
+        spawn(
+            async move {
+                loop {
+                    ds::wait_for_disabled().await;
+                    trace!("Attempting to cancel subsystem due after disable");
                     if let Some(handle) = current_cancellation2.borrow().as_ref() {
+                        trace!("Found cancellation handle");
                         handle.cancel();
                     }
                 }
             }
-        })
+            .instrument(span!(Level::TRACE, "subsystem ds thread")),
+        )
         .detach();
 
         Self {
@@ -80,7 +83,7 @@ impl<T: ControlSafe> Subsystem<T> {
     }
 
     /// Lock the subsystem with the given priority. This will cancel the scope of any locks that have a lower priority.
-    pub fn lock<P: AsPriority>(&self, priority: P) -> LockFuture<'_, T> {
+    pub fn lock<P: AsPriority>(&self, priority: P) -> Instrumented<LockFuture<'_, T>> {
         let waker = Rc::new(Cell::new(None));
 
         let priority = priority.to_priority();
@@ -95,6 +98,7 @@ impl<T: ControlSafe> Subsystem<T> {
             waker,
             priority,
         }
+        .instrument(span!(Level::TRACE, "subsystem lock request future"))
     }
 }
 
@@ -126,6 +130,7 @@ impl<'a, T: ControlSafe> Future for LockFuture<'a, T> {
         let mut tasks = inner.lock.tasks.borrow_mut();
 
         if get_state().disabled() {
+            trace!("Subsystem waiting for robot to enable");
             ds::register_waker(cx.waker().clone());
             return Poll::Pending;
         }
@@ -134,7 +139,9 @@ impl<'a, T: ControlSafe> Future for LockFuture<'a, T> {
             &peek(&mut tasks).expect("No registered lock request"),
             &inner.waker,
         ) {
+            trace!("Highest priority lock request is this one");
             if let Ok(guard) = inner.lock.value.try_borrow_mut() {
+                trace!("Acquired lock");
                 let task = tasks
                     .pop()
                     .expect("No registered lock request, this is impossible");
@@ -154,14 +161,20 @@ impl<'a, T: ControlSafe> Future for LockFuture<'a, T> {
                 })
             } else {
                 if inner.priority.is_higher(&inner.lock.current_priority.get()) {
+                    trace!("Lock taken by lower priority");
                     if let Some(handle) = inner.lock.current_cancellation.borrow().as_ref() {
                         handle.cancel();
+                    } else {
+                        warn!("Failed to cancel lower priority subsytem task");
                     }
+                } else {
+                    trace!("Lock taken by higher priority");
                 }
                 inner.waker.set(Some(cx.waker().clone()));
                 Poll::Pending
             }
         } else {
+            trace!("Not highest priority, waiting");
             inner.waker.set(Some(cx.waker().clone()));
             Poll::Pending
         }

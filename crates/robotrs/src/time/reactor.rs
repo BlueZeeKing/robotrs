@@ -1,7 +1,8 @@
-use std::{collections::BinaryHeap, task::Waker, time::Duration};
+use std::{collections::BinaryHeap, sync::LazyLock, task::Waker, time::Duration};
 
 use linkme::distributed_slice;
 use parking_lot::Mutex;
+use tracing::{span, trace, Level, Span};
 
 use crate::PERIODIC_CHECKS;
 
@@ -39,8 +40,11 @@ pub fn add_time(time: Duration, waker: Waker) {
     QUEUE.lock().push(TimeItem { time, waker });
 }
 
+static POLL_SPAN: LazyLock<Span> = LazyLock::new(|| span!(Level::TRACE, "time poll"));
+
 #[distributed_slice(PERIODIC_CHECKS)]
 fn poll() {
+    let _span_guard = POLL_SPAN.enter();
     let mut queue = QUEUE.lock();
 
     let time = get_time();
@@ -49,6 +53,8 @@ fn poll() {
         if item.time > time {
             break;
         }
+
+        trace!("Waking item from time reactor");
 
         queue.pop().unwrap_or_else(|| unreachable!()).waker.wake();
     }

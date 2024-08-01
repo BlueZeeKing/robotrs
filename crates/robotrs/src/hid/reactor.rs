@@ -2,6 +2,7 @@ use std::{
     mem::MaybeUninit,
     ops::DerefMut,
     pin::Pin,
+    sync::LazyLock,
     task::{Poll, Waker},
 };
 
@@ -10,6 +11,7 @@ use hal_sys::{HAL_GetAllJoystickData, HAL_JoystickAxes, HAL_JoystickButtons, HAL
 use linkme::distributed_slice;
 use parking_lot::Mutex;
 use slab::Slab;
+use tracing::{span, trace, Instrument, Level, Span};
 
 use super::{
     axis::{get_axis, AxisTarget},
@@ -19,6 +21,7 @@ use super::{
 };
 use crate::PERIODIC_CHECKS;
 
+#[derive(Debug)]
 pub enum Target {
     Button(ButtonTarget),
     Axis(AxisTarget),
@@ -43,7 +46,15 @@ impl From<PovTarget> for Target {
     }
 }
 
-#[derive(Clone, Copy, PartialEq)]
+fn type_from_target(target: &Target) -> &'static str {
+    match target {
+        Target::Button(_) => "button",
+        Target::Axis(_) => "axis",
+        Target::Pov(_) => "pov",
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Debug)]
 enum State {
     Triggered,
     Release,
@@ -51,6 +62,7 @@ enum State {
     Unknown,
 }
 
+#[derive(Debug)]
 struct JoystickQueueItem {
     joystick: Joystick,
     idx: u32,
@@ -59,12 +71,21 @@ struct JoystickQueueItem {
     state: State,
     triggered: bool,
     released: bool,
+    span: Span,
 }
 
 static QUEUE: Mutex<Slab<JoystickQueueItem>> = Mutex::new(Slab::new());
 
 pub fn add_trigger(joystick: &Joystick, index: u32, target: Target) -> usize {
+    trace!(?joystick, index, ?target, "Add trigger");
     QUEUE.lock().insert(JoystickQueueItem {
+        span: span!(
+            Level::TRACE,
+            "polling trigger",
+            joystick = joystick.get_num(),
+            input_type = type_from_target(&target),
+            input_idx = index
+        ),
         joystick: *joystick,
         idx: index,
         target,
@@ -90,24 +111,39 @@ fn register_waker(idx: usize, waker: Waker) {
     QUEUE.lock().get_mut(idx).unwrap().waker = Some(waker);
 }
 
-pub async fn wait_for_triggered(idx: usize) -> Result<(), ()> {
+async fn wait_for_reactor(idx: usize, on_release: bool) -> Result<(), ()> {
+    let span = {
+        let queue = QUEUE.lock();
+        let item = queue.get(idx).unwrap();
+
+        span!(
+            Level::TRACE,
+            "Reactor future",
+            on_release,
+            idx,
+            joystick = item.joystick.get_num(),
+            target = ?item.target,
+        )
+    };
+
     ReactorFuture {
         idx,
+        on_release,
         first_run: true,
-        on_release: false,
     }
+    .instrument(span)
     .await
+}
+
+pub async fn wait_for_triggered(idx: usize) -> Result<(), ()> {
+    wait_for_reactor(idx, false).await
 }
 
 pub async fn wait_for_released(idx: usize) -> Result<(), ()> {
-    ReactorFuture {
-        idx,
-        first_run: true,
-        on_release: true,
-    }
-    .await
+    wait_for_reactor(idx, true).await
 }
 
+#[derive(Debug)]
 struct ReactorFuture {
     idx: usize,
     first_run: bool,
@@ -129,18 +165,26 @@ impl Future for ReactorFuture {
         let mut lock = QUEUE.lock();
         let item = lock.get_mut(inner.idx).unwrap();
 
+        trace!(trigger_state = ?item.state, triggered = item.triggered, released = item.released);
+
         if !item.triggered && item.state == State::Triggered && !inner.on_release {
+            trace!("Trigger not previously triggered, but is now triggered. Setting triggered to true and completing future");
             item.triggered = true;
             Poll::Ready(Ok(()))
         } else if !item.released && item.state == State::Release && inner.on_release {
+            trace!("Trigger not previously released, but is now released. Setting released to true and completing future");
             item.released = true;
             Poll::Ready(Ok(()))
         } else if item.state == State::OutOfRange && first_run {
+            trace!("Trigger out of range, queuing waker to be woken up next tick");
             crate::queue_waker(cx.waker().clone());
             Poll::Pending
         } else if item.state == State::OutOfRange {
+            trace!("Trigger out of range, returning error");
             Poll::Ready(Err(()))
         } else {
+            trace!("No changes, registering waker and returning pending");
+            drop(lock);
             register_waker(inner.idx, cx.waker().clone());
             Poll::Pending
         }
@@ -173,13 +217,18 @@ fn get_all_joystick_data() -> (
     }
 }
 
+static POLL_SPAN: LazyLock<Span> = LazyLock::new(|| span!(Level::TRACE, "hid poll"));
+
 #[distributed_slice(PERIODIC_CHECKS)]
 fn poll() {
+    let _span_guard = POLL_SPAN.enter();
     let mut queue = QUEUE.lock();
 
     let data = get_all_joystick_data();
 
     for (_, item) in queue.deref_mut() {
+        let _inner_span_guard = item.span.enter();
+
         let new_state = match item.target {
             Target::Button(target) => {
                 let buttons = &data.2[item.joystick.get_num() as usize];
@@ -220,15 +269,20 @@ fn poll() {
         };
 
         if new_state != item.state {
+            trace!(old_state = ?item.state, ?new_state, "Changing state");
             item.state = new_state;
-            if let Some(waker) = item.waker.take() {
-                waker.wake();
-            }
             if item.state != State::Triggered {
+                trace!(previous_triggered_value = item.triggered, "Not triggered");
                 item.triggered = false;
             }
             if item.state != State::Release {
+                trace!(previous_released_value = item.released, "Not released");
                 item.released = false;
+            }
+            if let Some(waker) = item.waker.take() {
+                waker.wake();
+            } else {
+                trace!("No waker found");
             }
         }
     }

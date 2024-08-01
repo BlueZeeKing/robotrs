@@ -1,4 +1,5 @@
 use futures::Future;
+use tracing::{instrument, trace};
 
 use super::{ReleaseTrigger, Trigger};
 
@@ -12,14 +13,22 @@ impl<T: AnyTriggerTarget> Trigger for AnyTrigger<T> {
     type Output = T::Output;
     type Error = T::Error;
 
+    #[instrument(skip_all, name = "any trigger wait for trigger")]
     async fn wait_for_trigger(&mut self) -> Result<Self::Output, Self::Error> {
-        Ok(self.inner.wait_for_trigger().await?.0)
+        let (result, last_pressed) = self.inner.wait_for_trigger().await?;
+        self.last_pressed = last_pressed;
+        trace!(idx = last_pressed);
+        Ok(result)
     }
 }
 
 impl<T: AnyReleaseTriggerTarget> ReleaseTrigger for AnyTrigger<T> {
+    #[instrument(skip_all, name = "any trigger wait for release")]
     async fn wait_for_release(&mut self) -> Result<Self::Output, Self::Error> {
-        self.inner.wait_for_release(self.last_pressed).await
+        trace!(last_pressed = self.last_pressed);
+        let res = self.inner.wait_for_release(self.last_pressed).await;
+        trace!("Released");
+        res
     }
 }
 

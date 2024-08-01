@@ -1,4 +1,8 @@
-use std::task::{Poll, Waker};
+use std::{
+    mem::MaybeUninit,
+    sync::LazyLock,
+    task::{Poll, Waker},
+};
 
 use futures::{future::poll_fn, Stream};
 use hal_sys::{
@@ -11,6 +15,7 @@ use hal_sys::{
     HAL_GetControlWord, HAL_RefreshDSData,
 };
 use parking_lot::Mutex;
+use tracing::{span, trace, Level, Span};
 
 use crate::{
     error::{HalError, Result},
@@ -58,15 +63,17 @@ pub fn state_stream() -> impl Stream<Item = State> {
     })
 }
 
+static POLL_SPAN: LazyLock<Span> = LazyLock::new(|| span!(Level::TRACE, "ds state poll"));
+
 #[linkme::distributed_slice(PERIODIC_CHECKS)]
 fn check_state() {
+    let _span_guard = POLL_SPAN.enter();
     let word = get_control_word().unwrap();
     let state = State::from_control_word(&word);
-    *CURRENT_STATE.lock() = state;
-
     let mut current_state = CURRENT_STATE.lock();
 
     if *current_state != state {
+        trace!(old_state = ?current_state, new_state = ?state, "New state");
         *current_state = state;
         drop(current_state);
         for waker in std::mem::take(&mut *WAKERS.lock()) {
@@ -82,17 +89,14 @@ pub fn get_control_word() -> Result<HAL_ControlWord> {
         HAL_RefreshDSData();
     }
 
-    let mut word = HAL_ControlWord {
-        _bitfield_align_1: [0; 0],
-        _bitfield_1: HAL_ControlWord::new_bitfield_1(0, 0, 0, 0, 0, 0, 0),
-    };
+    let mut word = MaybeUninit::uninit();
 
-    let status = unsafe { HAL_GetControlWord(&mut word) };
+    let status = unsafe { HAL_GetControlWord(word.as_mut_ptr()) };
 
     if status != 0 {
         Err(HalError(status).into())
     } else {
-        Ok(word)
+        Ok(unsafe { word.assume_init() })
     }
 }
 
