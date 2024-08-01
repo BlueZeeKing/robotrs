@@ -10,6 +10,7 @@ use syn::{
 
 #[derive(FromMeta)]
 struct Args {
+    #[allow(clippy::manual_unwrap_or_default)]
     #[darling(default)]
     priority_name: Option<Ident>,
     #[darling(default)]
@@ -205,6 +206,7 @@ impl VisitMut for LogVisitor {
 
     fn visit_expr_closure_mut(&mut self, _i: &mut syn::ExprClosure) {}
     fn visit_expr_async_mut(&mut self, _i: &mut syn::ExprAsync) {}
+    fn visit_expr_try_block_mut(&mut self, _i: &mut syn::ExprTryBlock) {}
 }
 
 // TODO: Make the tracing line numbers correct
