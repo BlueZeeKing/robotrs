@@ -144,48 +144,9 @@ impl Trajectory {
                 let extra_displacement = (displacement - dx_to_max - dx_from_max) / 2.0;
 
                 let new_dx_to_max = dx_to_max + extra_displacement;
-                let new_dx_from_max = dx_from_max + extra_displacement;
 
-                let max_vel = (start.velocity.powi(2)
-                    + 2.0 * constrains.max_acceleration.get() * new_dx_to_max)
-                    .sqrt();
-
-                let max_vel_alt = (start.velocity.powi(2)
-                    + -2.0 * constrains.max_acceleration.get() * new_dx_to_max)
-                    .sqrt();
-
-                // TODO: There has to be a better way
-                if max_vel_alt.is_nan() {
-                    max_vel
-                } else {
-                    let dt_to_max =
-                        (start.velocity - max_vel).abs() / constrains.max_acceleration.get();
-                    let dx_to_max = calculate_trapezoid_area(start.velocity, max_vel, dt_to_max);
-
-                    let dt_from_max =
-                        (max_vel - target.velocity).abs() / constrains.max_acceleration.get();
-                    let dx_from_max =
-                        calculate_trapezoid_area(max_vel, target.velocity, dt_from_max);
-
-                    let dt_to_max =
-                        (start.velocity - max_vel_alt).abs() / constrains.max_acceleration.get();
-                    let dx_to_max_alt =
-                        calculate_trapezoid_area(start.velocity, max_vel_alt, dt_to_max);
-
-                    let dt_from_max =
-                        (max_vel_alt - target.velocity).abs() / constrains.max_acceleration.get();
-                    let dx_from_max_alt =
-                        calculate_trapezoid_area(max_vel_alt, target.velocity, dt_from_max);
-
-                    if (dx_to_max - new_dx_to_max).abs() + (dx_from_max - new_dx_from_max).abs()
-                        < (dx_to_max_alt - new_dx_to_max).abs()
-                            + (dx_from_max_alt - new_dx_from_max).abs()
-                    {
-                        max_vel
-                    } else {
-                        max_vel_alt
-                    }
-                }
+                (start.velocity.powi(2) + 2.0 * constrains.max_acceleration.get() * new_dx_to_max)
+                    .sqrt()
             }
         } else {
             let dx_to_max = calculate_trapezoid_area_from_slope(
@@ -206,51 +167,11 @@ impl Trajectory {
                 let extra_displacement = (displacement - dx_to_max - dx_from_max) / 2.0;
 
                 let new_dx_to_max = dx_to_max + extra_displacement;
-                let new_dx_from_max = dx_from_max + extra_displacement;
 
-                let max_vel = -1.0
-                    * (start.velocity.powi(2)
-                        + 2.0 * constrains.max_acceleration.get() * new_dx_to_max)
-                        .sqrt()
-                        .abs();
-
-                let max_vel_alt = -1.0
-                    * (start.velocity.powi(2)
-                        + -2.0 * constrains.max_acceleration.get() * new_dx_to_max)
-                        .sqrt()
-                        .abs();
-
-                if max_vel_alt.is_nan() {
-                    max_vel
-                } else {
-                    let dt_to_max =
-                        (start.velocity - max_vel).abs() / constrains.max_acceleration.get();
-                    let dx_to_max = calculate_trapezoid_area(start.velocity, max_vel, dt_to_max);
-
-                    let dt_from_max =
-                        (max_vel - target.velocity).abs() / constrains.max_acceleration.get();
-                    let dx_from_max =
-                        calculate_trapezoid_area(max_vel, target.velocity, dt_from_max);
-
-                    let dt_to_max =
-                        (start.velocity - max_vel_alt).abs() / constrains.max_acceleration.get();
-                    let dx_to_max_alt =
-                        calculate_trapezoid_area(start.velocity, max_vel_alt, dt_to_max);
-
-                    let dt_from_max =
-                        (max_vel_alt - target.velocity).abs() / constrains.max_acceleration.get();
-                    let dx_from_max_alt =
-                        calculate_trapezoid_area(max_vel_alt, target.velocity, dt_from_max);
-
-                    if (dx_to_max - new_dx_to_max).abs() + (dx_from_max - new_dx_from_max).abs()
-                        < (dx_to_max_alt - new_dx_to_max).abs()
-                            + (dx_from_max_alt - new_dx_from_max).abs()
-                    {
-                        max_vel
-                    } else {
-                        max_vel_alt
-                    }
-                }
+                -1.0 * (start.velocity.powi(2)
+                    + -2.0 * constrains.max_acceleration.get() * new_dx_to_max)
+                    .sqrt()
+                    .abs()
             }
         };
 
