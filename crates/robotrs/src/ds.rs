@@ -64,8 +64,16 @@ fn check_state() {
     let state = State::from_control_word(&word);
     *CURRENT_STATE.lock() = state;
 
-    for waker in std::mem::take(&mut *WAKERS.lock()) {
-        waker.wake();
+    let mut current_state = CURRENT_STATE.lock();
+
+    if *current_state != state {
+        *current_state = state;
+        drop(current_state);
+        for waker in std::mem::take(&mut *WAKERS.lock()) {
+            waker.wake();
+        }
+    } else {
+        *current_state = state;
     }
 }
 
