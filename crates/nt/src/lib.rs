@@ -3,7 +3,7 @@ pub mod bindings;
 pub mod options;
 pub mod payloads;
 
-use std::{ffi::CString, marker::PhantomData, time::Duration};
+use std::{ffi::CString, marker::PhantomData};
 
 use bindings::*;
 use options::PubSubOptions;
