@@ -166,7 +166,7 @@ where
         })
         .await;
 
-        if let Ok(result) = guard_result {
+        if let Some(result) = guard_result {
             break result;
         }
     }
