@@ -230,8 +230,6 @@ impl<R: AsyncRobot> RobotScheduler<R> {
                 .expect("Robot was already started")
         });
 
-        cancellation::init_runtime();
-
         info!("Starting robot");
 
         let robot = match robot() {

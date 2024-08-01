@@ -1,5 +1,5 @@
 use std::{
-    cell::{Cell, OnceCell, RefCell},
+    cell::{Cell, RefCell},
     pin::Pin,
     rc::Rc,
     task::{Context, Poll, Waker},
@@ -9,27 +9,12 @@ use futures::Future;
 use pin_project::pin_project;
 
 thread_local! {
-    static CURRENT_TASK: OnceCell<RefCell<Option<CancellationHandle>>> = const { OnceCell::new() };
-}
-
-/// Start the runtime on the current thread
-///
-/// # Panics
-///
-/// Panics if the runtime is already initialized on the current thread
-pub fn init_runtime() {
-    CURRENT_TASK.with(|current_task| {
-        if current_task.set(RefCell::new(None)).is_err() {
-            panic!("Runtime already intialized");
-        }
-    });
+    static CURRENT_TASK: RefCell<Option<CancellationHandle>> = const { RefCell::new(None) };
 }
 
 /// Set the current cancellation scope, returning a guard that will reset it
 fn set_task(handle: CancellationHandle) -> CurrentTaskGuard {
     CURRENT_TASK.with(|current_task| {
-        let current_task = current_task.get().unwrap();
-
         let guard = CurrentTaskGuard {
             last_task: current_task.take(),
         };
@@ -48,10 +33,7 @@ struct CurrentTaskGuard {
 impl Drop for CurrentTaskGuard {
     fn drop(&mut self) {
         CURRENT_TASK.with(|current_task| {
-            *current_task
-                .get()
-                .expect("Runtime not started on this thread")
-                .borrow_mut() = self.last_task.take();
+            *current_task.borrow_mut() = self.last_task.take();
         })
     }
 }
@@ -86,13 +68,7 @@ impl CancellationHandle {
 
     /// Get the current cancellation scope
     pub fn get_handle() -> Option<Self> {
-        CURRENT_TASK.with(|current_task| {
-            current_task
-                .get()
-                .expect("Runtime not initialized")
-                .borrow()
-                .clone()
-        })
+        CURRENT_TASK.with(|current_task| current_task.borrow().clone())
     }
 }
 
