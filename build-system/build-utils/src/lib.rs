@@ -1,3 +1,5 @@
+#![feature(path_file_prefix)]
+
 use std::{
     env,
     fs::{self, File},
@@ -6,7 +8,7 @@ use std::{
 };
 
 use anyhow::bail;
-use artifact::Artifact;
+use artifact::{is_robot, Artifact};
 use reqwest::Client;
 use tempfile::TempDir;
 
@@ -62,7 +64,7 @@ pub async fn gen_bindings(
     Ok(())
 }
 
-pub async fn build<'a>(artifacts: &[Artifact]) -> anyhow::Result<()> {
+pub async fn build(artifacts: &[Artifact]) -> anyhow::Result<()> {
     let Some(libs_dir) = env::var_os("OUT_DIR").map(|dir| PathBuf::from(dir).join("lib")) else {
         bail!("Unable to find libs dir");
     };
@@ -82,7 +84,10 @@ pub async fn build<'a>(artifacts: &[Artifact]) -> anyhow::Result<()> {
     for lib in artifacts
         .iter()
         .filter(|artifact| artifact.get_lib_name().is_some())
+        .filter(|artifact| (artifact.is_robot_only() && is_robot()) || !artifact.is_robot_only())
     {
+        dbg!(lib.is_robot_only());
+        dbg!(lib.get_lib_url());
         let mut archive = get_zip(&lib.get_lib_url()).await?;
 
         let mut zip_file = lib.find_lib_in_zip(&mut archive)?;

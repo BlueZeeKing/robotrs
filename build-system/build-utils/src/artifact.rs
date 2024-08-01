@@ -1,10 +1,40 @@
-use std::{fmt::Display, io::Cursor};
+use std::{env, fmt::Display, io::Cursor};
 
 use bytes::Bytes;
 use thiserror::Error;
 use zip::{read::ZipFile, ZipArchive};
 
 use crate::zip::extract_libs;
+
+pub fn is_robot() -> bool {
+    get_platform() == "linuxathena"
+}
+
+fn get_platform() -> String {
+    let os = match env::var("CARGO_CFG_TARGET_OS")
+        .expect("No target OS set (cargo should have set this)")
+        .as_str()
+    {
+        "windows" => "windows",
+        "linux" => "linux",
+        "macos" => "osx",
+        os => panic!("Unknown/unsupported os: {}", os),
+    };
+
+    let arch = match env::var("CARGO_CFG_TARGET_ARCH")
+        .expect("No target OS set (cargo should have set this)")
+        .as_str()
+    {
+        "arm" => "athena",
+        "aarch64" => "arm64",
+        "x86_64" => "x86-64",
+        arch => panic!("Unknown/unsupported target arch: {}", arch),
+    };
+
+    let arch = if os == "osx" { "universal" } else { arch };
+
+    format!("{}{}", os, arch)
+}
 
 #[derive(Debug)]
 pub struct Artifact {
@@ -15,10 +45,11 @@ pub struct Artifact {
     lib_name: Option<String>,
     headers: bool,
     should_deploy: bool,
+    robot_only: bool,
 }
 
 impl Artifact {
-    pub fn get_header_url(&self) -> String {
+    fn get_url(&self, platform: &str) -> String {
         format!(
             "{}{}/{}/{}/{}-{}-{}.zip",
             self.maven_url,
@@ -27,21 +58,16 @@ impl Artifact {
             self.version,
             self.artifact_id,
             self.version,
-            "headers"
+            platform
         )
     }
 
+    pub fn get_header_url(&self) -> String {
+        self.get_url("headers")
+    }
+
     pub fn get_lib_url(&self) -> String {
-        format!(
-            "{}{}/{}/{}/{}-{}-{}.zip",
-            self.maven_url,
-            self.group_id.replace('.', "/"),
-            self.artifact_id,
-            self.version,
-            self.artifact_id,
-            self.version,
-            "linuxathena"
-        )
+        self.get_url(&get_platform())
     }
 
     pub fn get_lib_name(&self) -> Option<&str> {
@@ -54,6 +80,7 @@ impl Artifact {
     ) -> anyhow::Result<ZipFile<'a>> {
         let (_, file_number) = extract_libs(archive)?
             .into_iter()
+            .map(|val| dbg!(val))
             .find(|(name, _)| name == self.get_lib_name().unwrap())
             .unwrap();
 
@@ -66,6 +93,10 @@ impl Artifact {
 
     pub fn should_deploy(&self) -> bool {
         self.should_deploy
+    }
+
+    pub fn is_robot_only(&self) -> bool {
+        self.robot_only
     }
 }
 
@@ -84,6 +115,7 @@ pub struct Builder {
     lib_name: Option<String>,
     headers: bool,
     should_deploy: bool,
+    robot_only: bool,
 }
 
 #[derive(Clone, Copy)]
@@ -126,6 +158,7 @@ impl Builder {
             lib_name: None,
             headers: true,
             should_deploy: true,
+            robot_only: false,
         }
     }
 
@@ -146,6 +179,7 @@ impl Builder {
             lib_name: self.lib_name.to_owned(),
             headers: self.headers,
             should_deploy: self.should_deploy,
+            robot_only: self.robot_only,
         })
     }
 
@@ -193,6 +227,12 @@ impl Builder {
 
     pub fn no_deploy(&mut self) -> &mut Self {
         self.should_deploy = false;
+
+        self
+    }
+
+    pub fn robot_only(&mut self) -> &mut Self {
+        self.robot_only = true;
 
         self
     }

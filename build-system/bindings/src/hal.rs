@@ -14,6 +14,7 @@ pub fn get_artifacts() -> Vec<Artifact> {
             .lib_name("embcanshim".to_owned())
             .no_deploy()
             .no_headers()
+            .robot_only()
             .build()
             .unwrap(),
         Artifact::builder()
@@ -24,6 +25,7 @@ pub fn get_artifacts() -> Vec<Artifact> {
             .lib_name("fpgalvshim".to_owned())
             .no_deploy()
             .no_headers()
+            .robot_only()
             .build()
             .unwrap(),
         Artifact::builder()
@@ -34,6 +36,7 @@ pub fn get_artifacts() -> Vec<Artifact> {
             .lib_name("RoboRIO_FRC_ChipObject".to_owned())
             .no_deploy()
             .no_headers()
+            .robot_only()
             .build()
             .unwrap(),
         Artifact::builder()
@@ -44,6 +47,7 @@ pub fn get_artifacts() -> Vec<Artifact> {
             .lib_name("FRC_NetworkCommunication".to_owned())
             .no_deploy()
             .no_headers()
+            .robot_only()
             .build()
             .unwrap(),
         Artifact::builder()
@@ -54,6 +58,7 @@ pub fn get_artifacts() -> Vec<Artifact> {
             .lib_name("visa".to_owned())
             .no_deploy()
             .no_headers()
+            .robot_only()
             .build()
             .unwrap(),
         Artifact::builder()

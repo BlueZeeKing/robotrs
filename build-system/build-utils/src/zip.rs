@@ -1,4 +1,5 @@
 use std::{
+    ffi::OsStr,
     fs::{self, File},
     io::{self, Cursor},
     path::Path,
@@ -58,37 +59,23 @@ pub fn extract_libs(
 
     for zip_index in 0..archive.len() {
         let file = archive.by_index(zip_index)?;
-        let file_name = file
-            .enclosed_name()
-            .ok_or(anyhow::anyhow!("Could not get file name"))?
-            .file_name()
-            .ok_or(anyhow::anyhow!("Could not get last part of file name"))?
-            .to_str()
-            .ok_or(anyhow::anyhow!(
-                "Could not convert os string to string in file name"
-            ))?;
-
-        if !file_name.starts_with("lib") || file_name.contains("debug") {
+        let Some(file_path) = file.enclosed_name() else {
             continue;
-        }
-        let file_name = file_name.trim_start_matches("lib");
+        };
 
-        let mut index = file_name.len() - 1;
-        let chars = file_name.chars().collect::<Vec<_>>();
-        for (idx, char) in chars.iter().enumerate().rev() {
-            if *char == 'o' && chars[idx - 1] == 's' {
-                index = idx;
-                break;
-            }
-        }
+        let Some(prefix) = file_path.file_prefix().and_then(OsStr::to_str) else {
+            continue;
+        };
 
-        let file_name = &file_name[..index + 1];
+        let Some(file_name) = file_path.file_name().and_then(OsStr::to_str) else {
+            continue;
+        };
 
-        if !file_name.ends_with(".so") {
+        if !prefix.starts_with("lib") || file_name.to_lowercase().contains("debug") {
             continue;
         }
 
-        res.push((file_name.trim_end_matches(".so").to_string(), zip_index));
+        res.push((prefix.trim_start_matches("lib").to_string(), zip_index));
     }
 
     Ok(res)
