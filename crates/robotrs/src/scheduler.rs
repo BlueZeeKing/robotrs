@@ -10,11 +10,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilte
 
 use crate::{ds, robot::AsyncRobot, status_to_result, time::RawNotifier, PERIODIC_CHECKS};
 
-use hal_sys::{
-    HAL_HasMain, HAL_Initialize, HAL_ObserveUserProgramAutonomous, HAL_ObserveUserProgramDisabled,
-    HAL_ObserveUserProgramStarting, HAL_ObserveUserProgramTeleop, HAL_ObserveUserProgramTest,
-    HAL_SetNotifierThreadPriority,
-};
+use hal_sys::*;
 
 mod cancellation;
 
@@ -193,14 +189,9 @@ impl<R: AsyncRobot> RobotScheduler<R> {
 
     /// This is the main entry function. It starts the robot and schedules all the tasks as well
     /// as sending out the proper DS messages that are required for startup.
-    pub fn start_robot<F: Fn() -> anyhow::Result<R>>(robot: F) -> ! {
+    pub fn start_robot<F: Fn() -> anyhow::Result<R> + Send + 'static>(robot: F) -> ! {
         if unsafe { HAL_Initialize(500, 0) } == 0 {
             panic!("Could not start hal");
-        }
-
-        if unsafe { HAL_HasMain() } == 1 {
-            // TODO: Fix this
-            panic!("A main function was given and that is probably wrong (idk)");
         }
 
         if let Err(err) = unsafe { status_to_result!(HAL_SetNotifierThreadPriority(1, 40)) } {
@@ -222,65 +213,76 @@ impl<R: AsyncRobot> RobotScheduler<R> {
             tracing::error!("An error occurred while sending the version: {}", err);
         }
 
-        let (task_sender, task_receiver) = unbounded();
+        thread::spawn(move || {
+            let (task_sender, task_receiver) = unbounded();
 
-        TASK_SENDER.with(|sender| {
-            sender
-                .set(task_sender.clone())
-                .expect("Robot was already started")
+            TASK_SENDER.with(|sender| {
+                sender
+                    .set(task_sender.clone())
+                    .expect("Robot was already started")
+            });
+
+            info!("Starting robot");
+
+            let robot = match robot() {
+                Ok(robot) => robot,
+                Err(err) => {
+                    error!("An error has occurred constructing the robot: {}", err);
+                    panic!("An error has occurred constructing the robot: {}", err);
+                }
+            };
+
+            let robot = Box::leak::<'static>(Box::new(robot));
+
+            info!("Robot started");
+
+            let mut scheduler = RobotScheduler::new(robot, task_receiver);
+
+            robot
+                .configure_bindings(&scheduler)
+                .expect("An error occurred configuring bindings");
+
+            RawNotifier::set_thread_priority().unwrap();
+
+            // let mut time = get_time() + PERIOD;
+            // let mut notifier = RawNotifier::new(time).unwrap();
+
+            RawNotifier::set_thread_priority().unwrap();
+
+            unsafe { HAL_ObserveUserProgramStarting() };
+
+            info!(
+                "Robot code started with period of {} milliseconds",
+                PERIOD.as_millis()
+            );
+
+            loop {
+                scheduler.tick();
+
+                thread::sleep(PERIOD);
+
+                // notifier = notifier
+                //     .block_until_alarm()
+                //     .expect("Stopping because periodic notifier failed"); // add error handling
+                // time += PERIOD;
+                // if time < get_time() {
+                //     warn!(
+                //         "Loop over run by {} milliseconds",
+                //         (get_time() - time).as_millis()
+                //     );
+                // }
+                // notifier.set_time(time).unwrap();
+            }
         });
 
-        info!("Starting robot");
-
-        let robot = match robot() {
-            Ok(robot) => robot,
-            Err(err) => {
-                error!("An error has occurred constructing the robot: {}", err);
-                panic!("An error has occurred constructing the robot: {}", err);
-            }
-        };
-
-        let robot = Box::leak::<'static>(Box::new(robot));
-
-        info!("Robot started");
-
-        let mut scheduler = RobotScheduler::new(robot, task_receiver);
-
-        robot
-            .configure_bindings(&scheduler)
-            .expect("An error occurred configuring bindings");
-
-        RawNotifier::set_thread_priority().unwrap();
-
-        // let mut time = get_time() + PERIOD;
-        // let mut notifier = RawNotifier::new(time).unwrap();
-
-        RawNotifier::set_thread_priority().unwrap();
-
-        unsafe { HAL_ObserveUserProgramStarting() };
-
-        info!(
-            "Robot code started with period of {} milliseconds",
-            PERIOD.as_millis()
-        );
-
-        loop {
-            scheduler.tick();
-
-            thread::sleep(PERIOD);
-
-            // notifier = notifier
-            //     .block_until_alarm()
-            //     .expect("Stopping because periodic notifier failed"); // add error handling
-            // time += PERIOD;
-            // if time < get_time() {
-            //     warn!(
-            //         "Loop over run by {} milliseconds",
-            //         (get_time() - time).as_millis()
-            //     );
-            // }
-            // notifier.set_time(time).unwrap();
+        unsafe {
+            HAL_RunMain();
         }
+        unsafe {
+            HAL_ExitMain();
+        }
+
+        panic!("Done!");
     }
 }
 
