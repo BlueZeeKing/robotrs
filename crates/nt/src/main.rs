@@ -3,7 +3,7 @@ use std::{thread, time::Duration};
 use nt::{Instance, Publisher, Subscriber};
 
 fn main() {
-    let server = Instance::default();
+    let server = Instance::default_instance();
     server.start_server("nt.json");
     if server.is_starting() {
         let mut started = false;
@@ -22,7 +22,9 @@ fn main() {
         }
     }
 
-    let publisher: Publisher<String> = server.topic("/test/value").publish(Default::default());
+    nt::nt!("/test/publish", 123);
+
+    let publisher: Publisher<String> = server.topic("/test/other").publish(Default::default());
 
     publisher.set("Test".to_string());
 

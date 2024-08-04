@@ -1,9 +1,10 @@
 #[allow(warnings)]
 pub mod bindings;
+pub mod macros;
 pub mod options;
 pub mod payloads;
 
-use std::{ffi::CString, marker::PhantomData};
+use std::{ffi::CString, marker::PhantomData, sync::LazyLock};
 
 use bindings::*;
 use options::PubSubOptions;
@@ -13,13 +14,9 @@ pub struct Instance {
     handle: NT_Inst,
 }
 
-impl Default for Instance {
-    fn default() -> Self {
-        Self {
-            handle: unsafe { NT_GetDefaultInstance() },
-        }
-    }
-}
+static DEFAULT_INSTANCE: LazyLock<Instance> = LazyLock::new(|| Instance {
+    handle: unsafe { NT_GetDefaultInstance() },
+});
 
 impl Instance {
     pub fn new() -> Self {
@@ -28,7 +25,11 @@ impl Instance {
         }
     }
 
-    pub fn topic(&self, name: &str) -> Topic {
+    pub fn default_instance() -> &'static Self {
+        &DEFAULT_INSTANCE
+    }
+
+    pub fn topic(&self, name: &str) -> Topic<'_> {
         Topic {
             handle: unsafe {
                 NT_GetTopic(
@@ -37,6 +38,7 @@ impl Instance {
                     name.len(),
                 )
             },
+            phantom: PhantomData,
         }
     }
 
@@ -58,12 +60,13 @@ impl Instance {
     }
 }
 
-pub struct Topic {
+pub struct Topic<'a> {
     handle: NT_Topic,
+    phantom: PhantomData<&'a ()>,
 }
 
-impl Topic {
-    pub fn publish<T: Payload>(&self, options: PubSubOptions) -> Publisher<T> {
+impl<'a> Topic<'a> {
+    pub fn publish<T: Payload>(&self, options: PubSubOptions) -> Publisher<'a, T> {
         Publisher {
             handle: unsafe {
                 NT_Publish(
@@ -81,7 +84,7 @@ impl Topic {
         &self,
         options: PubSubOptions,
         type_str: &str,
-    ) -> Publisher<T> {
+    ) -> Publisher<'a, T> {
         Publisher {
             handle: unsafe {
                 NT_Publish(
@@ -95,7 +98,7 @@ impl Topic {
         }
     }
 
-    pub fn subscribe<T: Payload>(&self, options: PubSubOptions) -> Subscriber<T> {
+    pub fn subscribe<T: Payload>(&self, options: PubSubOptions) -> Subscriber<'a, T> {
         Subscriber {
             handle: unsafe {
                 NT_Subscribe(
@@ -113,7 +116,7 @@ impl Topic {
         &self,
         options: PubSubOptions,
         type_str: &str,
-    ) -> Subscriber<T> {
+    ) -> Subscriber<'a, T> {
         Subscriber {
             handle: unsafe {
                 NT_Subscribe(
@@ -128,23 +131,23 @@ impl Topic {
     }
 }
 
-pub struct Publisher<T> {
+pub struct Publisher<'a, T> {
     handle: NT_Publisher,
-    payload: PhantomData<T>,
+    payload: PhantomData<&'a T>,
 }
 
-impl<T: Payload> Publisher<T> {
+impl<'a, T: Payload> Publisher<'a, T> {
     pub fn set(&self, value: T) {
         value.to_entry(self.handle, unsafe { NT_Now() });
     }
 }
 
-pub struct Subscriber<T> {
+pub struct Subscriber<'a, T> {
     handle: NT_Subscriber,
-    payload: PhantomData<T>,
+    payload: PhantomData<&'a T>,
 }
 
-impl<T: Payload> Subscriber<T> {
+impl<'a, T: Payload> Subscriber<'a, T> {
     pub fn get_with_default(&self, default: T) -> T {
         T::from_entry(self.handle, default)
     }
@@ -157,13 +160,13 @@ impl<T: Payload> Subscriber<T> {
     }
 }
 
-impl<T> Drop for Subscriber<T> {
+impl<'a, T> Drop for Subscriber<'a, T> {
     fn drop(&mut self) {
         unsafe { NT_Unsubscribe(self.handle) }
     }
 }
 
-impl<T> Drop for Publisher<T> {
+impl<'a, T> Drop for Publisher<'a, T> {
     fn drop(&mut self) {
         unsafe { NT_Unpublish(self.handle) }
     }
