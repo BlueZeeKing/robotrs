@@ -4,7 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+defer-lite = "1.0.0"
 embedded-hal = { version = "1.0.0" }
 hal-sys = { path = "../hal-sys" }
+oneshot = "0.1.8"
 robotrs = { path = "../robotrs" }
 tracing = "0.1.40"

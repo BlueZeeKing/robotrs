@@ -1,11 +1,18 @@
+use defer_lite::defer;
 use embedded_hal::digital::{Error, ErrorKind, ErrorType, InputPin, OutputPin};
+use hal_sys::{
+    HAL_AnalogTriggerType_HAL_Trigger_kState, HAL_CleanInterrupts, HAL_InitializeInterrupts,
+    HAL_InterruptHandle, HAL_ReleaseWaitingInterrupt, HAL_RequestInterrupts,
+    HAL_SetInterruptUpSourceEdge, HAL_WaitForInterrupt,
+};
 use robotrs::error::HalError;
-use std::{marker::PhantomData, ptr};
-use tracing::debug;
+use std::{marker::PhantomData, ptr, thread};
+use tracing::{trace, warn};
 
 pub struct RioPin<T> {
     data: PhantomData<T>,
     handle: hal_sys::HAL_PortHandle,
+    interrupt: Option<HAL_InterruptHandle>,
 }
 
 pub struct Input;
@@ -57,6 +64,7 @@ impl<T> RioPin<T> {
             Ok(RioPin::<Input> {
                 data: PhantomData,
                 handle,
+                interrupt: None,
             })
         }
     }
@@ -76,6 +84,7 @@ impl<T> RioPin<T> {
             Ok(RioPin::<Output> {
                 data: PhantomData,
                 handle,
+                interrupt: None,
             })
         }
     }
@@ -107,6 +116,10 @@ impl OutputPin for RioPin<Output> {
 
 impl<T> Drop for RioPin<T> {
     fn drop(&mut self) {
+        if let Some(interrupt) = self.interrupt {
+            unsafe { HAL_CleanInterrupts(interrupt) };
+        }
+
         unsafe { hal_sys::HAL_FreeDIOPort(self.handle) }
     }
 }
@@ -129,28 +142,85 @@ impl InputPin for RioPin<Input> {
 }
 
 impl RioPin<Input> {
-    pub async fn wait_for_high(&mut self) -> Result<(), DigitalError> {
-        loop {
-            println!("Starting");
-            let is_high = dbg!(self.is_high())?;
+    pub async fn wait_for_edge(&mut self, on_high: bool, on_low: bool) -> Result<(), DigitalError> {
+        let mut status = 0;
 
-            debug!(is_high);
-
-            if is_high {
-                return Ok(());
+        let interrupt = if let Some(interrupt) = self.interrupt {
+            interrupt
+        } else {
+            let interrupt = unsafe { HAL_InitializeInterrupts(&mut status) };
+            if status != 0 {
+                return Err(HalError::from_raw(status).into());
             }
 
-            robotrs::yield_now().await;
+            unsafe {
+                HAL_RequestInterrupts(
+                    interrupt,
+                    self.handle,
+                    HAL_AnalogTriggerType_HAL_Trigger_kState,
+                    &mut status,
+                )
+            };
+            if status != 0 {
+                return Err(HalError::from_raw(status).into());
+            }
+
+            self.interrupt = Some(interrupt);
+
+            interrupt
+        };
+
+        unsafe {
+            HAL_SetInterruptUpSourceEdge(
+                interrupt,
+                if on_high { 1 } else { 0 },
+                if on_low { 1 } else { 0 },
+                &mut status,
+            )
+        };
+        if status != 0 {
+            return Err(HalError::from_raw(status).into());
         }
+
+        let (sender, receiver) = oneshot::channel();
+
+        let join_handle = thread::Builder::new()
+            .name("Waiting".to_string())
+            .spawn(move || {
+                let mut status = 0;
+                unsafe { HAL_WaitForInterrupt(interrupt, f64::MAX, 1, &mut status) };
+                let _ = sender.send(if status != 0 {
+                    Err(HalError::from_raw(status))
+                } else {
+                    Ok(())
+                });
+            })
+            .unwrap();
+
+        defer! {
+            let mut status = 0;
+            unsafe { HAL_ReleaseWaitingInterrupt(interrupt, &mut status) };
+            if status != 0 {
+                warn!("Failed to release the waiting interrupt");
+            }
+
+            trace!("Closing thread");
+
+            join_handle.join().expect("DIO waiting thread crashed");
+
+            trace!("Thread has closed");
+        }
+
+        receiver.await.expect("DIO waiting thread crashed")?;
+
+        Ok(())
+    }
+
+    pub async fn wait_for_high(&mut self) -> Result<(), DigitalError> {
+        self.wait_for_edge(true, false).await
     }
 
     pub async fn wait_for_low(&mut self) -> Result<(), DigitalError> {
-        loop {
-            if self.is_low()? {
-                return Ok(());
-            }
-
-            robotrs::yield_now().await;
-        }
+        self.wait_for_edge(false, true).await
     }
 }
