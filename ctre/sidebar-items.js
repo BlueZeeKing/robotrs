@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["DemandType","IdleMode","VictorSPXControlMode"],"mod":["error"],"struct":["VictorSPX"]};

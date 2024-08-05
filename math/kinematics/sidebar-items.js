@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["module_positions_from_dimensions"],"struct":["SwerveKinematics","SwerveState"],"trait":["Kinematics"]};

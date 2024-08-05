@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["calculate_trapezoid_area","calculate_trapezoid_area_from_slope"],"struct":["Constraints","Trajectory","TrapezoidProfile"]};
