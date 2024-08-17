@@ -18,4 +18,5 @@ members = [
   "crates/macros",
   "crates/choreolib",
   "crates/choreolib/choreo-macros",
+  "crates/photonvision",
 ]
