@@ -1,5 +1,11 @@
 use core::panic;
-use std::{cell::OnceCell, fs::File, io::Write, thread, time::Duration};
+use std::{
+    fs::File,
+    io::Write,
+    sync::OnceLock,
+    thread::{self, ThreadId},
+    time::Duration,
+};
 
 use anyhow::anyhow;
 use async_task::{Runnable, Task};
@@ -17,9 +23,7 @@ mod cancellation;
 pub use cancellation::{guard, CancellationHandle};
 
 static PERIOD: Duration = Duration::from_millis(20);
-thread_local! {
-    static TASK_SENDER: OnceCell<Sender<Runnable>> = const { OnceCell::new() };
-}
+static TASK_SENDER: OnceLock<(Sender<Runnable>, ThreadId)> = OnceLock::new();
 
 /// Panics if not called after the robot is scheduled or during the robot create closure
 pub fn spawn<O, F: Future<Output = O> + 'static>(fut: F) -> Task<Option<O>> {
@@ -27,6 +31,12 @@ pub fn spawn<O, F: Future<Output = O> + 'static>(fut: F) -> Task<Option<O>> {
 }
 
 fn spawn_inner<O, F: Future<Output = O> + 'static>(fut: F) -> Task<O> {
+    let (sender, thread_id) = TASK_SENDER.get().unwrap();
+
+    if *thread_id != thread::current().id() {
+        panic!("Spawn must only be called from the robot thread");
+    }
+
     // SAFETY:
     //
     // Runnable never changes thread so F can be !Send
@@ -34,13 +44,7 @@ fn spawn_inner<O, F: Future<Output = O> + 'static>(fut: F) -> Task<O> {
     // schedule is send, sync, and 'static
     let (runnable, task) = unsafe {
         async_task::spawn_unchecked(fut, move |runnable| {
-            TASK_SENDER.with(|sender| {
-                sender
-                    .get()
-                    .unwrap()
-                    .send(runnable)
-                    .expect("Robot is not initialized or called from the wrong thread")
-            });
+            sender.send(runnable).expect("Robot is not initialized")
         })
     };
 
@@ -216,11 +220,9 @@ impl<R: AsyncRobot> RobotScheduler<R> {
         thread::spawn(move || {
             let (task_sender, task_receiver) = unbounded();
 
-            TASK_SENDER.with(|sender| {
-                sender
-                    .set(task_sender.clone())
-                    .expect("Robot was already started")
-            });
+            TASK_SENDER
+                .set((task_sender.clone(), thread::current().id()))
+                .expect("Robot was already started");
 
             info!("Starting robot");
 
