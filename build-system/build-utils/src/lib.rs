@@ -69,12 +69,12 @@ pub async fn build(artifacts: &[Artifact]) -> anyhow::Result<()> {
         bail!("Unable to find libs dir");
     };
 
-    let out_dir = env::var("LIBS_OUT_DIR").map(PathBuf::from).ok();
+    let out_dir = env::var("LIBS_OUT_DIR")
+        .map(PathBuf::from)
+        .expect("Could not find out dir, make sure to set it in the cargo config file");
 
     fs::create_dir_all(&libs_dir)?;
-    if let Some(out_dir) = &out_dir {
-        fs::create_dir_all(out_dir)?;
-    }
+    fs::create_dir_all(&out_dir)?;
 
     println!(
         "cargo:rustc-link-search=native={}",
@@ -97,16 +97,14 @@ pub async fn build(artifacts: &[Artifact]) -> anyhow::Result<()> {
 
         std::io::copy(&mut zip_file, &mut fs_file)?;
 
-        if let Some(out_dir) = &out_dir {
-            if lib.should_deploy() {
-                let mut fs_file =
-                    File::open(libs_dir.join(format!("lib{}.so", lib.get_lib_name().unwrap())))?;
+        if lib.should_deploy() {
+            let mut fs_file =
+                File::open(libs_dir.join(format!("lib{}.so", lib.get_lib_name().unwrap())))?;
 
-                let mut out_file =
-                    File::create(out_dir.join(format!("lib{}.so", lib.get_lib_name().unwrap())))?;
+            let mut out_file =
+                File::create(out_dir.join(format!("lib{}.so", lib.get_lib_name().unwrap())))?;
 
-                std::io::copy(&mut fs_file, &mut out_file)?;
-            }
+            std::io::copy(&mut fs_file, &mut out_file)?;
         }
 
         println!("cargo:rustc-link-lib=dylib={}", lib.get_lib_name().unwrap());
