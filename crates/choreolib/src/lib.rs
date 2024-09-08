@@ -84,6 +84,8 @@ fn interpolate_point(a: &TrajectoryPoint, b: &TrajectoryPoint, time: Duration) -
 ///         AngularController::default(),
 ///         |x, y, heading| drivetrain.set_input_raw(Vector2::new(x, y), heading),
 ///     ),
+///     None,
+///     yield_now
 /// )
 /// .await
 ///```
