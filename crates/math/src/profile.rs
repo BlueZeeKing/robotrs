@@ -20,22 +20,18 @@ impl Constraints {
     }
 }
 
-pub struct TrapezoidProfile<const C: Constraints, Cont: Controller<State, O>, O = f32> {
+pub struct TrapezoidProfile<const C: Constraints, Cont> {
     controller: Cont,
     trajectory: Option<Trajectory>,
     last_target: Option<State>,
-    phantom: PhantomData<O>,
 }
 
-impl<const C: Constraints, Cont: Controller<State, O> + Default, O> Default
-    for TrapezoidProfile<C, Cont, O>
-{
+impl<const C: Constraints, Cont: Default> Default for TrapezoidProfile<C, Cont> {
     fn default() -> Self {
         Self {
             controller: Default::default(),
             trajectory: None,
             last_target: None,
-            phantom: PhantomData,
         }
     }
 }
@@ -197,15 +193,18 @@ impl Trajectory {
     }
 }
 
-impl<const C: Constraints, Cont: Controller<State, O>, O> Controller<State, O>
-    for TrapezoidProfile<C, Cont, O>
+impl<const C: Constraints, Cont: Controller<State = State>> Controller
+    for TrapezoidProfile<C, Cont>
 {
+    type State = State;
+    type Output = Cont::Output;
+
     fn calculate_with_time(
         &mut self,
         current: &State,
         target: &State,
         time: std::time::Duration,
-    ) -> O {
+    ) -> Self::Output {
         if self.trajectory.is_none()
             || self
                 .last_target

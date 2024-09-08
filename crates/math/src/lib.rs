@@ -15,7 +15,7 @@ pub mod kinematics;
 pub mod odometry;
 
 #[cfg(feature = "std")]
-fn get_time() -> Duration {
+pub fn get_time() -> Duration {
     use std::{sync::OnceLock, time::Instant};
 
     static START: OnceLock<Instant> = OnceLock::new();
@@ -37,7 +37,7 @@ pub fn get_time() -> Duration {
 }
 
 #[cfg(not(any(feature = "std", feature = "frc")))]
-fn get_time() -> Duration {
+pub fn get_time() -> Duration {
     unimplemented!("Please enable std or frc time drivers")
 }
 
@@ -75,18 +75,31 @@ pub fn optimize_angle(a: f32, b: f32) -> (f32, f32) {
     }
 }
 
-pub trait Controller<State, Output = f32> {
-    fn calculate_with_time(&mut self, current: &State, target: &State, time: Duration) -> Output;
+pub trait Controller {
+    type State;
+    type Output;
 
-    fn calculate(&mut self, current: &State, target: &State) -> Output {
+    fn calculate_with_time(
+        &mut self,
+        current: &Self::State,
+        target: &Self::State,
+        time: Duration,
+    ) -> Self::Output;
+
+    fn calculate(&mut self, current: &Self::State, target: &Self::State) -> Self::Output {
         self.calculate_with_time(current, target, get_time())
     }
 }
 
 #[impl_for_tuples(1, 8)]
-impl<State, Output: Add<Output = Output>> Controller<State, Output> for Tuple {
+impl<S, O: Add<Output = O>> Controller for Tuple {
+    type Output = O;
+    type State = S;
+
+    for_tuples!( where #( Tuple: Controller<Output = O, State = S> )* );
+
     #[inline]
-    fn calculate_with_time(&mut self, current: &State, target: &State, time: Duration) -> Output {
+    fn calculate_with_time(&mut self, current: &S, target: &S, time: Duration) -> Self::Output {
         for_tuples!( #( Tuple.calculate_with_time(current, target, time) )+* )
     }
 }
@@ -108,7 +121,10 @@ pub type Gain = ConstFloat;
 
 pub struct P<const K: Gain>;
 
-impl<const K: Gain> Controller<f32> for P<K> {
+impl<const K: Gain> Controller for P<K> {
+    type State = f32;
+    type Output = f32;
+
     #[inline]
     fn calculate_with_time(&mut self, current: &f32, target: &f32, _time: Duration) -> f32 {
         (target - current) * K.get()
@@ -126,7 +142,10 @@ pub struct I<const K: Gain> {
     accum: f32,
 }
 
-impl<const K: Gain> Controller<f32> for I<K> {
+impl<const K: Gain> Controller for I<K> {
+    type State = f32;
+    type Output = f32;
+
     #[inline]
     fn calculate_with_time(&mut self, current: &f32, target: &f32, time: Duration) -> f32 {
         if let Some(last_time) = self.last_time {
@@ -165,46 +184,62 @@ impl State {
     }
 }
 
-pub struct Velocity<C: Controller<f32>>(C);
+pub struct Velocity<C>(C);
 
-impl<C: Controller<f32>> Controller<State> for Velocity<C> {
+impl<C: Controller<State = f32>> Controller for Velocity<C> {
+    type Output = C::Output;
+    type State = State;
+
     #[inline]
-    fn calculate_with_time(&mut self, current: &State, target: &State, time: Duration) -> f32 {
+    fn calculate_with_time(
+        &mut self,
+        current: &State,
+        target: &State,
+        time: Duration,
+    ) -> C::Output {
         self.0
             .calculate_with_time(&current.velocity, &target.velocity, time)
     }
 }
 
-pub struct Position<C: Controller<f32>>(C);
+pub struct Position<C>(C);
 
-impl<C: Controller<f32>> Controller<State> for Position<C> {
+impl<C: Controller<State = f32>> Controller for Position<C> {
+    type State = State;
+    type Output = C::Output;
+
     #[inline]
-    fn calculate_with_time(&mut self, current: &State, target: &State, time: Duration) -> f32 {
+    fn calculate_with_time(
+        &mut self,
+        current: &State,
+        target: &State,
+        time: Duration,
+    ) -> C::Output {
         self.0
             .calculate_with_time(&current.position, &target.position, time)
     }
 }
 
-impl<C: Controller<f32> + Default> Default for Velocity<C> {
+impl<C: Default> Default for Velocity<C> {
     fn default() -> Self {
         Self(Default::default())
     }
 }
 
-impl<C: Controller<f32> + Default> Default for Position<C> {
+impl<C: Default> Default for Position<C> {
     fn default() -> Self {
         Self(Default::default())
     }
 }
 
-pub struct Derive<C: Controller<f32>> {
+pub struct Derive<C> {
     controller: C,
     last_time: Option<Duration>,
     last_current: f32,
     last_target: f32,
 }
 
-impl<C: Controller<f32> + Default> Default for Derive<C> {
+impl<C: Default> Default for Derive<C> {
     fn default() -> Self {
         Self {
             controller: C::default(),
@@ -215,9 +250,15 @@ impl<C: Controller<f32> + Default> Default for Derive<C> {
     }
 }
 
-impl<C: Controller<f32>> Controller<f32> for Derive<C> {
+impl<C: Controller<State = f32>> Controller for Derive<C>
+where
+    C::Output: Default,
+{
+    type State = f32;
+    type Output = C::Output;
+
     #[inline]
-    fn calculate_with_time(&mut self, current: &f32, target: &f32, time: Duration) -> f32 {
+    fn calculate_with_time(&mut self, current: &f32, target: &f32, time: Duration) -> C::Output {
         if let Some(last_time) = self.last_time {
             let target_vel =
                 (target - self.last_target) / (time.as_secs_f32() - last_time.as_secs_f32());
@@ -236,7 +277,7 @@ impl<C: Controller<f32>> Controller<f32> for Derive<C> {
             self.last_target = *target;
             self.last_time = Some(time);
 
-            0.0
+            Default::default()
         }
     }
 }

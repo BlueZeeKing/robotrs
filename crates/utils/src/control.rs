@@ -11,7 +11,7 @@ pub async fn run_controller<I, O, E, C, Goal, Supplier, Consumer, Check>(
     mut controller: C,
 ) -> Result<(), E>
 where
-    C: Controller<I, O>,
+    C: Controller<State = I, Output = O>,
     Goal: FnMut() -> I,
     Supplier: FnMut() -> Result<I, E>,
     Consumer: FnMut(O) -> Result<(), E>,

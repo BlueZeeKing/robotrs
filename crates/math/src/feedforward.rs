@@ -2,7 +2,10 @@ use super::{Controller, Derive, Gain, State, Velocity as VelocityExtractor};
 
 pub struct Static<const K: Gain>;
 
-impl<const K: Gain> Controller<State> for Static<K> {
+impl<const K: Gain> Controller for Static<K> {
+    type State = State;
+    type Output = f32;
+
     #[inline]
     fn calculate_with_time(
         &mut self,
@@ -16,7 +19,10 @@ impl<const K: Gain> Controller<State> for Static<K> {
 
 pub struct TargetProportional<const K: Gain>;
 
-impl<const K: Gain> Controller<f32> for TargetProportional<K> {
+impl<const K: Gain> Controller for TargetProportional<K> {
+    type Output = f32;
+    type State = f32;
+
     #[inline]
     fn calculate_with_time(
         &mut self,
@@ -46,7 +52,10 @@ pub type Acceleration<const K: Gain> = VelocityExtractor<Derive<TargetProportion
 
 pub struct Elevator<const K: Gain>;
 
-impl<const K: Gain> Controller<State> for Elevator<K> {
+impl<const K: Gain> Controller for Elevator<K> {
+    type Output = f32;
+    type State = State;
+
     #[inline]
     fn calculate_with_time(
         &mut self,
@@ -60,7 +69,10 @@ impl<const K: Gain> Controller<State> for Elevator<K> {
 
 pub struct Arm<const K: Gain>;
 
-impl<const K: Gain> Controller<State> for Arm<K> {
+impl<const K: Gain> Controller for Arm<K> {
+    type Output = f32;
+    type State = State;
+
     #[inline]
     fn calculate_with_time(
         &mut self,

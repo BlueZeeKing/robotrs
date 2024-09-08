@@ -27,7 +27,7 @@ pub struct Mechanism<I: 'static, E: 'static + Debug> {
 impl<I: 'static, E: Debug + 'static> Mechanism<I, E> {
     pub fn new<
         O,
-        C: Controller<I, O> + 'static,
+        C: Controller<State = I, Output = O> + 'static,
         Supply: FnMut() -> Result<I, E> + 'static,
         Consume: FnMut(MechanismState<O>) -> Result<(), E> + 'static,
         Check: FnMut(&I, &I) -> bool + 'static,
