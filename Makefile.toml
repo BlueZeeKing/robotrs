@@ -68,6 +68,11 @@ cwd = "./crates/hal"
 command = "cargo"
 args = ["doc", "--target=arm-unknown-linux-gnueabi"]
 
+[tasks.nt-doc]
+cwd = "./crates/nt"
+command = "cargo"
+args = ["doc", "--target=arm-unknown-linux-gnueabi"]
+
 [tasks.generate-index]
 script = [
   "echo \"<meta http-equiv=\\\"refresh\\\" content=\\\"0; url=robotrs/index.html\\\">\" > ${CARGO_MAKE_CRATE_TARGET_DIRECTORY}/arm-unknown-linux-gnueabi/doc/index.html",
@@ -82,5 +87,6 @@ dependencies = [
   "utils-doc",
   "math-doc",
   "hal-doc",
+  "nt-doc",
   "generate-index",
 ]
