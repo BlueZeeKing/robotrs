@@ -186,6 +186,11 @@ impl Payload for Vec<f32> {
     fn from_entry(handle: NT_Handle, default: Self) -> Self {
         let mut len = 0;
         let array = unsafe { NT_GetFloatArray(handle, default.as_ptr(), default.len(), &mut len) };
+
+        if array.is_null() {
+            return default;
+        }
+
         let safe_slice = unsafe { slice::from_raw_parts(array, len) };
         let value = safe_slice.to_vec();
 
@@ -206,6 +211,11 @@ impl Payload for Vec<f64> {
     fn from_entry(handle: NT_Handle, default: Self) -> Self {
         let mut len = 0;
         let array = unsafe { NT_GetDoubleArray(handle, default.as_ptr(), default.len(), &mut len) };
+
+        if array.is_null() {
+            return default;
+        }
+
         let safe_slice = unsafe { slice::from_raw_parts(array, len) };
         let value = safe_slice.to_vec();
 
@@ -227,6 +237,11 @@ impl Payload for Vec<i64> {
         let mut len = 0;
         let array =
             unsafe { NT_GetIntegerArray(handle, default.as_ptr(), default.len(), &mut len) };
+
+        if array.is_null() {
+            return default;
+        }
+
         let safe_slice = unsafe { slice::from_raw_parts(array, len) };
         let value = safe_slice.to_vec();
 
@@ -246,6 +261,7 @@ impl Payload for Vec<bool> {
 
     fn from_entry(handle: NT_Handle, default: Self) -> Self {
         let transformed = default
+            .clone()
             .into_iter()
             .map(|val| if val { 1 } else { 0 })
             .collect::<Vec<_>>();
@@ -254,6 +270,11 @@ impl Payload for Vec<bool> {
         let array = unsafe {
             NT_GetBooleanArray(handle, transformed.as_ptr(), transformed.len(), &mut len)
         };
+
+        if array.is_null() {
+            return default;
+        }
+
         let safe_slice = unsafe { slice::from_raw_parts(array, len) };
         let value = safe_slice
             .iter()
@@ -292,6 +313,11 @@ impl Payload for Vec<String> {
         let mut len = 0;
         let array =
             unsafe { NT_GetStringArray(handle, transformed.as_ptr(), transformed.len(), &mut len) };
+
+        if array.is_null() {
+            return default;
+        }
+
         let safe_slice = unsafe { slice::from_raw_parts(array, len) };
         let value = safe_slice
             .iter()
@@ -335,6 +361,11 @@ impl Payload for Vec<u8> {
     fn from_entry(handle: NT_Handle, default: Self) -> Self {
         let mut len = 0;
         let array = unsafe { NT_GetRaw(handle, default.as_ptr(), default.len(), &mut len) };
+
+        if array.is_null() {
+            return default;
+        }
+
         let safe_slice = unsafe { slice::from_raw_parts(array, len) };
         let value = safe_slice.to_vec();
 
@@ -357,6 +388,11 @@ impl Payload for Rpc {
     fn from_entry(handle: NT_Handle, default: Self) -> Self {
         let mut len = 0;
         let array = unsafe { NT_GetRaw(handle, default.0.as_ptr(), default.0.len(), &mut len) };
+
+        if array.is_null() {
+            return default;
+        }
+
         let safe_slice = unsafe { slice::from_raw_parts(array, len) };
         let value = safe_slice.to_vec();
 
