@@ -2,44 +2,44 @@ use std::{io::Read, time::Duration};
 
 use nalgebra::{Quaternion, Translation3};
 
-use crate::decode::{decode_f32, decode_f64, decode_i16, decode_i32, decode_i64, decode_u8};
+use crate::decode::{decode_f64, decode_i16, decode_i32, decode_u8};
 
+#[derive(Debug)]
 pub struct PipelineResult {
-    pub capture_time: i64,
-    pub publish_time: i64,
-    pub receive_time: i64,
-    pub sequence: i64,
+    pub timestamp: f64,
+    pub latency: f64,
     pub targets: Vec<Target>,
     pub position_estimate: PositionEstimateResult,
 }
 
 impl PipelineResult {
-    pub fn decode(mut reader: impl Read, receive_time: i64) -> Result<Self, std::io::Error> {
+    pub fn decode(mut reader: impl Read) -> Result<Self, std::io::Error> {
         Ok(Self {
-            sequence: decode_i64(&mut reader)?,
-            capture_time: decode_i64(&mut reader)?,
-            publish_time: decode_i64(&mut reader)?,
+            latency: decode_f64(&mut reader)?,
             targets: (0..decode_u8(&mut reader)?)
                 .map(|_| Target::decode(&mut reader))
                 .collect::<Result<_, _>>()?,
             position_estimate: PositionEstimateResult::decode(&mut reader)?,
-            receive_time,
+            timestamp: 0.0,
         })
     }
 
+    pub(crate) fn set_timestamp(&mut self, timestamp: f64) {
+        self.timestamp = timestamp;
+    }
+
     pub fn timestamp(&self) -> Duration {
-        Duration::from_micros((self.receive_time - (self.publish_time - self.capture_time)) as u64)
+        Duration::from_secs_f64(self.timestamp)
     }
 }
 
+#[derive(Debug)]
 pub struct Target {
     pub yaw: f64,
     pub pitch: f64,
     pub area: f64,
     pub skew: f64,
     pub apriltag_id: i32,
-    pub class_id: i32,
-    pub confidence: f32,
     pub best_camera_to_target: Transform,
     pub alt_camera_to_target: Transform,
     pub pose_ambiguity: f64,
@@ -55,8 +55,6 @@ impl Target {
             area: decode_f64(&mut reader)?,
             skew: decode_f64(&mut reader)?,
             apriltag_id: decode_i32(&mut reader)?,
-            class_id: decode_i32(&mut reader)?,
-            confidence: decode_f32(&mut reader)?,
             best_camera_to_target: Transform::decode(&mut reader)?,
             alt_camera_to_target: Transform::decode(&mut reader)?,
             pose_ambiguity: decode_f64(&mut reader)?,
@@ -70,6 +68,7 @@ impl Target {
     }
 }
 
+#[derive(Debug)]
 pub struct Corner {
     pub x: f64,
     pub y: f64,
@@ -84,6 +83,7 @@ impl Corner {
     }
 }
 
+#[derive(Debug)]
 pub struct Transform {
     pub translation: Translation3<f64>,
     pub rotation: Quaternion<f64>,
@@ -107,11 +107,13 @@ impl Transform {
     }
 }
 
+#[derive(Debug)]
 pub struct PositionEstimateResult {
     pub apriltag_ids: Vec<i16>,
     pub estimate: Option<PositionEstimate>,
 }
 
+#[derive(Debug)]
 pub struct PositionEstimate {
     pub best: Transform,
     pub best_reprojection_err: f64,
@@ -136,7 +138,7 @@ impl PositionEstimateResult {
     pub fn decode(mut reader: impl Read) -> Result<Self, std::io::Error> {
         Ok(Self {
             estimate: {
-                if decode_u8(&mut reader)? == 1 {
+                if dbg!(decode_u8(&mut reader)?) == 1 {
                     Some(PositionEstimate::decode(&mut reader)?)
                 } else {
                     None

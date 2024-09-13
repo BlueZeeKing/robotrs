@@ -7,26 +7,26 @@ use robotrs::time::get_time;
 pub mod decode;
 pub mod result;
 
-pub struct Camera {
-    result: Subscriber<Vec<u8>>,
-    driver_mode_pub: Publisher<bool>,
-    driver_mode_sub: Subscriber<bool>,
-    version: Subscriber<String>,
-    save_input_img_pub: Publisher<i64>,
-    save_output_img_pub: Publisher<i64>,
-    save_input_img_sub: Subscriber<i64>,
-    save_output_img_sub: Subscriber<i64>,
-    pipeline_idx_request: Publisher<i64>,
-    led_mode_request: Publisher<i64>,
-    pipeline_idx_state: Subscriber<i64>,
-    led_mode_state: Subscriber<i64>,
-    heartbeat: Subscriber<i64>,
-    camera_intrinsics: Subscriber<Vec<f64>>,
-    camera_distortion: Subscriber<Vec<f64>>,
+pub struct Camera<'a> {
+    result: Subscriber<'a, Vec<u8>>,
+    driver_mode_pub: Publisher<'a, bool>,
+    driver_mode_sub: Subscriber<'a, bool>,
+    version: Subscriber<'a, String>,
+    save_input_img_pub: Publisher<'a, i64>,
+    save_output_img_pub: Publisher<'a, i64>,
+    save_input_img_sub: Subscriber<'a, i64>,
+    save_output_img_sub: Subscriber<'a, i64>,
+    pipeline_idx_request: Publisher<'a, i64>,
+    led_mode_request: Publisher<'a, i64>,
+    pipeline_idx_state: Subscriber<'a, i64>,
+    led_mode_state: Subscriber<'a, i64>,
+    heartbeat: Subscriber<'a, i64>,
+    camera_intrinsics: Subscriber<'a, Vec<f64>>,
+    camera_distortion: Subscriber<'a, Vec<f64>>,
 }
 
-impl Camera {
-    pub fn new(instance: Instance, camera_name: &str) -> Self {
+impl<'a> Camera<'a> {
+    pub fn new(instance: &'a Instance, camera_name: &str) -> Self {
         let save_input_img =
             instance.topic(&format!("/photonvision/{}/inputSaveImgCmd", camera_name));
         let save_output_img =
@@ -82,8 +82,24 @@ impl Camera {
         }
     }
 
-    pub fn get_result(&self) -> Result<PipelineResult, std::io::Error> {
+    pub fn print_raw(&self) {
         let data = self.result.get();
-        PipelineResult::decode(Cursor::new(data), get_time().as_micros() as i64)
+
+        for chunk in data.chunks(16) {
+            for byte in chunk {
+                print!("{:03} ", byte);
+            }
+            println!();
+        }
+    }
+
+    pub fn get_result(&self) -> Result<PipelineResult, std::io::Error> {
+        let (data, time) = self.result.get_with_time();
+
+        let mut res = PipelineResult::decode(Cursor::new(data))?;
+
+        res.set_timestamp((time as f64) / 1e6 - res.latency / 1e3);
+
+        Ok(res)
     }
 }
