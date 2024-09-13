@@ -152,11 +152,22 @@ impl<'a, T: Payload> Subscriber<'a, T> {
         T::from_entry(self.handle, default)
     }
 
+    pub fn get_with_default_with_time(&self, default: T) -> (T, i64) {
+        T::from_entry_with_time(self.handle, default)
+    }
+
     pub fn get(&self) -> T
     where
         T: Default,
     {
         self.get_with_default(T::default())
+    }
+
+    pub fn get_with_time(&self) -> (T, i64)
+    where
+        T: Default,
+    {
+        self.get_with_default_with_time(T::default())
     }
 }
 
