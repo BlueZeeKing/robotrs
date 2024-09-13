@@ -198,9 +198,9 @@ fn deriver(mut initial: Option<f32>) -> impl FnMut(f32) -> f32 {
 /// axis, and a closure that consumes the final 3 control outputs. See [follow_path] for example.
 pub fn simple_controller<E, O1, O2, O3>(
     mut pose: impl FnMut() -> Vector3<f32>,
-    mut x_controller: impl Controller<State, O1>,
-    mut y_controller: impl Controller<State, O2>,
-    mut angle_controller: impl Controller<State, O3>,
+    mut x_controller: impl Controller<State = State, Output = O1>,
+    mut y_controller: impl Controller<State = State, Output = O2>,
+    mut angle_controller: impl Controller<State = State, Output = O3>,
     mut consumer: impl FnMut(O1, O2, O3) -> Result<(), E>,
 ) -> impl FnMut(&TrajectoryPoint) -> Result<(), E> {
     let mut x_velocity = deriver(None);
