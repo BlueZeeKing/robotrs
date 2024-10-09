@@ -1,0 +1,127 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Async, fast synchronization primitives for task wakeup."><title>diatomic_waker - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../static.files/rustdoc-6d8951b3ccd3cbca.css"><meta name="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="diatomic_waker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.83.0-nightly (6f4ae0f34 2024-10-08)" data-channel="nightly" data-search-js="search-e056c65ede92db13.js" data-settings-js="settings-805db61a62df4bd2.js" ><script src="../static.files/storage-1d39b6787ed640ff.js"></script><script defer src="../crates.js"></script><script defer src="../static.files/main-f070b9041d14864c.js"></script><noscript><link rel="stylesheet" href="../static.files/noscript-0111fcff984fae8f.css"></noscript><link rel="alternate icon" type="image/png" href="../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../diatomic_waker/index.html">diatomic_<wbr>waker</a><span class="version">0.2.3</span></h2></div><div class="sidebar-elems"><ul class="block"><li><a id="all-types" href="all.html">All Items</a></li></ul><section id="rustdoc-toc"><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#features-flags" title="Features flags">Features flags</a></li><li><a href="#examples" title="Examples">Examples</a></li></ul><h3><a href="#modules">Crate Items</a></h3><ul class="block"><li><a href="#modules" title="Modules">Modules</a></li><li><a href="#structs" title="Structs">Structs</a></li></ul></section><div id="rustdoc-modnav"></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1>Crate <span>diatomic_waker</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../src/diatomic_waker/lib.rs.html#1-539">source</a> </span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Async, fast synchronization primitives for task wakeup.</p>
+<p><code>diatomic-waker</code> is similar to <a href="https://docs.rs/atomic-waker/latest/atomic_waker/"><code>atomic-waker</code></a> in that it
+enables concurrent updates and notifications to a wrapped <code>Waker</code>. Unlike
+the latter, however, it does not use spinlocks<sup id="fnref1"><a href="#fn1">1</a></sup> and is faster, in
+particular when the consumer is notified periodically rather than just once.
+It can in particular be used as a very fast, single-consumer <a href="https://www.1024cores.net/home/lock-free-algorithms/eventcounts">eventcount</a> to
+turn a non-blocking data structure into an asynchronous one (see MPSC
+channel receiver example).</p>
+<p>The API distinguishes between the entity that registers wakers (<a href="struct.WakeSink.html" title="struct diatomic_waker::WakeSink"><code>WakeSink</code></a>
+or <a href="struct.WakeSinkRef.html" title="struct diatomic_waker::WakeSinkRef"><code>WakeSinkRef</code></a>) and the possibly many entities that notify the waker
+(<a href="struct.WakeSource.html" title="struct diatomic_waker::WakeSource"><code>WakeSource</code></a>s or <a href="struct.WakeSourceRef.html" title="struct diatomic_waker::WakeSourceRef"><code>WakeSourceRef</code></a>s).</p>
+<p>Most users will prefer to use <a href="struct.WakeSink.html" title="struct diatomic_waker::WakeSink"><code>WakeSink</code></a> and <a href="struct.WakeSource.html" title="struct diatomic_waker::WakeSource"><code>WakeSource</code></a>, which readily
+store a shared <a href="struct.DiatomicWaker.html" title="struct diatomic_waker::DiatomicWaker"><code>DiatomicWaker</code></a> within an <code>Arc</code>. You may otherwise elect to
+allocate a <a href="struct.DiatomicWaker.html" title="struct diatomic_waker::DiatomicWaker"><code>DiatomicWaker</code></a> yourself, but will then need to use the
+lifetime-bounded <a href="struct.WakeSinkRef.html" title="struct diatomic_waker::WakeSinkRef"><code>WakeSinkRef</code></a> and <a href="struct.WakeSourceRef.html" title="struct diatomic_waker::WakeSourceRef"><code>WakeSourceRef</code></a>, or ensure by other
+means that waker registration is not performed concurrently.</p>
+<h2 id="features-flags"><a class="doc-anchor" href="#features-flags">§</a>Features flags</h2>
+<p>By default, this crate enables the <code>alloc</code> feature to provide the owned
+<a href="struct.WakeSink.html" title="struct diatomic_waker::WakeSink"><code>WakeSink</code></a> and <a href="struct.WakeSource.html" title="struct diatomic_waker::WakeSource"><code>WakeSource</code></a>. It can be made <code>no-std</code>-compatible by
+specifying <code>default-features = false</code>.</p>
+<h2 id="examples"><a class="doc-anchor" href="#examples">§</a>Examples</h2>
+<p>A multi-producer, single-consumer channel of capacity 1 for sending
+<code>NonZeroUsize</code> values, with an asynchronous receiver:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>std::num::NonZeroUsize;
+<span class="kw">use </span>std::sync::atomic::{AtomicUsize, Ordering};
+<span class="kw">use </span>std::sync::Arc;
+
+<span class="kw">use </span>diatomic_waker::{WakeSink, WakeSource};
+
+<span class="comment">// The sending side of the channel.
+</span><span class="attr">#[derive(Clone)]
+</span><span class="kw">struct </span>Sender {
+    wake_src: WakeSource,
+    value: Arc&lt;AtomicUsize&gt;,
+}
+
+<span class="comment">// The receiving side of the channel.
+</span><span class="kw">struct </span>Receiver {
+    wake_sink: WakeSink,
+    value: Arc&lt;AtomicUsize&gt;,
+}
+
+<span class="comment">// Creates an empty channel.
+</span><span class="kw">fn </span>channel() -&gt; (Sender, Receiver) {
+    <span class="kw">let </span>value = Arc::new(AtomicUsize::new(<span class="number">0</span>));
+    <span class="kw">let </span>wake_sink = WakeSink::new();
+    <span class="kw">let </span>wake_src = wake_sink.source();
+
+    (
+        Sender {
+            wake_src,
+            value: value.clone(),
+        },
+        Receiver { wake_sink, value },
+    )
+}
+
+<span class="kw">impl </span>Sender {
+    <span class="comment">// Sends a value if the channel is empty.
+    </span><span class="kw">fn </span>try_send(<span class="kw-2">&amp;</span><span class="self">self</span>, value: NonZeroUsize) -&gt; bool {
+        <span class="kw">let </span>success = <span class="self">self
+            </span>.value
+            .compare_exchange(<span class="number">0</span>, value.get(), Ordering::Relaxed, Ordering::Relaxed)
+            .is_ok();
+        <span class="kw">if </span>success {
+            <span class="self">self</span>.wake_src.notify()
+        };
+
+        success
+    }
+}
+
+<span class="kw">impl </span>Receiver {
+    <span class="comment">// Receives a value asynchronously.
+    </span><span class="kw">async fn </span>recv(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; NonZeroUsize {
+        <span class="comment">// Wait until the predicate returns `Some(value)`, i.e. when the atomic
+        // value becomes non-zero.
+        </span><span class="self">self</span>.wake_sink
+            .wait_until(|| NonZeroUsize::new(<span class="self">self</span>.value.swap(<span class="number">0</span>, Ordering::Relaxed)))
+            .<span class="kw">await
+    </span>}
+}</code></pre></div>
+<p>In some case, it may be necessary to use the lower-level
+<a href="struct.WakeSink.html#method.register" title="method diatomic_waker::WakeSink::register"><code>register</code></a> and <a href="struct.WakeSink.html#method.unregister" title="method diatomic_waker::WakeSink::unregister"><code>unregister</code></a>
+methods rather than the <a href="struct.WakeSink.html#method.wait_until" title="method diatomic_waker::WakeSink::wait_until"><code>wait_until</code></a> convenience
+method.</p>
+<p>This is how the behavior of the above <code>recv</code> method could be
+reproduced with a hand-coded future:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>std::future::Future;
+<span class="kw">use </span>std::pin::Pin;
+<span class="kw">use </span>std::task::{Context, Poll};
+
+<span class="kw">struct </span>Recv&lt;<span class="lifetime">'a</span>&gt; {
+    receiver: <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>Receiver,
+}
+
+<span class="kw">impl </span>Future <span class="kw">for </span>Recv&lt;<span class="lifetime">'_</span>&gt; {
+    <span class="kw">type </span>Output = NonZeroUsize;
+
+    <span class="kw">fn </span>poll(<span class="kw-2">mut </span><span class="self">self</span>: Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;, cx: <span class="kw-2">&amp;mut </span>Context&lt;<span class="lifetime">'_</span>&gt;) -&gt; Poll&lt;NonZeroUsize&gt; {
+        <span class="comment">// Avoid waker registration if a value is readily available.
+        </span><span class="kw">let </span>value = NonZeroUsize::new(<span class="self">self</span>.receiver.value.swap(<span class="number">0</span>, Ordering::Relaxed));
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(value) = value {
+            <span class="kw">return </span>Poll::Ready(value);
+        }
+
+        <span class="comment">// Register the waker to be polled again once a value is available.
+        </span><span class="self">self</span>.receiver.wake_sink.register(cx.waker());
+
+        <span class="comment">// Check again after registering the waker to prevent a race condition.
+        </span><span class="kw">let </span>value = NonZeroUsize::new(<span class="self">self</span>.receiver.value.swap(<span class="number">0</span>, Ordering::Relaxed));
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(value) = value {
+            <span class="comment">// Avoid a spurious wake-up.
+            </span><span class="self">self</span>.receiver.wake_sink.unregister();
+
+            <span class="kw">return </span>Poll::Ready(value);
+        }
+
+        Poll::Pending
+    }
+}</code></pre></div>
+<div class="footnotes"><hr><ol><li id="fn1"><p>The implementation of <a href="https://docs.rs/atomic-waker/latest/atomic_waker/">AtomicWaker</a> yields to the
+runtime on contention, which is in effect an executor-mediated spinlock.&nbsp;<a href="#fnref1">↩</a></p></li></ol></div></div></details><h2 id="modules" class="section-header">Modules<a href="#modules" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="mod" href="primitives/index.html" title="mod diatomic_waker::primitives">primitives</a><wbr><span class="stab deprecated" title="">Deprecated</span></div><div class="desc docblock-short">Primitives for task wakeup.</div></li></ul><h2 id="structs" class="section-header">Structs<a href="#structs" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.DiatomicWaker.html" title="struct diatomic_waker::DiatomicWaker">Diatomic<wbr>Waker</a></div><div class="desc docblock-short">A primitive that can send or await notifications.</div></li><li><div class="item-name"><a class="struct" href="struct.WaitUntil.html" title="struct diatomic_waker::WaitUntil">Wait<wbr>Until</a></div><div class="desc docblock-short">A future that can be <code>await</code>ed until a predicate is satisfied.</div></li><li><div class="item-name"><a class="struct" href="struct.WakeSink.html" title="struct diatomic_waker::WakeSink">Wake<wbr>Sink</a></div><div class="desc docblock-short">An owned object that can await notifications from one or several
+<a href="struct.WakeSource.html" title="struct diatomic_waker::WakeSource"><code>WakeSource</code></a>s.</div></li><li><div class="item-name"><a class="struct" href="struct.WakeSinkRef.html" title="struct diatomic_waker::WakeSinkRef">Wake<wbr>Sink<wbr>Ref</a></div><div class="desc docblock-short">A non-owned object that can await notifications from one or several
+<a href="struct.WakeSourceRef.html" title="struct diatomic_waker::WakeSourceRef"><code>WakeSourceRef</code></a>s.</div></li><li><div class="item-name"><a class="struct" href="struct.WakeSource.html" title="struct diatomic_waker::WakeSource">Wake<wbr>Source</a></div><div class="desc docblock-short">An owned object that can send notifications to a <a href="struct.WakeSink.html" title="struct diatomic_waker::WakeSink"><code>WakeSink</code></a>.</div></li><li><div class="item-name"><a class="struct" href="struct.WakeSourceRef.html" title="struct diatomic_waker::WakeSourceRef">Wake<wbr>Source<wbr>Ref</a></div><div class="desc docblock-short">A non-owned object that can send notifications to a <a href="struct.WakeSinkRef.html" title="struct diatomic_waker::WakeSinkRef"><code>WakeSinkRef</code></a>.</div></li></ul></section></div></main></body></html>

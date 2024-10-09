@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["PS4Controller","XboxController"]};

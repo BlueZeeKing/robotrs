@@ -1,0 +1,1 @@
+searchState.loadedDescShard("async_deadman", 0, "A deadman switch that can be used to detect when it is …\nReturns the argument unchanged.\nReturns the argument unchanged.\nCalls <code>U::from(self)</code>.\nCalls <code>U::from(self)</code>.")

@@ -1,0 +1,78 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="futures-buffered"><title>futures_buffered - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../static.files/rustdoc-6d8951b3ccd3cbca.css"><meta name="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="futures_buffered" data-themes="" data-resource-suffix="" data-rustdoc-version="1.83.0-nightly (6f4ae0f34 2024-10-08)" data-channel="nightly" data-search-js="search-e056c65ede92db13.js" data-settings-js="settings-805db61a62df4bd2.js" ><script src="../static.files/storage-1d39b6787ed640ff.js"></script><script defer src="../crates.js"></script><script defer src="../static.files/main-f070b9041d14864c.js"></script><noscript><link rel="stylesheet" href="../static.files/noscript-0111fcff984fae8f.css"></noscript><link rel="alternate icon" type="image/png" href="../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../futures_buffered/index.html">futures_<wbr>buffered</a><span class="version">0.2.8</span></h2></div><div class="sidebar-elems"><ul class="block"><li><a id="all-types" href="all.html">All Items</a></li></ul><section id="rustdoc-toc"><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#futures-buffered" title="futures-buffered">futures-buffered</a><ul><li><a href="#benchmarks" title="Benchmarks">Benchmarks</a></li></ul></li><li><a href="#example" title="Example">Example</a></li></ul><h3><a href="#structs">Crate Items</a></h3><ul class="block"><li><a href="#structs" title="Structs">Structs</a></li><li><a href="#traits" title="Traits">Traits</a></li><li><a href="#functions" title="Functions">Functions</a></li><li><a href="#types" title="Type Aliases">Type Aliases</a></li></ul></section><div id="rustdoc-modnav"></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1>Crate <span>futures_buffered</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../src/futures_buffered/lib.rs.html#1-174">source</a> </span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h2 id="futures-buffered"><a class="doc-anchor" href="#futures-buffered">§</a>futures-buffered</h2>
+<p>This project provides a single future structure: <code>FuturesUnorderedBounded</code>.</p>
+<p>Much like <a href="https://docs.rs/futures/0.3.25/futures/stream/struct.FuturesUnordered.html"><code>futures::stream::FuturesUnordered</code></a>,
+this is a thread-safe, <code>Pin</code> friendly, lifetime friendly, concurrent processing stream.</p>
+<p>The is different to <code>FuturesUnordered</code> in that <code>FuturesUnorderedBounded</code> has a fixed capacity for processing count.
+This means it’s less flexible, but produces better memory efficiency.</p>
+<h3 id="benchmarks"><a class="doc-anchor" href="#benchmarks">§</a>Benchmarks</h3><h4 id="speed"><a class="doc-anchor" href="#speed">§</a>Speed</h4>
+<p>Running 65536 100us timers with 256 concurrent jobs in a single threaded tokio runtime:</p>
+<div class="example-wrap"><pre class="language-text"><code>FuturesUnordered         time:   [420.47 ms 422.21 ms 423.99 ms]
+FuturesUnorderedBounded  time:   [366.02 ms 367.54 ms 369.05 ms]</code></pre></div><h4 id="memory-usage"><a class="doc-anchor" href="#memory-usage">§</a>Memory usage</h4>
+<p>Running 512000 <code>Ready&lt;i32&gt;</code> futures with 256 concurrent jobs.</p>
+<ul>
+<li>count: the number of times alloc/dealloc was called</li>
+<li>alloc: the number of cumulative bytes allocated</li>
+<li>dealloc: the number of cumulative bytes deallocated</li>
+</ul>
+<div class="example-wrap"><pre class="language-text"><code>FuturesUnordered
+    count:    1024002
+    alloc:    40960144 B
+    dealloc:  40960000 B
+
+FuturesUnorderedBounded
+    count:    2
+    alloc:    8264 B
+    dealloc:  0 B</code></pre></div><h4 id="conclusion"><a class="doc-anchor" href="#conclusion">§</a>Conclusion</h4>
+<p>As you can see, <code>FuturesUnorderedBounded</code> massively reduces you memory overhead while providing a significant performance gain.
+Perfect for if you want a fixed batch size</p>
+<h2 id="example"><a class="doc-anchor" href="#example">§</a>Example</h2>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>futures::future::Future;
+<span class="kw">use </span>futures::stream::StreamExt;
+<span class="kw">use </span>futures_buffered::FuturesUnorderedBounded;
+<span class="kw">use </span>hyper::client::conn::http1::{handshake, SendRequest};
+<span class="kw">use </span>hyper::body::Incoming;
+<span class="kw">use </span>hyper::{Request, Response};
+<span class="kw">use </span>hyper_util::rt::TokioIo;
+<span class="kw">use </span>tokio::net::TcpStream;
+
+<span class="comment">// create a tcp connection
+</span><span class="kw">let </span>stream = TcpStream::connect(<span class="string">"example.com:80"</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+
+<span class="comment">// perform the http handshakes
+</span><span class="kw">let </span>(<span class="kw-2">mut </span>rs, conn) = handshake(TokioIo::new(stream)).<span class="kw">await</span><span class="question-mark">?</span>;
+tokio::spawn(conn);
+
+<span class="doccomment">/// make http request to example.com and read the response
+</span><span class="kw">fn </span>make_req(rs: <span class="kw-2">&amp;mut </span>SendRequest&lt;String&gt;) -&gt; <span class="kw">impl </span>Future&lt;Output = hyper::Result&lt;Response&lt;Incoming&gt;&gt;&gt; {
+    <span class="kw">let </span>req = Request::builder()
+        .header(<span class="string">"Host"</span>, <span class="string">"example.com"</span>)
+        .method(<span class="string">"GET"</span>)
+        .body(String::new())
+        .unwrap();
+    rs.send_request(req)
+}
+
+<span class="comment">// create a queue that can hold 128 concurrent requests
+</span><span class="kw">let </span><span class="kw-2">mut </span>queue = FuturesUnorderedBounded::new(<span class="number">128</span>);
+
+<span class="comment">// start up 128 requests
+</span><span class="kw">for _ in </span><span class="number">0</span>..<span class="number">128 </span>{
+    queue.push(make_req(<span class="kw-2">&amp;mut </span>rs));
+}
+<span class="comment">// wait for a request to finish and start another to fill its place - up to 1024 total requests
+</span><span class="kw">for _ in </span><span class="number">128</span>..<span class="number">1024 </span>{
+    queue.next().<span class="kw">await</span>;
+    queue.push(make_req(<span class="kw-2">&amp;mut </span>rs));
+}
+<span class="comment">// wait for the tail end to finish
+</span><span class="kw">for _ in </span><span class="number">0</span>..<span class="number">128 </span>{
+    queue.next().<span class="kw">await</span>;
+}</code></pre></div>
+</div></details><h2 id="structs" class="section-header">Structs<a href="#structs" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.BufferUnordered.html" title="struct futures_buffered::BufferUnordered">Buffer<wbr>Unordered</a></div><div class="desc docblock-short">Stream for the <a href="trait.BufferedStreamExt.html#method.buffered_unordered" title="method futures_buffered::BufferedStreamExt::buffered_unordered"><code>buffered_unordered</code></a>
+method.</div></li><li><div class="item-name"><a class="struct" href="struct.BufferedOrdered.html" title="struct futures_buffered::BufferedOrdered">Buffered<wbr>Ordered</a></div><div class="desc docblock-short">Stream for the <a href="trait.BufferedStreamExt.html#method.buffered_ordered" title="method futures_buffered::BufferedStreamExt::buffered_ordered"><code>buffered_ordered</code></a> method.</div></li><li><div class="item-name"><a class="struct" href="struct.FuturesOrdered.html" title="struct futures_buffered::FuturesOrdered">Futures<wbr>Ordered</a></div><div class="desc docblock-short">An unbounded queue of futures.</div></li><li><div class="item-name"><a class="struct" href="struct.FuturesOrderedBounded.html" title="struct futures_buffered::FuturesOrderedBounded">Futures<wbr>Ordered<wbr>Bounded</a></div><div class="desc docblock-short">An unbounded queue of futures.</div></li><li><div class="item-name"><a class="struct" href="struct.FuturesUnordered.html" title="struct futures_buffered::FuturesUnordered">Futures<wbr>Unordered</a></div><div class="desc docblock-short">A set of futures which may complete in any order.</div></li><li><div class="item-name"><a class="struct" href="struct.FuturesUnorderedBounded.html" title="struct futures_buffered::FuturesUnorderedBounded">Futures<wbr>Unordered<wbr>Bounded</a></div><div class="desc docblock-short">A set of futures which may complete in any order.</div></li><li><div class="item-name"><a class="struct" href="struct.JoinAll.html" title="struct futures_buffered::JoinAll">JoinAll</a></div><div class="desc docblock-short">Future for the <a href="fn.join_all.html" title="fn futures_buffered::join_all"><code>join_all</code></a> function.</div></li><li><div class="item-name"><a class="struct" href="struct.MergeBounded.html" title="struct futures_buffered::MergeBounded">Merge<wbr>Bounded</a></div><div class="desc docblock-short">A combined stream that releases values in any order that they come</div></li><li><div class="item-name"><a class="struct" href="struct.MergeUnbounded.html" title="struct futures_buffered::MergeUnbounded">Merge<wbr>Unbounded</a></div><div class="desc docblock-short">A combined stream that releases values in any order that they come.</div></li><li><div class="item-name"><a class="struct" href="struct.TryBufferUnordered.html" title="struct futures_buffered::TryBufferUnordered">TryBuffer<wbr>Unordered</a></div><div class="desc docblock-short">Stream for the <a href="trait.BufferedTryStreamExt.html#method.try_buffered_unordered" title="method futures_buffered::BufferedTryStreamExt::try_buffered_unordered"><code>try_buffered_unordered</code></a> method.</div></li><li><div class="item-name"><a class="struct" href="struct.TryBufferedOrdered.html" title="struct futures_buffered::TryBufferedOrdered">TryBuffered<wbr>Ordered</a></div><div class="desc docblock-short">Stream for the <a href="trait.BufferedTryStreamExt.html#method.try_buffered_ordered" title="method futures_buffered::BufferedTryStreamExt::try_buffered_ordered"><code>try_buffered_ordered</code></a> method.</div></li><li><div class="item-name"><a class="struct" href="struct.TryJoinAll.html" title="struct futures_buffered::TryJoinAll">TryJoin<wbr>All</a></div><div class="desc docblock-short">Future for the <a href="fn.try_join_all.html" title="fn futures_buffered::try_join_all"><code>try_join_all</code></a> function.</div></li></ul><h2 id="traits" class="section-header">Traits<a href="#traits" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="trait" href="trait.BufferedStreamExt.html" title="trait futures_buffered::BufferedStreamExt">Buffered<wbr>Stream<wbr>Ext</a></div><div class="desc docblock-short">An extension trait for <code>Stream</code>s that provides a variety of convenient
+combinator functions.</div></li><li><div class="item-name"><a class="trait" href="trait.BufferedTryStreamExt.html" title="trait futures_buffered::BufferedTryStreamExt">Buffered<wbr>TryStream<wbr>Ext</a></div><div class="desc docblock-short">An extension trait for <code>Stream</code>s that provides a variety of convenient
+combinator functions.</div></li><li><div class="item-name"><a class="trait" href="trait.TryFuture.html" title="trait futures_buffered::TryFuture">TryFuture</a></div><div class="desc docblock-short">A convenience for futures that return <code>Result</code> values that includes
+a variety of adapters tailored to such futures.</div></li><li><div class="item-name"><a class="trait" href="trait.TryStream.html" title="trait futures_buffered::TryStream">TryStream</a></div><div class="desc docblock-short">A convenience for streams that return <code>Result</code> values that includes
+a variety of adapters tailored to such futures.</div></li></ul><h2 id="functions" class="section-header">Functions<a href="#functions" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="fn" href="fn.join_all.html" title="fn futures_buffered::join_all">join_<wbr>all</a></div><div class="desc docblock-short">Creates a future which represents a collection of the outputs of the futures
+given.</div></li><li><div class="item-name"><a class="fn" href="fn.try_join_all.html" title="fn futures_buffered::try_join_all">try_<wbr>join_<wbr>all</a></div><div class="desc docblock-short">Creates a future which represents a collection of the outputs of the futures
+given.</div></li></ul><h2 id="types" class="section-header">Type Aliases<a href="#types" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="type" href="type.Merge.html" title="type futures_buffered::Merge">Merge</a><wbr><span class="stab deprecated" title="">Deprecated</span></div></li></ul></section></div></main></body></html>

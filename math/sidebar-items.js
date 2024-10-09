@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["get_time","normalize_angle","optimize_angle"],"mod":["feedforward","filter","kinematics","odometry","profile"],"struct":["ConstFloat","Derive","I","P","Position","State","Velocity"],"trait":["Controller"],"type":["D","Gain","PID"]};

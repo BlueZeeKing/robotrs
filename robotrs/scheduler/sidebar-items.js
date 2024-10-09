@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["guard","spawn"],"struct":["CancellationHandle","RobotScheduler"]};

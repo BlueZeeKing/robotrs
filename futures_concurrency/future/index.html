@@ -1,0 +1,58 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Asynchronous basic functionality."><title>futures_concurrency::future - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-6d8951b3ccd3cbca.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="futures_concurrency" data-themes="" data-resource-suffix="" data-rustdoc-version="1.83.0-nightly (6f4ae0f34 2024-10-08)" data-channel="nightly" data-search-js="search-e056c65ede92db13.js" data-settings-js="settings-805db61a62df4bd2.js" ><script src="../../static.files/storage-1d39b6787ed640ff.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../static.files/main-f070b9041d14864c.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-0111fcff984fae8f.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../futures_concurrency/index.html">futures_<wbr>concurrency</a><span class="version">7.6.1</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">Module future</a></h2><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#examples" title="Examples">Examples</a></li><li><a href="#concurrency" title="Concurrency">Concurrency</a><ul><li><a href="#infallible-concurrency" title="Infallible Concurrency">Infallible Concurrency</a></li><li><a href="#fallible-concurrency" title="Fallible Concurrency">Fallible Concurrency</a></li></ul></li></ul><h3><a href="#modules">Module Items</a></h3><ul class="block"><li><a href="#modules" title="Modules">Modules</a></li><li><a href="#structs" title="Structs">Structs</a></li><li><a href="#traits" title="Traits">Traits</a></li></ul></section><div id="rustdoc-modnav"><h2 class="in-crate"><a href="../index.html">In crate futures_<wbr>concurrency</a></h2></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><span class="rustdoc-breadcrumbs"><a href="../index.html">futures_concurrency</a></span><h1>Module <span>future</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../../src/futures_concurrency/future/mod.rs.html#1-90">source</a> </span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Asynchronous basic functionality.</p>
+<p>Please see the fundamental <code>async</code> and <code>await</code> keywords and the <a href="https://rust-lang.github.io/async-book/">async book</a>
+for more information on asynchronous programming in Rust.</p>
+<h2 id="examples"><a class="doc-anchor" href="#examples">§</a>Examples</h2>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>futures_concurrency::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span>futures_lite::future::block_on;
+<span class="kw">use </span>std::future;
+
+block_on(<span class="kw">async </span>{
+    <span class="comment">// Await multiple similarly-typed futures.
+    </span><span class="kw">let </span>a = future::ready(<span class="number">1</span>);
+    <span class="kw">let </span>b = future::ready(<span class="number">2</span>);
+    <span class="kw">let </span>c = future::ready(<span class="number">3</span>);
+    <span class="macro">assert_eq!</span>([a, b, c].join().<span class="kw">await</span>, [<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]);
+    
+    <span class="comment">// Await multiple differently-typed futures.
+    </span><span class="kw">let </span>a = future::ready(<span class="number">1u8</span>);
+    <span class="kw">let </span>b = future::ready(<span class="string">"hello"</span>);
+    <span class="kw">let </span>c = future::ready(<span class="number">3u16</span>);
+    <span class="macro">assert_eq!</span>((a, b, c).join().<span class="kw">await</span>, (<span class="number">1</span>, <span class="string">"hello"</span>, <span class="number">3</span>));
+
+    <span class="comment">// It even works with vectors of futures, providing an alternative
+    // to futures-rs' `join_all`.
+    </span><span class="kw">let </span>a = future::ready(<span class="number">1</span>);
+    <span class="kw">let </span>b = future::ready(<span class="number">2</span>);
+    <span class="kw">let </span>c = future::ready(<span class="number">3</span>);
+    <span class="macro">assert_eq!</span>(<span class="macro">vec!</span>[a, b, c].join().<span class="kw">await</span>, <span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]);
+})</code></pre></div>
+<h2 id="concurrency"><a class="doc-anchor" href="#concurrency">§</a>Concurrency</h2>
+<p>It’s common for operations to depend on the output of multiple futures.
+Instead of awaiting each future in sequence it can be more efficient to
+await them <em>concurrently</em>. Rust provides built-in mechanisms in the library
+to make this easy and convenient to do.</p>
+<h3 id="infallible-concurrency"><a class="doc-anchor" href="#infallible-concurrency">§</a>Infallible Concurrency</h3>
+<p>When working with futures which don’t return <code>Result</code> types, we
+provide two built-in concurrency operations:</p>
+<ul>
+<li><code>future::Merge</code>: wait for all futures in the set to complete</li>
+<li><code>future::Race</code>: wait for the <em>first</em> future in the set to complete</li>
+</ul>
+<p>Because futures can be considered to be an async sequence of one, see
+the <a href="../stream/index.html#concurrency" title="mod futures_concurrency::stream">async iterator concurrency</a> section for
+additional async concurrency operations.</p>
+<h3 id="fallible-concurrency"><a class="doc-anchor" href="#fallible-concurrency">§</a>Fallible Concurrency</h3>
+<p>When working with futures which return <code>Result</code> types, the meaning of the
+existing operations changes, and additional <code>Result</code>-aware concurrency
+operations become available:</p>
+<div><table><thead><tr><th></th><th><strong>Wait for all outputs</strong></th><th><strong>Wait for first output</strong></th></tr></thead><tbody>
+<tr><td><strong>Continue on error</strong></td><td><code>future::Merge</code></td><td><code>future::RaceOk</code></td></tr>
+<tr><td><strong>Return early on error</strong></td><td><code>future::TryMerge</code></td><td><code>future::Race</code></td></tr>
+</tbody></table>
+</div>
+<ul>
+<li><code>future::TryMerge</code>: wait for all futures in the set to complete <em>successfully</em>, or return on the first error.</li>
+<li><code>future::RaceOk</code>: wait for the first <em>successful</em> future in the set to
+complete, or return an <code>Err</code> if <em>no</em> futures complete successfully.</li>
+</ul>
+</div></details><h2 id="modules" class="section-header">Modules<a href="#modules" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="mod" href="future_group/index.html" title="mod futures_concurrency::future::future_group">future_<wbr>group</a></div><div class="desc docblock-short">A growable group of futures which act as a single unit.</div></li></ul><h2 id="structs" class="section-header">Structs<a href="#structs" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.FutureGroup.html" title="struct futures_concurrency::future::FutureGroup">Future<wbr>Group</a></div><div class="desc docblock-short">A growable group of futures which act as a single unit.</div></li><li><div class="item-name"><a class="struct" href="struct.WaitUntil.html" title="struct futures_concurrency::future::WaitUntil">Wait<wbr>Until</a></div><div class="desc docblock-short">Suspends a future until the specified deadline.</div></li></ul><h2 id="traits" class="section-header">Traits<a href="#traits" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="trait" href="trait.FutureExt.html" title="trait futures_concurrency::future::FutureExt">Future<wbr>Ext</a></div><div class="desc docblock-short">An extension trait for the <code>Future</code> trait.</div></li><li><div class="item-name"><a class="trait" href="trait.Join.html" title="trait futures_concurrency::future::Join">Join</a></div><div class="desc docblock-short">Wait for all futures to complete.</div></li><li><div class="item-name"><a class="trait" href="trait.Race.html" title="trait futures_concurrency::future::Race">Race</a></div><div class="desc docblock-short">Wait for the first future to complete.</div></li><li><div class="item-name"><a class="trait" href="trait.RaceOk.html" title="trait futures_concurrency::future::RaceOk">RaceOk</a></div><div class="desc docblock-short">Wait for the first successful future to complete.</div></li><li><div class="item-name"><a class="trait" href="trait.TryJoin.html" title="trait futures_concurrency::future::TryJoin">TryJoin</a></div><div class="desc docblock-short">Wait for all futures to complete successfully, or abort early on error.</div></li></ul></section></div></main></body></html>

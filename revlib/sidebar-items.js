@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ControlType","IdleMode","MotorType","SoftLimitDirection"],"macro":["handle_error"],"mod":["encoder","error"],"struct":["Handle","SparkMax"],"trait":["FeedbackSensor"]};

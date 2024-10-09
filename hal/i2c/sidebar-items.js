@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Port"],"struct":["I2CError","RioI2C"]};

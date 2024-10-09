@@ -1,0 +1,117 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Performant, portable, structured concurrency operations for async Rust. It works with any runtime, does not erase lifetimes, always handles cancellation, and always returns output to the caller."><title>futures_concurrency - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../static.files/rustdoc-6d8951b3ccd3cbca.css"><meta name="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="futures_concurrency" data-themes="" data-resource-suffix="" data-rustdoc-version="1.83.0-nightly (6f4ae0f34 2024-10-08)" data-channel="nightly" data-search-js="search-e056c65ede92db13.js" data-settings-js="settings-805db61a62df4bd2.js" ><script src="../static.files/storage-1d39b6787ed640ff.js"></script><script defer src="../crates.js"></script><script defer src="../static.files/main-f070b9041d14864c.js"></script><noscript><link rel="stylesheet" href="../static.files/noscript-0111fcff984fae8f.css"></noscript><link rel="alternate icon" type="image/png" href="../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../futures_concurrency/index.html">futures_<wbr>concurrency</a><span class="version">7.6.1</span></h2></div><div class="sidebar-elems"><ul class="block"><li><a id="all-types" href="all.html">All Items</a></li></ul><section id="rustdoc-toc"><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#examples" title="Examples">Examples</a></li><li><a href="#operations" title="Operations">Operations</a><ul><li><a href="#futures" title="Futures">Futures</a></li><li><a href="#streams" title="Streams">Streams</a></li></ul></li><li><a href="#runtime-support" title="Runtime Support">Runtime Support</a></li><li><a href="#feature-flags" title="Feature Flags">Feature Flags</a></li><li><a href="#further-reading" title="Further Reading">Further Reading</a></li></ul><h3><a href="#modules">Crate Items</a></h3><ul class="block"><li><a href="#modules" title="Modules">Modules</a></li></ul></section><div id="rustdoc-modnav"></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1>Crate <span>futures_concurrency</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../src/futures_concurrency/lib.rs.html#1-203">source</a> </span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Performant, portable, structured concurrency operations for async Rust. It
+works with any runtime, does not erase lifetimes, always handles
+cancellation, and always returns output to the caller.</p>
+<p><code>futures-concurrency</code> provides concurrency operations for both groups of futures
+and streams. Both for bounded and unbounded sets of futures and streams. In both
+cases performance should be on par with, if not exceed conventional executor
+implementations.</p>
+<h2 id="examples"><a class="doc-anchor" href="#examples">§</a>Examples</h2>
+<p><strong>Await multiple futures of different types</strong></p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>futures_concurrency::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span>std::future;
+
+<span class="kw">let </span>a = future::ready(<span class="number">1u8</span>);
+<span class="kw">let </span>b = future::ready(<span class="string">"hello"</span>);
+<span class="kw">let </span>c = future::ready(<span class="number">3u16</span>);
+<span class="macro">assert_eq!</span>((a, b, c).join().<span class="kw">await</span>, (<span class="number">1</span>, <span class="string">"hello"</span>, <span class="number">3</span>));</code></pre></div>
+<p><strong>Concurrently process items in a collection</strong></p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>futures_concurrency::prelude::<span class="kw-2">*</span>;
+
+<span class="kw">let </span>v: Vec&lt;<span class="kw">_</span>&gt; = <span class="macro">vec!</span>[<span class="string">"chashu"</span>, <span class="string">"nori"</span>]
+    .into_co_stream()
+    .map(|msg| <span class="kw">async move </span>{ <span class="macro">format!</span>(<span class="string">"hello {msg}"</span>) })
+    .collect()
+    .<span class="kw">await</span>;
+
+<span class="macro">assert_eq!</span>(v, <span class="kw-2">&amp;</span>[<span class="string">"hello chashu"</span>, <span class="string">"hello nori"</span>]);</code></pre></div>
+<p><strong>Access stack data outside the futures’ scope</strong></p>
+<p><em>Adapted from <a href="https://doc.rust-lang.org/std/thread/fn.scope.html"><code>std::thread::scope</code></a>.</em></p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>futures_concurrency::prelude::<span class="kw-2">*</span>;
+
+<span class="kw">let </span><span class="kw-2">mut </span>container = <span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>];
+<span class="kw">let </span><span class="kw-2">mut </span>num = <span class="number">0</span>;
+
+<span class="kw">let </span>a = <span class="kw">async </span>{
+    <span class="macro">println!</span>(<span class="string">"hello from the first future"</span>);
+    <span class="macro">dbg!</span>(<span class="kw-2">&amp;</span>container);
+};
+
+<span class="kw">let </span>b = <span class="kw">async </span>{
+    <span class="macro">println!</span>(<span class="string">"hello from the second future"</span>);
+    num += container[<span class="number">0</span>] + container[<span class="number">2</span>];
+};
+
+<span class="macro">println!</span>(<span class="string">"hello from the main future"</span>);
+<span class="kw">let _ </span>= (a, b).join().<span class="kw">await</span>;
+container.push(<span class="number">4</span>);
+<span class="macro">assert_eq!</span>(num, container.len());</code></pre></div>
+<h2 id="operations"><a class="doc-anchor" href="#operations">§</a>Operations</h2><h3 id="futures"><a class="doc-anchor" href="#futures">§</a>Futures</h3>
+<p>For futures which return a regular type <code>T</code> only the <code>join</code> and <code>race</code>
+operations are available. <code>join</code> waits for all futures to complete, while <code>race</code>
+will wait for the first future to complete. However for futures which return a
+<code>Try&lt;Output = T&gt;</code> two additional operations are available. The following table
+describes the behavior of concurrency operations for fallible futures:</p>
+<div><table><thead><tr><th></th><th style="text-align: left"><strong>Wait for all outputs</strong></th><th style="text-align: left"><strong>Wait for first output</strong></th></tr></thead><tbody>
+<tr><td><strong>Continue on error</strong></td><td style="text-align: left"><code>Future::join</code></td><td style="text-align: left"><code>Future::race_ok</code></td></tr>
+<tr><td><strong>Short-circuit on error</strong></td><td style="text-align: left"><code>Future::try_join</code></td><td style="text-align: left"><code>Future::race</code></td></tr>
+</tbody></table>
+</div>
+<p>The following futures implementations are provided by <code>futures-concurrency</code>:</p>
+<ul>
+<li><a href="future/struct.FutureGroup.html" title="struct futures_concurrency::future::FutureGroup"><code>FutureGroup</code></a>: A growable group of futures which operate as a single unit.</li>
+<li><code>tuple</code>: <a href="future/trait.Join.html#impl-Join-for-(A,+B)" title="trait futures_concurrency::future::Join"><code>join</code></a>, <a href="future/trait.TryJoin.html#impl-TryJoin-for-(A,+B)" title="trait futures_concurrency::future::TryJoin"><code>try_join</code></a>, <a href="future/trait.Race.html#impl-Race-for-(A,+B)" title="trait futures_concurrency::future::Race"><code>race</code></a>, <a href="future/trait.RaceOk.html#impl-RaceOk-for-(A,+B)" title="trait futures_concurrency::future::RaceOk"><code>race_ok</code></a></li>
+<li><code>array</code>: <a href="future/trait.Join.html#impl-Join-for-%5C%5BFut;+N%5C%5D" title="trait futures_concurrency::future::Join"><code>join</code></a>, <a href="future/trait.TryJoin.html#impl-TryJoin-for-%5C%5BFut;+N%5C%5D" title="trait futures_concurrency::future::TryJoin"><code>try_join</code></a>, <a href="future/trait.Race.html#impl-Race-for-%5C%5BFut;+N%5C%5D" title="trait futures_concurrency::future::Race"><code>race</code></a>, <a href="future/trait.RaceOk.html#impl-RaceOk-for-%5C%5BFut;+N%5C%5D" title="trait futures_concurrency::future::RaceOk"><code>race_ok</code></a></li>
+<li><code>Vec</code>: <a href="future/trait.Join.html#impl-Join-for-Vec%3CFut%3E" title="trait futures_concurrency::future::Join"><code>join</code></a>, <a href="future/trait.TryJoin.html#impl-TryJoin-for-Vec%3CFut%3E" title="trait futures_concurrency::future::TryJoin"><code>try_join</code></a>, <a href="future/trait.Race.html#impl-Race-for-Vec%3CFut%3E" title="trait futures_concurrency::future::Race"><code>race</code></a>, <a href="future/trait.RaceOk.html#impl-RaceOk-for-Vec%3CFut%3E" title="trait futures_concurrency::future::RaceOk"><code>race_ok</code></a></li>
+</ul>
+<h3 id="streams"><a class="doc-anchor" href="#streams">§</a>Streams</h3>
+<p>Streams yield outputs one-by-one, which means that deciding to stop iterating is
+the same for fallible and infallible streams. The operations provided for
+streams can be categorized based on whether their inputs can be concurrently
+evaluated, and whether their outputs can be concurrently processed.</p>
+<p>Specifically in the case of <code>merge</code>, it takes <code>N</code> streams in, and yields items
+one-by-one as soon as any are available. This enables the output of individual
+streams to be concurrently processed by further operations later on.</p>
+<div><table><thead><tr><th></th><th><strong>Sequential output processing</strong></th><th><strong>Concurrent output processing</strong></th></tr></thead><tbody>
+<tr><td><strong>Sequential input evaluation</strong></td><td><code>Stream::chain</code></td><td><em>not yet available</em> ‡</td></tr>
+<tr><td><strong>Concurrent input evaluation</strong></td><td><code>Stream::zip</code></td><td><code>Stream::merge</code></td></tr>
+</tbody></table>
+</div>
+<p>‡: <em>This could be addressed by a hypothetical <code>Stream::unzip</code> operation,
+however because we aspire for semantic compatibility with <code>std::iter::Iterator</code>
+in our operations, the path to adding it is currently unclear</em>.</p>
+<p>The following streams implementations are provided by <code>futures-concurrency</code>:</p>
+<ul>
+<li><a href="stream/struct.StreamGroup.html" title="struct futures_concurrency::stream::StreamGroup"><code>StreamGroup</code></a>: A growable group of streams which operate as a single unit.</li>
+<li><a href="concurrent_stream/trait.ConcurrentStream.html" title="trait futures_concurrency::concurrent_stream::ConcurrentStream"><code>ConcurrentStream</code></a>: A trait for asynchronous streams which can concurrently process items.</li>
+<li><code>tuple</code>: <a href="stream/trait.Chain.html#impl-Chain-for-(A,+B)" title="trait futures_concurrency::stream::Chain"><code>chain</code></a>, <a href="stream/trait.Merge.html#impl-Merge-for-(A,+B)" title="trait futures_concurrency::stream::Merge"><code>merge</code></a>, <a href="stream/trait.Zip.html#impl-Zip-for-(A,+B)" title="trait futures_concurrency::stream::Zip"><code>zip</code></a></li>
+<li><code>array</code>: <a href="stream/trait.Chain.html#impl-Chain-for-%5C%5BFut;+N%5C%5D" title="trait futures_concurrency::stream::Chain"><code>chain</code></a>, <a href="stream/trait.Merge.html#impl-Merge-for-%5C%5BFut;+N%5C%5D" title="trait futures_concurrency::stream::Merge"><code>merge</code></a>, <a href="stream/trait.Zip.html#impl-Zip-for-%5C%5BFut;+N%5C%5D" title="trait futures_concurrency::stream::Zip"><code>zip</code></a></li>
+<li><code>Vec</code>: <a href="stream/trait.Chain.html#impl-Chain-for-Vec%3CFut%3E" title="trait futures_concurrency::stream::Chain"><code>chain</code></a>, <a href="stream/trait.Merge.html#impl-Merge-for-Vec%3CFut%3E" title="trait futures_concurrency::stream::Merge"><code>merge</code></a>, <a href="stream/trait.Zip.html#impl-Zip-for-Vec%3CFut%3E" title="trait futures_concurrency::stream::Zip"><code>zip</code></a></li>
+</ul>
+<h2 id="runtime-support"><a class="doc-anchor" href="#runtime-support">§</a>Runtime Support</h2>
+<p><code>futures-concurrency</code> does not depend on any runtime executor being present.
+This enables it to work out of the box with any async runtime, including:
+<code>tokio</code>, <code>async-std</code>, <code>smol</code>, <code>glommio</code>, and <code>monoio</code>. It also supports
+<code>#[no_std]</code> environments, allowing it to be used with embedded async
+runtimes such as <code>embassy</code>.</p>
+<h2 id="feature-flags"><a class="doc-anchor" href="#feature-flags">§</a>Feature Flags</h2>
+<p>The <code>std</code> feature flag is enabled by default. To target <code>alloc</code> or <code>no_std</code>
+environments, you can enable the following configuration:</p>
+<div class="example-wrap"><pre class="language-toml"><code>[dependencies]
+# no_std
+futures-concurrency = { version = &quot;7.5.0&quot;, default-features = false }
+
+# alloc
+futures-concurrency = { version = &quot;7.5.0&quot;, default-features = false, features = [&quot;alloc&quot;] }</code></pre></div><h2 id="further-reading"><a class="doc-anchor" href="#further-reading">§</a>Further Reading</h2>
+<p><code>futures-concurrency</code> has been developed over the span of several years. It is
+primarily maintained by Yosh Wuyts, a member of the Rust Async WG. You can read
+more about the development and ideas behind <code>futures-concurrency</code> here:</p>
+<ul>
+<li><a href="https://blog.yoshuawuyts.com/futures-concurrency/">Futures Concurrency I: Introduction</a></li>
+<li><a href="https://blog.yoshuawuyts.com/futures-concurrency-2/">Futures Concurrency II: A Trait Approach</a></li>
+<li><a href="https://blog.yoshuawuyts.com/futures-concurrency-3/">Futures Concurrency III: <code>select!</code></a></li>
+<li><a href="https://blog.yoshuawuyts.com/futures-concurrency-4/">Futures Concurrency IV: Join Semantics</a></li>
+</ul>
+</div></details><h2 id="modules" class="section-header">Modules<a href="#modules" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="mod" href="array/index.html" title="mod futures_concurrency::array">array</a></div><div class="desc docblock-short">Helper functions and types for fixed-length arrays.</div></li><li><div class="item-name"><a class="mod" href="concurrent_stream/index.html" title="mod futures_concurrency::concurrent_stream">concurrent_<wbr>stream</a></div><div class="desc docblock-short">Concurrent execution of streams</div></li><li><div class="item-name"><a class="mod" href="future/index.html" title="mod futures_concurrency::future">future</a></div><div class="desc docblock-short">Asynchronous basic functionality.</div></li><li><div class="item-name"><a class="mod" href="prelude/index.html" title="mod futures_concurrency::prelude">prelude</a></div><div class="desc docblock-short">The futures concurrency prelude.</div></li><li><div class="item-name"><a class="mod" href="stream/index.html" title="mod futures_concurrency::stream">stream</a></div><div class="desc docblock-short">Composable asynchronous iteration.</div></li><li><div class="item-name"><a class="mod" href="vec/index.html" title="mod futures_concurrency::vec">vec</a></div><div class="desc docblock-short">Parallel iterator types for <a href="https://doc.rust-lang.org/std/vec/index.html">vectors</a> (<code>Vec&lt;T&gt;</code>)</div></li></ul></section></div></main></body></html>
