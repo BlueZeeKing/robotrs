@@ -1,14 +1,19 @@
 # Robotrs
 
 A port of WPILib and REVLib to Rust for use in the FIRST Robotics Competition.
+This project intends to investigate the use of Rust to prevent simple logic
+errors like commanding a subsystem of the robot to do two seperate things at
+the same time by using the borrow checker. This project also experiments with
+allowing parts of the robotrs ecosystem to be used outside of FRC. This also
+aims to make it easier for teams to use shared code by using cargo instead of
+gradle and a custom dependency managment system.
 
 ## Security
 
-The `hal-sys`, `ctre`, and `revlib` packages all generate bindings to C
-libraries at compile time. The headers to these libraries and the binaries
-themselves are automatically downloaded at compile time. All code related to
-the downloading of these libs can be found in the `build-utils` crate and the
-`build.rs` of the 3 crates mentioned earlier.
+The `hal-sys`, `ctre`, `nt`, and `revlib` packages all download libraries and the
+binaries necessary at compile time. All code related to the downloading of
+these libs can be found in the `build-system` directory and the `build.rs` of the 4
+crates mentioned earlier.
 
 ## Not affilited with or supported by WPILib, REV Robotics, CTRE, or FIRST
 
